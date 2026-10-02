@@ -10,7 +10,7 @@
     --green:#43B02A; --green-dark:#2E7D1E; --green-light:#E8F7E4; --green-mid:#7AC943;
     --red:#E60000; --red-light:#FDEAEA; --ink:#1A1A1A; --gray-700:#4D4D4D;
     --gray-500:#7A7A7A; --gray-200:#E4E4E4; --gray-100:#F2F2F2; --gray-50:#F8F8F8;
-    --white:#FFFFFF; --yellow:#F5A623; --gold:#D4AF37; --mpesa:#4CAF50; --blue:#2196F3;
+    --white:#FFFFFF; --yellow:#F5A623; --gold:#D4AF37; --mpesa:#43B02A; --blue:#2196F3;
     --radius:14px; --shadow:0 4px 20px rgba(0,0,0,0.07);
     --shadow-green:0 6px 20px rgba(67,176,42,0.30);
     --nav-h:64px; --header-h:56px;
@@ -119,7 +119,7 @@
   .btn-primary { background:linear-gradient(135deg,var(--green),var(--green-dark)); color:var(--white); box-shadow:var(--shadow-green); }
   .btn-danger { background:var(--red); color:var(--white); box-shadow:0 4px 16px rgba(230,0,0,0.25); }
   .btn-ghost { background:var(--white); color:var(--green-dark); border:1.5px solid var(--green); }
-  .btn-mpesa { background:linear-gradient(135deg,#4CAF50,#388E3C); color:var(--white); box-shadow:0 4px 16px rgba(76,175,80,0.30); }
+  .btn-mpesa { background:linear-gradient(135deg,#43B02A,#2E7D1E); color:var(--white); box-shadow:0 4px 16px rgba(67,176,42,0.35); }
   .btn-sm { padding:10px 14px; font-size:13px; border-radius:10px; }
   .btn-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   .stats { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:14px; }
@@ -277,13 +277,35 @@
   .pending-label { font-size:11px; font-weight:900; text-transform:uppercase; letter-spacing:0.6px; color:#8A6D3B; margin-bottom:6px; }
   .pending-value { font-size:26px; font-weight:900; color:#8A6D3B; letter-spacing:-0.5px; }
   .pending-sub { font-size:11px; color:#8A6D3B; font-weight:600; margin-top:4px; opacity:0.8; }
+  /* ══════ M-PESA LOGO ══════ */
   .mpesa-logo {
-    display:inline-flex; align-items:center; gap:6px;
-    background:var(--mpesa); color:white;
-    padding:3px 10px; border-radius:6px;
-    font-size:11px; font-weight:900; letter-spacing:0.3px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    padding:0;
+    background:transparent;
+    border-radius:0;
   }
-  .mpesa-icon { width:16px; height:16px; }
+  .mpesa-logo svg {
+    display:block;
+    height:34px;
+    width:auto;
+  }
+  .mpesa-logo.small svg { height:22px; }
+  .mpesa-logo.medium svg { height:28px; }
+  .mpesa-logo.large svg { height:44px; }
+  .mpesa-modal-sub {
+    display:flex;
+    align-items:center;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+  .mpesa-modal-sub .mpesa-logo svg { height:30px; }
+  .mpesa-modal-sub .mpesa-modal-text {
+    font-size:13px;
+    color:var(--gray-500);
+    font-weight:600;
+  }
   .hist-item {
     background:var(--white); border-radius:12px; padding:14px;
     border:1px solid var(--gray-200); box-shadow:var(--shadow);
@@ -302,22 +324,6 @@
   .hist-title { font-size:13px; font-weight:800; margin-bottom:3px; }
   .hist-meta { font-size:11px; color:var(--gray-500); font-weight:600; }
   .hist-reward { font-size:14px; font-weight:900; color:var(--green); white-space:nowrap; }
-  .hist-reward.negative { color:var(--red); }
-  .hist-section-head {
-    font-size:11px; font-weight:900; text-transform:uppercase;
-    letter-spacing:0.8px; color:var(--gray-500);
-    margin: 20px 0 10px;
-    display:flex; align-items:center; gap:8px;
-  }
-  .hist-section-head:first-child { margin-top:0; }
-  .hist-section-head::before {
-    content:''; width:3px; height:14px; background:var(--green); border-radius:2px;
-  }
-  .hist-filters {
-    display:flex; gap:8px; margin-bottom:14px; overflow-x:auto;
-    padding-bottom:4px;
-  }
-  .hist-filters::-webkit-scrollbar { display:none; }
   .modal-backdrop {
     position:fixed; inset:0; background:rgba(0,0,0,0.5);
     display:none; z-index:200; align-items:flex-end;
@@ -461,7 +467,6 @@
 </head>
 <body>
 
-<!-- HEADER -->
 <header class="header">
   <div class="brand">
     <div class="brand-mark">◆</div>
@@ -603,16 +608,43 @@
   </div>
 
   <div class="btn-row" style="margin-bottom:14px;">
-    <button class="btn btn-mpesa" id="btnDeposit">
-      <span class="mpesa-logo" style="background:transparent;padding:0;">
-        <svg class="mpesa-icon" viewBox="0 0 24 24" fill="none">
-          <rect x="3" y="4" width="18" height="16" rx="3" fill="#fff"/>
-          <circle cx="12" cy="12" r="4" fill="#4CAF50"/>
+    <button class="btn btn-mpesa" id="btnDeposit" style="gap:10px;">
+      <span class="mpesa-logo small">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 64">
+          <text x="14" y="46" font-family="'Arial Black','Helvetica Neue',Arial,sans-serif"
+                font-size="38" font-weight="900" fill="#FFFFFF" letter-spacing="-1">M</text>
+          <g transform="translate(64,10)">
+            <rect x="0" y="0" width="26" height="44" rx="5" fill="none" stroke="#FFFFFF" stroke-width="3"/>
+            <rect x="5" y="5" width="16" height="30" rx="2" fill="#FFFFFF" fill-opacity="0.55"/>
+            <circle cx="13" cy="40" r="2" fill="#FFFFFF"/>
+          </g>
+          <path d="M 58 26 Q 77 16 96 28" stroke="#E30613" stroke-width="4"
+                fill="none" stroke-linecap="round"/>
+          <text x="102" y="46" font-family="'Arial Black','Helvetica Neue',Arial,sans-serif"
+                font-size="38" font-weight="900" fill="#FFFFFF" letter-spacing="-1">PESA</text>
         </svg>
       </span>
       Deposit
     </button>
-    <button class="btn btn-primary" id="btnWithdraw">💸 Withdraw</button>
+
+    <button class="btn btn-primary" id="btnWithdraw" style="gap:10px;">
+      <span class="mpesa-logo small">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 64">
+          <text x="14" y="46" font-family="'Arial Black','Helvetica Neue',Arial,sans-serif"
+                font-size="38" font-weight="900" fill="#FFFFFF" letter-spacing="-1">M</text>
+          <g transform="translate(64,10)">
+            <rect x="0" y="0" width="26" height="44" rx="5" fill="none" stroke="#FFFFFF" stroke-width="3"/>
+            <rect x="5" y="5" width="16" height="30" rx="2" fill="#FFFFFF" fill-opacity="0.55"/>
+            <circle cx="13" cy="40" r="2" fill="#FFFFFF"/>
+          </g>
+          <path d="M 58 26 Q 77 16 96 28" stroke="#E30613" stroke-width="4"
+                fill="none" stroke-linecap="round"/>
+          <text x="102" y="46" font-family="'Arial Black','Helvetica Neue',Arial,sans-serif"
+                font-size="38" font-weight="900" fill="#FFFFFF" letter-spacing="-1">PESA</text>
+        </svg>
+      </span>
+      Withdraw
+    </button>
   </div>
 
   <div class="card">
@@ -623,7 +655,7 @@
 
 <!-- HISTORY -->
 <section class="screen" id="screen-history">
-  <div class="hist-filters" id="historyFilters">
+  <div class="filter-row" id="historyFilters">
     <button class="filter-chip active" data-hfilter="">All</button>
     <button class="filter-chip" data-hfilter="tasks">📋 Tasks</button>
     <button class="filter-chip" data-hfilter="subscriptions">⭐ Upgrades</button>
@@ -639,7 +671,6 @@
   </div>
 </section>
 
-<!-- NAV -->
 <nav class="bottom-nav" id="bottomNav" style="display:none;">
   <button class="nav-btn active" data-screen="dashboard"><span class="nav-icon">📊</span><span>Tasks</span></button>
   <button class="nav-btn" data-screen="subscribe"><span class="nav-icon">⭐</span><span>Upgrade</span></button>
@@ -670,15 +701,24 @@
   <div class="modal">
     <button class="modal-close" data-close="subscribeModal">✕</button>
     <div class="modal-title">Upgrade to <span id="subTierName" style="color:var(--green);">Classic</span></div>
-    <div class="modal-sub">
+    <div class="modal-sub mpesa-modal-sub">
       <span class="mpesa-logo">
-        <svg class="mpesa-icon" viewBox="0 0 24 24" fill="none">
-          <rect x="3" y="4" width="18" height="16" rx="3" fill="#fff"/>
-          <circle cx="12" cy="12" r="4" fill="#4CAF50"/>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 64">
+          <rect width="200" height="64" rx="10" fill="#43B02A"/>
+          <text x="14" y="46" font-family="'Arial Black','Helvetica Neue',Arial,sans-serif"
+                font-size="38" font-weight="900" fill="#FFFFFF" letter-spacing="-1">M</text>
+          <g transform="translate(64,10)">
+            <rect x="0" y="0" width="26" height="44" rx="5" fill="none" stroke="#FFFFFF" stroke-width="3"/>
+            <rect x="5" y="5" width="16" height="30" rx="2" fill="#7AC943"/>
+            <circle cx="13" cy="40" r="2" fill="#FFFFFF"/>
+          </g>
+          <path d="M 58 26 Q 77 16 96 28" stroke="#E30613" stroke-width="4"
+                fill="none" stroke-linecap="round"/>
+          <text x="102" y="46" font-family="'Arial Black','Helvetica Neue',Arial,sans-serif"
+                font-size="38" font-weight="900" fill="#FFFFFF" letter-spacing="-1">PESA</text>
         </svg>
-        M‑Pesa
       </span>
-      &nbsp;Pay KES <span id="subTierPrice">200</span> for 7 days
+      <span class="mpesa-modal-text">Pay KES <span id="subTierPrice">200</span> for 7 days</span>
     </div>
     <div class="msg" id="subModalMsg"></div>
     <div id="subModalForm">
@@ -702,15 +742,24 @@
   <div class="modal">
     <button class="modal-close" data-close="depositModal">✕</button>
     <div class="modal-title">Deposit Money</div>
-    <div class="modal-sub">
+    <div class="modal-sub mpesa-modal-sub">
       <span class="mpesa-logo">
-        <svg class="mpesa-icon" viewBox="0 0 24 24" fill="none">
-          <rect x="3" y="4" width="18" height="16" rx="3" fill="#fff"/>
-          <circle cx="12" cy="12" r="4" fill="#4CAF50"/>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 64">
+          <rect width="200" height="64" rx="10" fill="#43B02A"/>
+          <text x="14" y="46" font-family="'Arial Black','Helvetica Neue',Arial,sans-serif"
+                font-size="38" font-weight="900" fill="#FFFFFF" letter-spacing="-1">M</text>
+          <g transform="translate(64,10)">
+            <rect x="0" y="0" width="26" height="44" rx="5" fill="none" stroke="#FFFFFF" stroke-width="3"/>
+            <rect x="5" y="5" width="16" height="30" rx="2" fill="#7AC943"/>
+            <circle cx="13" cy="40" r="2" fill="#FFFFFF"/>
+          </g>
+          <path d="M 58 26 Q 77 16 96 28" stroke="#E30613" stroke-width="4"
+                fill="none" stroke-linecap="round"/>
+          <text x="102" y="46" font-family="'Arial Black','Helvetica Neue',Arial,sans-serif"
+                font-size="38" font-weight="900" fill="#FFFFFF" letter-spacing="-1">PESA</text>
         </svg>
-        M‑Pesa
       </span>
-      &nbsp;Minimum KES 50
+      <span class="mpesa-modal-text">Minimum deposit is KES 50</span>
     </div>
     <div class="msg" id="depositModalMsg"></div>
     <div class="field">
@@ -736,15 +785,24 @@
   <div class="modal">
     <button class="modal-close" data-close="withdrawModal">✕</button>
     <div class="modal-title">Withdraw Money</div>
-    <div class="modal-sub">
+    <div class="modal-sub mpesa-modal-sub">
       <span class="mpesa-logo">
-        <svg class="mpesa-icon" viewBox="0 0 24 24" fill="none">
-          <rect x="3" y="4" width="18" height="16" rx="3" fill="#fff"/>
-          <circle cx="12" cy="12" r="4" fill="#4CAF50"/>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 64">
+          <rect width="200" height="64" rx="10" fill="#43B02A"/>
+          <text x="14" y="46" font-family="'Arial Black','Helvetica Neue',Arial,sans-serif"
+                font-size="38" font-weight="900" fill="#FFFFFF" letter-spacing="-1">M</text>
+          <g transform="translate(64,10)">
+            <rect x="0" y="0" width="26" height="44" rx="5" fill="none" stroke="#FFFFFF" stroke-width="3"/>
+            <rect x="5" y="5" width="16" height="30" rx="2" fill="#7AC943"/>
+            <circle cx="13" cy="40" r="2" fill="#FFFFFF"/>
+          </g>
+          <path d="M 58 26 Q 77 16 96 28" stroke="#E30613" stroke-width="4"
+                fill="none" stroke-linecap="round"/>
+          <text x="102" y="46" font-family="'Arial Black','Helvetica Neue',Arial,sans-serif"
+                font-size="38" font-weight="900" fill="#FFFFFF" letter-spacing="-1">PESA</text>
         </svg>
-        M‑Pesa
       </span>
-      &nbsp;Minimum KES 200
+      <span class="mpesa-modal-text">Minimum withdrawal is KES 200</span>
     </div>
     <div class="msg" id="withdrawModalMsg"></div>
     <input type="number" class="amount-input" id="withdrawAmount" placeholder="0" inputmode="numeric" />
@@ -797,7 +855,7 @@
   let totalTaskCount = 0;
   let survey = { task:null, questions:[], current:0, answers:[] };
   let currentSubscribeTier = null;
-  let historyFilter = ''; // '', 'tasks', 'subscriptions'
+  let historyFilter = '';
 
   async function api(path, opts = {}) {
     const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
@@ -832,7 +890,6 @@
   }
   function clearMsg(el) { el.className = 'msg'; el.textContent = ''; }
 
-  // ── PASSWORD TOGGLE & STRENGTH ──
   function attachToggle(btnId, inputId) {
     $(btnId).addEventListener('click', () => {
       const inp = $(inputId);
@@ -855,7 +912,6 @@
     $('authConfirm').classList.toggle('valid', cf.length > 0 && cf === pw);
   });
 
-  // ── AUTH ──
   async function register() {
     const username = $('authUsername').value.trim();
     const email = $('authEmail').value.trim();
@@ -938,7 +994,6 @@
     $('screen-auth').classList.add('active');
   });
 
-  // ── DASHBOARD ──
   async function loadDashboard(page = 1, append = false) {
     try {
       if (!append) currentPage = 1;
@@ -1067,7 +1122,6 @@
     });
   });
 
-  // ── SURVEY ──
   async function startSurvey(taskId) {
     try {
       const data = await api(`/api/tasks/${taskId}`);
@@ -1169,7 +1223,6 @@
     $('surveyFooter').style.display = 'flex';
   });
 
-  // ── HISTORY (tasks + upgrade transactions) ──
   async function loadHistory() {
     try {
       const [taskList, walletData] = await Promise.all([
@@ -1204,7 +1257,6 @@
           };
         });
 
-      // Apply filter
       let entries = [...taskEntries, ...subEntries];
       if (historyFilter === 'tasks') entries = taskEntries;
       if (historyFilter === 'subscriptions') entries = subEntries;
@@ -1256,7 +1308,6 @@
     } catch (err) { console.error(err); }
   }
 
-  // History filter chips
   document.querySelectorAll('.filter-chip[data-hfilter]').forEach(chip => {
     chip.addEventListener('click', () => {
       document.querySelectorAll('.filter-chip[data-hfilter]').forEach(c => c.classList.remove('active'));
@@ -1266,7 +1317,6 @@
     });
   });
 
-  // ── ACCOUNT (deposits & withdrawals only) ──
   async function loadAccount() {
     try {
       const me = await api('/api/me');
@@ -1331,7 +1381,6 @@
     } catch (err) { console.error(err); }
   }
 
-  // ── MODALS ──
   function openModal(id) { $(id).classList.add('show'); }
   function closeModal(id) { $(id).classList.remove('show'); }
 
@@ -1346,7 +1395,6 @@
     goTo('subscribe');
   });
 
-  // ── SUBSCRIBE FLOW ──
   document.querySelectorAll('.tier-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       currentSubscribeTier = btn.dataset.tier;
@@ -1424,7 +1472,6 @@
     }
   });
 
-  // ── DEPOSIT ──
   $('btnDeposit').addEventListener('click', () => {
     $('depositAmount').value = '';
     $('depositPhone').value = user?.phone || '';
@@ -1514,7 +1561,6 @@
     });
   });
 
-  // ── PROFILE ──
   async function loadProfile() {
     try {
       const me = await api('/api/me');
