@@ -106,6 +106,36 @@
   .pw-hint { font-size:11px; margin-top:6px; display:flex; gap:10px; flex-wrap:wrap; font-weight:600; }
   .pw-hint span { display:flex; align-items:center; gap:4px; color:var(--gray-500); }
   .pw-hint span.ok { color:var(--green); }
+
+  /* ══════ AUTH TABS ══════ */
+  .auth-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    background: var(--gray-100);
+    border-radius: 12px;
+    padding: 4px;
+    margin-bottom: 18px;
+  }
+  .auth-tab {
+    padding: 11px 12px;
+    border: none;
+    background: transparent;
+    font-family: inherit;
+    font-size: 13.5px;
+    font-weight: 800;
+    color: var(--gray-500);
+    border-radius: 9px;
+    cursor: pointer;
+    transition: background .15s, color .15s, box-shadow .15s;
+    letter-spacing: 0.2px;
+  }
+  .auth-tab.active {
+    background: linear-gradient(135deg, var(--green), var(--green-dark));
+    color: var(--white);
+    box-shadow: 0 4px 14px rgba(67,176,42,0.30);
+  }
+
   .btn {
     display:flex; align-items:center; justify-content:center; gap:8px;
     width:100%; padding:15px 20px;
@@ -459,7 +489,7 @@
   .tx-amount.positive { color:var(--green); }
   .tx-amount.negative { color:var(--red); }
 
-  /* ══════ FLOWER SPRINKLE CELEBRATION ══════ */
+  /* ══════ FLOWER SPRINKLE ══════ */
   .flower-sprinkle {
     position: fixed;
     inset: 0;
@@ -519,40 +549,63 @@
   <div class="card green-border">
     <div class="section-title">Welcome to JobPay</div>
     <p style="font-size:13px;color:var(--gray-500);margin-bottom:16px;font-weight:600;">
-      Complete surveys &amp; tasks. Get paid. New users get <strong style="color:var(--green);">2 free tasks (KES 21 each) every day</strong>.
+      Complete surveys &amp; tasks. Get paid. New users get
+      <strong style="color:var(--green);">2 free tasks (KES 21 each) every day</strong>.
     </p>
+
+    <!-- Tab switcher -->
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tabRegister" type="button">Create Account</button>
+      <button class="auth-tab" id="tabLogin" type="button">Login</button>
+    </div>
+
     <div id="authMsg" class="msg"></div>
-    <div class="field">
-      <label for="authUsername">Username</label>
-      <input type="text" id="authUsername" class="no-icon" placeholder="e.g. john_doe" autocomplete="username" />
-    </div>
-    <div class="field">
-      <label for="authEmail">Email</label>
-      <input type="email" id="authEmail" class="no-icon" placeholder="you@example.com" autocomplete="email" />
-    </div>
-    <div class="field">
-      <label for="authPhone">M‑Pesa Phone</label>
-      <input type="tel" id="authPhone" class="no-icon" placeholder="0712 345 678" autocomplete="tel" />
-    </div>
-    <div class="field">
-      <label for="authPassword">Password</label>
-      <input type="password" id="authPassword" placeholder="••••••••" autocomplete="new-password" />
-      <button class="pw-toggle" id="togglePw1" type="button">👁</button>
-      <div class="pw-hint" id="pwHint">
-        <span data-req="len">• 8+ chars</span>
-        <span data-req="upper">• Uppercase</span>
-        <span data-req="lower">• Lowercase</span>
-        <span data-req="num">• Number</span>
+
+    <!-- ═══ REGISTER FORM ═══ -->
+    <div id="authRegisterForm">
+      <div class="field">
+        <label for="authUsername">Username</label>
+        <input type="text" id="authUsername" class="no-icon" placeholder="e.g. john_doe" autocomplete="username" />
       </div>
+      <div class="field">
+        <label for="authEmail">Email</label>
+        <input type="email" id="authEmail" class="no-icon" placeholder="you@example.com" autocomplete="email" />
+      </div>
+      <div class="field">
+        <label for="authPhone">M‑Pesa Phone</label>
+        <input type="tel" id="authPhone" class="no-icon" placeholder="0712 345 678" autocomplete="tel" />
+      </div>
+      <div class="field">
+        <label for="authPassword">Password</label>
+        <input type="password" id="authPassword" placeholder="••••••••" autocomplete="new-password" />
+        <button class="pw-toggle" id="togglePw1" type="button">👁</button>
+        <div class="pw-hint" id="pwHint">
+          <span data-req="len">• 8+ chars</span>
+          <span data-req="upper">• Uppercase</span>
+          <span data-req="lower">• Lowercase</span>
+          <span data-req="num">• Number</span>
+        </div>
+      </div>
+      <div class="field">
+        <label for="authConfirm">Confirm Password</label>
+        <input type="password" id="authConfirm" placeholder="••••••••" autocomplete="new-password" />
+        <button class="pw-toggle" id="togglePw2" type="button">👁</button>
+      </div>
+      <button class="btn btn-primary" id="btnRegister" style="margin-top:6px;">Create Account</button>
     </div>
-    <div class="field">
-      <label for="authConfirm">Confirm Password</label>
-      <input type="password" id="authConfirm" placeholder="••••••••" autocomplete="new-password" />
-      <button class="pw-toggle" id="togglePw2" type="button">👁</button>
-    </div>
-    <div class="btn-row" style="margin-top:6px;">
-      <button class="btn btn-primary" id="btnRegister">Register</button>
-      <button class="btn btn-ghost" id="btnLogin">Login</button>
+
+    <!-- ═══ LOGIN FORM ═══ -->
+    <div id="authLoginForm" style="display:none;">
+      <div class="field">
+        <label for="loginEmail">Email</label>
+        <input type="email" id="loginEmail" class="no-icon" placeholder="you@example.com" autocomplete="email" />
+      </div>
+      <div class="field">
+        <label for="loginPassword">Password</label>
+        <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password" />
+        <button class="pw-toggle" id="togglePwLogin" type="button">👁</button>
+      </div>
+      <button class="btn btn-primary" id="btnLogin" style="margin-top:6px;">Login</button>
     </div>
   </div>
 </section>
@@ -992,6 +1045,7 @@
   }
   attachToggle('togglePw1', 'authPassword');
   attachToggle('togglePw2', 'authConfirm');
+  attachToggle('togglePwLogin', 'loginPassword');
 
   $('authPassword').addEventListener('input', () => {
     const v = $('authPassword').value;
@@ -1003,6 +1057,18 @@
     $('authConfirm').classList.toggle('error', cf.length > 0 && cf !== pw);
     $('authConfirm').classList.toggle('valid', cf.length > 0 && cf === pw);
   });
+
+  // ── AUTH TAB SWITCHING ──
+  function setAuthTab(tab) {
+    const isLogin = tab === 'login';
+    $('tabRegister').classList.toggle('active', !isLogin);
+    $('tabLogin').classList.toggle('active', isLogin);
+    $('authRegisterForm').style.display = isLogin ? 'none' : 'block';
+    $('authLoginForm').style.display = isLogin ? 'block' : 'none';
+    clearMsg($('authMsg'));
+  }
+  $('tabRegister').addEventListener('click', () => setAuthTab('register'));
+  $('tabLogin').addEventListener('click', () => setAuthTab('login'));
 
   async function register() {
     const username = $('authUsername').value.trim();
@@ -1032,13 +1098,13 @@
       showMsg($('authMsg'), err.message, 'error');
     } finally {
       $('btnRegister').disabled = false;
-      $('btnRegister').textContent = 'Register';
+      $('btnRegister').textContent = 'Create Account';
     }
   }
 
   async function login() {
-    const email = $('authEmail').value.trim();
-    const password = $('authPassword').value;
+    const email = $('loginEmail').value.trim();
+    const password = $('loginPassword').value;
     if (!email || !password) return showMsg($('authMsg'), 'Enter email and password', 'error');
     try {
       $('btnLogin').disabled = true;
@@ -1084,6 +1150,11 @@
     $('headerRight').style.display = 'none'; $('bottomNav').style.display = 'none';
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     $('screen-auth').classList.add('active');
+    // Reset to Create Account tab and clear inputs
+    setAuthTab('register');
+    ['authUsername','authEmail','authPhone','authPassword','authConfirm','loginEmail','loginPassword'].forEach(id => {
+      const el = $(id); if (el) el.value = '';
+    });
   });
 
   async function loadDashboard(page = 1, append = false) {
@@ -1649,7 +1720,6 @@
 
   // ── WITHDRAW (with activation gate) ──
   $('btnWithdraw').addEventListener('click', () => {
-    // Rule: activation fee must be paid before the first withdrawal
     if (user?.activationFeePaid !== true) {
       if ((user?.balance || 0) < 200) {
         alert('You need at least KES 200 in your Available Balance to withdraw.');
@@ -1739,7 +1809,6 @@
         loadAccount();
       }, 1800);
     } catch (err) {
-      // If backend says activation required, open activation modal
       if (err.code === 'ACTIVATION_REQUIRED') {
         closeModal('withdrawModal');
         $('activationPhone').value = user?.phone || '';
@@ -1807,4 +1876,4 @@
 })();
 </script>
 </body>
-                                                                                      </html>
+  </html>
