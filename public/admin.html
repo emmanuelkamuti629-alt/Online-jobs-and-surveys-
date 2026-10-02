@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#1A1A1A" />
+<title>JobPay Admin</title>
+<style>
+  :root {
+    --green:#43B02A; --green-dark:#2E7D1E; --green-light:#E8F7E4;
+    --red:#E60000; --red-light:#FDEAEA; --ink:#1A1A1A;
+    --gray-700:#4D4D4D; --gray-500:#7A7A7A; --gray-200:#E4E4E4;
+    --gray-100:#F2F2F2; --gray-50:#F8F8F8; --white:#FFFFFF;
+    --yellow:#F5A623; --gold:#D4AF37; --blue:#2196F3; --purple:#9C27B0;
+    --radius:14px; --shadow:0 4px 20px rgba(0,0,0,0.07);
+  }
+  * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+  body {
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    background:var(--gray-50); color:var(--ink); font-size:14px;
+    line-height:1.5; -webkit-font-smoothing:antialiased;
+    min-height:100vh; padding-bottom:40px;
+  }
+  /* LOGIN */
+  .login-wrap {
+    display:flex; align-items:center; justify-content:center;
+    min-height:100vh; padding:20px; background:linear-gradient(135deg,#1A1A1A,#2E7D1E);
+  }
+  .login-card {
+    background:white; border-radius:18px; padding:32px;
+    box-shadow:0 20px 60px rgba(0,0,0,0.3); width:100%; max-width:400px;
+  }
+  .login-logo {
+    width:60px; height:60px; border-radius:16px; margin:0 auto 16px;
+    background:linear-gradient(135deg,var(--green),#7AC943);
+    display:grid; place-items:center; color:white; font-size:28px; font-weight:900;
+    box-shadow:0 6px 20px rgba(67,176,42,0.4);
+  }
+  .login-title { font-size:22px; font-weight:900; text-align:center; margin-bottom:6px; }
+  .login-sub { font-size:13px; color:var(--gray-500); text-align:center; margin-bottom:24px; font-weight:600; }
+  .field { margin-bottom:14px; position:relative; }
+  .field label { display:block; font-size:12px; font-weight:700; color:var(--gray-700); margin-bottom:6px; }
+  .field input {
+    width:100%; padding:13px 14px; font-size:15px; font-family:inherit;
+    font-weight:600; color:var(--ink); background:var(--gray-50);
+    border:1.5px solid var(--gray-200); border-radius:12px;
+  }
+  .field input:focus { outline:none; border-color:var(--green); background:var(--white); box-shadow:0 0 0 3px rgba(67,176,42,0.15); }
+  .btn {
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    width:100%; padding:15px 20px; font-size:15px; font-weight:800;
+    font-family:inherit; border:none; border-radius:12px; cursor:pointer;
+    transition:transform .1s;
+  }
+  .btn:active:not(:disabled) { transform:scale(0.98); }
+  .btn:disabled { opacity:0.4; cursor:not-allowed; }
+  .btn-primary { background:linear-gradient(135deg,var(--green),var(--green-dark)); color:white; box-shadow:0 6px 20px rgba(67,176,42,0.3); }
+  .btn-ghost { background:var(--white); color:var(--gray-700); border:1.5px solid var(--gray-200); }
+  .msg { padding:12px 14px; border-radius:10px; margin-bottom:14px; font-size:13px; font-weight:700; display:none; }
+  .msg.show { display:block; }
+  .msg.error { background:var(--red-light); color:var(--red); }
+  /* LAYOUT */
+  .layout { display:none; min-height:100vh; }
+  .layout.show { display:block; }
+  .topbar {
+    background:#1A1A1A; color:white; padding:14px 20px;
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    position:sticky; top:0; z-index:10;
+  }
+  .topbar-brand { display:flex; align-items:center; gap:10px; }
+  .topbar-mark {
+    width:34px; height:34px; border-radius:10px;
+    background:linear-gradient(135deg,var(--green),#7AC943);
+    display:grid; place-items:center; font-weight:900; font-size:15px;
+  }
+  .topbar-title { font-size:15px; font-weight:900; letter-spacing:-0.3px; }
+  .topbar-title span { color:var(--green); }
+  .topbar-badge { background:var(--red); padding:4px 10px; border-radius:999px; font-size:10px; font-weight:900; letter-spacing:0.5px; }
+  .topbar-right { display:flex; align-items:center; gap:8px; }
+  .refresh-btn {
+    background:none; border:1.5px solid rgba(255,255,255,0.2);
+    color:white; border-radius:8px; padding:6px 12px;
+    font-size:11px; font-weight:800; cursor:pointer; font-family:inherit;
+  }
+  .container { max-width:1400px; margin:0 auto; padding:20px; }
+  /* TABS */
+  .tabs {
+    display:flex; gap:6px; margin-bottom:20px; overflow-x:auto;
+    padding-bottom:4px; border-bottom:1px solid var(--gray-200);
+  }
+  .tabs::-webkit-scrollbar { display:none; }
+  .tab {
+    padding:10px 16px; border:none; background:none; font-family:inherit;
+    font-size:13px; font-weight:700; color:var(--gray-500); cursor:pointer;
+    border-bottom:2px solid transparent; margin-bottom:-1px; white-space:nowrap;
+  }
+  .tab.active { color:var(--green); border-bottom-color:var(--green); }
+  .tab-pane { display:none; }
+  .tab-pane.active { display:block; animation:fade .2s; }
+  @keyframes fade { from{opacity:0;} to{opacity:1;} }
+  /* STATS GRID */
+  .stat-grid {
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:14px; margin-bottom:24px;
+  }
+  .stat-card {
+    background:white; border-radius:var(--radius); padding:18px;
+    box-shadow:var(--shadow); border:1px solid var(--gray-200);
+    position:relative; overflow:hidden;
+  }
+  .stat-card::before {
+    content:''; position:absolute; top:0; left:0; width:4px; height:100%;
+    background:var(--green);
+  }
+  .stat-card.red::before { background:var(--red); }
+  .stat-card.blue::before { background:var(--blue); }
+  .stat-card.gold::before { background:var(--gold); }
+  .stat-card.purple::before { background:var(--purple); }
+  .stat-card.yellow::before { background:var(--yellow); }
+  .stat-ic {
+    width:38px; height:38px; border-radius:12px; background:var(--green-light);
+    display:grid; place-items:center; font-size:20px; margin-bottom:12px;
+  }
+  .stat-card.red .stat-ic { background:var(--red-light); }
+  .stat-card.blue .stat-ic { background:#E3F2FD; }
+  .stat-card.gold .stat-ic { background:#FFF8E1; }
+  .stat-card.purple .stat-ic { background:#F3E5F5; }
+  .stat-card.yellow .stat-ic { background:#FFF3CD; }
+  .stat-lbl { font-size:10px; font-weight:900; text-transform:uppercase; letter-spacing:0.6px; color:var(--gray-500); margin-bottom:4px; }
+  .stat-val { font-size:26px; font-weight:900; letter-spacing:-0.5px; line-height:1; font-variant-numeric:tabular-nums; }
+  .stat-sub { font-size:11px; color:var(--gray-500); margin-top:6px; font-weight:700; }
+  .stat-val.green { color:var(--green); }
+  .stat-val.red { color:var(--red); }
+  .stat-val.gold { color:var(--gold); }
+  /* TABLE */
+  .table-card {
+    background:white; border-radius:var(--radius); overflow:hidden;
+    box-shadow:var(--shadow); border:1px solid var(--gray-200);
+    margin-bottom:20px;
+  }
+  .table-head {
+    padding:16px 20px; border-bottom:1px solid var(--gray-200);
+    display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+  }
+  .table-title { font-size:15px; font-weight:900; }
+  .table-title span { color:var(--gray-500); font-size:12px; font-weight:700; margin-left:6px; }
+  .search-input {
+    padding:9px 14px; border-radius:10px; border:1.5px solid var(--gray-200);
+    font-size:13px; font-family:inherit; font-weight:600; background:var(--gray-50);
+    outline:none; min-width:220px;
+  }
+  .search-input:focus { border-color:var(--green); background:white; }
+  .table-wrap { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th {
+    text-align:left; padding:12px 16px; background:var(--gray-50);
+    font-size:10px; font-weight:900; text-transform:uppercase;
+    letter-spacing:0.6px; color:var(--gray-500); border-bottom:1px solid var(--gray-200);
+    white-space:nowrap;
+  }
+  td { padding:12px 16px; border-bottom:1px solid var(--gray-100); vertical-align:middle; }
+  tr:last-child td { border-bottom:none; }
+  tr:hover { background:var(--gray-50); }
+  .pill {
+    display:inline-flex; align-items:center; gap:4px;
+    padding:3px 9px; border-radius:999px;
+    font-size:10px; font-weight:900; text-transform:uppercase; letter-spacing:0.4px;
+    white-space:nowrap;
+  }
+  .pill.green { background:var(--green-light); color:var(--green-dark); }
+  .pill.red { background:var(--red-light); color:var(--red); }
+  .pill.yellow { background:#FFF3CD; color:#8A6D3B; }
+  .pill.gold { background:#FFF8E1; color:#8D6E00; }
+  .pill.blue { background:#E3F2FD; color:#0D47A1; }
+  .pill.gray { background:var(--gray-100); color:var(--gray-700); }
+  .pill.purple { background:#F3E5F5; color:#6A1B9A; }
+  .uid { font-family:ui-monospace,Menlo,monospace; font-size:11px; color:var(--gray-500); }
+  .empty {
+    text-align:center; padding:50px 20px; color:var(--gray-500);
+    font-weight:600; font-size:13px;
+  }
+  .empty-ic { font-size:38px; margin-bottom:10px; opacity:0.4; }
+  /* PAGINATION */
+  .pager {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 20px; border-top:1px solid var(--gray-200); font-size:12px;
+    font-weight:700; color:var(--gray-500); gap:10px; flex-wrap:wrap;
+  }
+  .pager-btns { display:flex; gap:6px; }
+  .pager-btn {
+    padding:6px 12px; border-radius:8px; border:1.5px solid var(--gray-200);
+    background:white; font-family:inherit; font-size:12px; font-weight:800;
+    cursor:pointer; color:var(--ink);
+  }
+  .pager-btn:disabled { opacity:0.4; cursor:not-allowed; }
+  .pager-btn:not(:disabled):hover { background:var(--gray-50); }
+  .mono { font-family:ui-monospace,Menlo,monospace; font-size:11px; }
+  .truncate { max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .sub-badge { font-size:10px; font-weight:900; padding:3px 8px; border-radius:6px; }
+  .sub-badge.free{ background:var(--gray-100); color:var(--gray-500); }
+  .sub-badge.classic{ background:var(--green-light); color:var(--green-dark); }
+  .sub-badge.premium{ background:#E3F2FD; color:#0D47A1; }
+  .sub-badge.golden{ background:#FFF8E1; color:#8D6E00; }
+  @media (max-width:600px) {
+    .container { padding:14px; }
+    .stat-val { font-size:22px; }
+    th, td { padding:10px 10px; font-size:12px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-wrap" id="loginWrap">
+  <div class="login-card">
+    <div class="login-logo">🛡</div>
+    <div class="login-title">Admin Panel</div>
+    <div class="login-sub">JobPay Control Center</div>
+    <div class="msg" id="loginMsg"></div>
+    <div class="field">
+      <label for="adminUser">Username</label>
+      <input type="text" id="adminUser" placeholder="admin" autocomplete="username" />
+    </div>
+    <div class="field">
+      <label for="adminPass">Password</label>
+      <input type="password" id="adminPass" placeholder="••••••••" autocomplete="current-password" />
+    </div>
+    <button class="btn btn-primary" id="loginBtn" style="margin-top:6px;">Sign In</button>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div class="layout" id="layout">
+  <div class="topbar">
+    <div class="topbar-brand">
+      <div class="topbar-mark">◆</div>
+      <div class="topbar-title">JobPay <span>Admin</span></div>
+      <span class="topbar-badge">LIVE</span>
+    </div>
+    <div class="topbar-right">
+      <button class="refresh-btn" id="refreshBtn">↻ Refresh</button>
+      <button class="refresh-btn" id="logoutBtn">Logout</button>
+    </div>
+  </div>
+
+  <div class="container">
+
+    <!-- STATS OVERVIEW -->
+    <div class="stat-grid" id="statsGrid"></div>
+
+    <!-- TABS -->
+    <div class="tabs">
+      <button class="tab active" data-tab="users">👥 Users</button>
+      <button class="tab" data-tab="subs">⭐ Active Subscriptions</button>
+      <button class="tab" data-tab="txns">💳 Transactions</button>
+      <button class="tab" data-tab="visits">👀 Site Visits</button>
+      <button class="tab" data-tab="logins">🔐 Login Attempts</button>
+    </div>
+
+    <!-- USERS -->
+    <div class="tab-pane active" id="pane-users">
+      <div class="table-card">
+        <div class="table-head">
+          <div class="table-title">All Users <span id="usersCount">—</span></div>
+          <input class="search-input" id="userSearch" placeholder="Search name, email, phone..." />
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Username</th><th>Email</th><th>Phone</th>
+                <th>Plan</th><th>Balance</th><th>Earned</th>
+                <th>Last Login</th><th>Joined</th>
+              </tr>
+            </thead>
+            <tbody id="usersBody"></tbody>
+          </table>
+        </div>
+        <div class="pager">
+          <span id="usersPageInfo">—</span>
+          <div class="pager-btns">
+            <button class="pager-btn" data-page-prev="users">← Prev</button>
+            <button class="pager-btn" data-page-next="users">Next →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ACTIVE SUBS -->
+    <div class="tab-pane" id="pane-subs">
+      <div class="table-card">
+        <div class="table-head">
+          <div class="table-title">Active Paid Subscriptions <span id="subsCount">—</span></div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Username</th><th>Email</th><th>Phone</th><th>Tier</th><th>Expires</th><th>Days Left</th></tr>
+            </thead>
+            <tbody id="subsBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TRANSACTIONS -->
+    <div class="tab-pane" id="pane-txns">
+      <div class="table-card">
+        <div class="table-head">
+          <div class="table-title">Transactions <span id="txnsCount">—</span></div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <button class="pager-btn" data-txn-filter="">All</button>
+            <button class="pager-btn" data-txn-filter="completed">✓ Completed</button>
+            <button class="pager-btn" data-txn-filter="failed">✕ Failed</button>
+            <button class="pager-btn" data-txn-filter="pending">⏳ Pending</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>User</th><th>Type</th><th>Amount</th><th>Phone</th><th>Status</th><th>MPESA Ref</th><th>When</th></tr>
+            </thead>
+            <tbody id="txnsBody"></tbody>
+          </table>
+        </div>
+        <div class="pager">
+          <span id="txnsPageInfo">—</span>
+          <div class="pager-btns">
+            <button class="pager-btn" data-page-prev="txns">← Prev</button>
+            <button class="pager-btn" data-page-next="txns">Next →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- VISITS -->
+    <div class="tab-pane" id="pane-visits">
+      <div class="table-card">
+        <div class="table-head">
+          <div class="table-title">Site Visits <span id="visitsCount">—</span></div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>IP</th><th>Path</th><th>Referrer</th><th>Device</th><th>When</th></tr>
+            </thead>
+            <tbody id="visitsBody"></tbody>
+          </table>
+        </div>
+        <div class="pager">
+          <span id="visitsPageInfo">—</span>
+          <div class="pager-btns">
+            <button class="pager-btn" data-page-prev="visits">← Prev</button>
+            <button class="pager-btn" data-page-next="visits">Next →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LOGIN ATTEMPTS -->
+    <div class="tab-pane" id="pane-logins">
+      <div class="table-card">
+        <div class="table-head">
+          <div class="table-title">Login Attempts <span id="loginsCount">—</span></div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <button class="pager-btn" data-login-filter="">All</button>
+            <button class="pager-btn" data-login-filter="true">✓ Success</button>
+            <button class="pager-btn" data-login-filter="false">✕ Failed</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Email</th><th>Result</th><th>Reason</th><th>IP</th><th>When</th></tr>
+            </thead>
+            <tbody id="loginsBody"></tbody>
+          </table>
+        </div>
+        <div class="pager">
+          <span id="loginsPageInfo">—</span>
+          <div class="pager-btns">
+            <button class="pager-btn" data-page-prev="logins">← Prev</button>
+            <button class="pager-btn" data-page-next="logins">Next →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  let token = sessionStorage.getItem('admin_token');
+  const state = {
+    users:  { page:1, size:50, q:'' },
+    txns:   { page:1, size:50, status:'' },
+    visits: { page:1, size:50 },
+    logins: { page:1, size:50, success:'' }
+  };
+
+  async function api(path, opts = {}) {
+    const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const res = await fetch(path, { ...opts, headers });
+    if (res.status === 401) { logout(); throw new Error('Session expired'); }
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Request failed');
+    return data;
+  }
+
+  function fmtDate(d) {
+    if (!d) return '—';
+    const dt = new Date(d);
+    return dt.toLocaleDateString() + ' ' + dt.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+  }
+  function timeAgo(d) {
+    if (!d) return '—';
+    const s = Math.floor((Date.now() - new Date(d)) / 1000);
+    if (s < 60) return `${s}s ago`;
+    if (s < 3600) return `${Math.floor(s/60)}m ago`;
+    if (s < 86400) return `${Math.floor(s/3600)}h ago`;
+    return `${Math.floor(s/86400)}d ago`;
+  }
+  function fmtMoney(v) { return 'KES ' + Number(v || 0).toLocaleString(); }
+  function escapeHtml(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  function deviceFrom(ua) {
+    if (!ua) return '—';
+    const s = ua.toLowerCase();
+    if (/iphone|ipad|ipod/.test(s)) return '📱 iOS';
+    if (/android/.test(s)) return '📱 Android';
+    if (/windows/.test(s)) return '💻 Windows';
+    if (/mac os|macintosh/.test(s)) return '💻 Mac';
+    if (/linux/.test(s)) return '💻 Linux';
+    if (/bot|crawl|spider/.test(s)) return '🤖 Bot';
+    return '🌐 Other';
+  }
+
+  // ── LOGIN ──
+  async function doLogin() {
+    const username = $('adminUser').value.trim();
+    const password = $('adminPass').value;
+    if (!username || !password) return showLoginMsg('Enter username and password', 'error');
+    $('loginBtn').disabled = true; $('loginBtn').textContent = 'Signing in...';
+    try {
+      const res = await fetch('/api/admin/login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Login failed');
+      token = data.token;
+      sessionStorage.setItem('admin_token', token);
+      enterApp();
+    } catch (err) {
+      showLoginMsg(err.message, 'error');
+    } finally {
+      $('loginBtn').disabled = false; $('loginBtn').textContent = 'Sign In';
+    }
+  }
+  function showLoginMsg(text, type) {
+    const el = $('loginMsg');
+    el.textContent = text; el.className = 'msg show ' + type;
+    setTimeout(() => el.classList.remove('show'), 4000);
+  }
+  $('loginBtn').addEventListener('click', doLogin);
+  $('adminPass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+  $('adminUser').addEventListener('keydown', e => { if (e.key === 'Enter') $('adminPass').focus(); });
+
+  function logout() {
+    token = null; sessionStorage.removeItem('admin_token');
+    $('layout').classList.remove('show');
+    $('loginWrap').style.display = 'flex';
+  }
+  $('logoutBtn').addEventListener('click', () => { if (confirm('Logout?')) logout(); });
+
+  // ── ENTER ──
+  function enterApp() {
+    $('loginWrap').style.display = 'none';
+    $('layout').classList.add('show');
+    loadStats();
+    loadUsers();
+    loadSubs();
+    loadTxns();
+    loadVisits();
+    loadLogins();
+  }
+
+  // ── STATS ──
+  async function loadStats() {
+    try {
+      const s = await api('/api/admin/stats');
+      const cards = [
+        { cls:'', ic:'👥', lbl:'Total Users', val: s.users.total, sub:`+${s.users.today} today • +${s.users.week} this week` },
+        { cls:'gold', ic:'💰', lbl:'Total Revenue', val: fmtMoney(s.revenue.total), sub:`+${fmtMoney(s.revenue.today)} today` },
+        { cls:'', ic:'⭐', lbl:'Active Subs', val: s.subscriptions.active, sub:`${s.subscriptions.classic}C • ${s.subscriptions.premium}P • ${s.subscriptions.golden}G` },
+        { cls:'red', ic:'✕', lbl:'Failed Payments', val: s.transactions.failed, sub:`${s.transactions.pending} pending` },
+        { cls:'', ic:'✓', lbl:'Successful Payments', val: s.transactions.completed, sub:`${s.transactions.total} total attempts` },
+        { cls:'blue', ic:'👀', lbl:'Site Visits', val: s.visits.total.toLocaleString(), sub:`${s.visits.today} today • ${s.visits.uniqueToday} unique` },
+        { cls:'purple', ic:'🔐', lbl:'Logins', val: s.logins.success, sub:`${s.logins.failed} failed attempts` },
+        { cls:'yellow', ic:'💳', lbl:'Deposits', val: fmtMoney(s.revenue.deposits), sub:`Payouts: ${fmtMoney(s.revenue.payouts)}` },
+        { cls:'', ic:'📋', lbl:'Tasks Completed', val: s.tasksCompleted.toLocaleString(), sub:'all-time' }
+      ];
+      $('statsGrid').innerHTML = cards.map(c => `
+        <div class="stat-card ${c.cls}">
+          <div class="stat-ic">${c.ic}</div>
+          <div class="stat-lbl">${c.lbl}</div>
+          <div class="stat-val">${c.val}</div>
+          <div class="stat-sub">${c.sub}</div>
+        </div>`).join('');
+    } catch (err) { console.error(err); }
+  }
+
+  // ── USERS ──
+  async function loadUsers() {
+    try {
+      const { page, size, q } = state.users;
+      const data = await api(`/api/admin/users?page=${page}&size=${size}&q=${encodeURIComponent(q)}`);
+      $('usersCount').textContent = `(${data.total.toLocaleString()})`;
+      $('usersBody').innerHTML = data.users.length
+        ? data.users.map(u => `
+          <tr>
+            <td><strong>${escapeHtml(u.username)}</strong></td>
+            <td class="truncate">${escapeHtml(u.email)}</td>
+            <td class="mono">${escapeHtml(u.phone || '—')}</td>
+            <td><span class="sub-badge ${u.subscriptionTier}">${u.subscriptionTier}</span>
+                ${u.subscriptionActive ? ' <span class="pill green">Active</span>' : ''}</td>
+            <td><strong>${fmtMoney(u.balance)}</strong></td>
+            <td style="color:var(--green);font-weight:800;">${fmtMoney(u.totalEarnings)}</td>
+            <td title="${u.lastLoginIp || ''}">${u.lastLoginAt ? timeAgo(u.lastLoginAt) : '<span style="color:var(--gray-500);">never</span>'}</td>
+            <td>${timeAgo(u.createdAt)}</td>
+          </tr>`).join('')
+        : `<tr><td colspan="8"><div class="empty"><div class="empty-ic">👥</div>No users yet</div></td></tr>`;
+      const totalPages = Math.ceil(data.total / size);
+      $('usersPageInfo').textContent = `Page ${page} of ${totalPages || 1}`;
+      document.querySelector('[data-page-prev="users"]').disabled = page <= 1;
+      document.querySelector('[data-page-next="users"]').disabled = page >= totalPages;
+    } catch (err) { console.error(err); }
+  }
+
+  // ── SUBS ──
+  async function loadSubs() {
+    try {
+      const subs = await api('/api/admin/subscriptions');
+      $('subsCount').textContent = `(${subs.length})`;
+      $('subsBody').innerHTML = subs.length
+        ? subs.map(s => `
+          <tr>
+            <td><strong>${escapeHtml(s.username)}</strong></td>
+            <td class="truncate">${escapeHtml(s.email)}</td>
+            <td class="mono">${escapeHtml(s.phone || '—')}</td>
+            <td><span class="sub-badge ${s.tier}">${s.tier}</span></td>
+            <td>${fmtDate(s.expiry)}</td>
+            <td><strong style="color:${s.daysLeft <= 2 ? 'var(--red)' : 'var(--green)'};">${s.daysLeft}d</strong></td>
+          </tr>`).join('')
+        : `<tr><td colspan="6"><div class="empty"><div class="empty-ic">⭐</div>No active paid subscriptions</div></td></tr>`;
+    } catch (err) { console.error(err); }
+  }
+
+  // ── TXNS ──
+  async function loadTxns() {
+    try {
+      const { page, size, status } = state.txns;
+      const data = await api(`/api/admin/transactions?page=${page}&size=${size}&status=${status}`);
+      $('txnsCount').textContent = `(${data.total.toLocaleString()})`;
+      $('txnsBody').innerHTML = data.transactions.length
+        ? data.transactions.map(t => {
+            const statusPill = { completed:'green', failed:'red', pending:'yellow' }[t.status] || 'gray';
+            const kindLabel = t.kind === 'deposit' ? '💳 Deposit' : `⭐ ${t.tier || 'sub'}`;
+            return `
+              <tr>
+                <td><strong>${escapeHtml(t.user?.username || '—')}</strong><br>
+                    <span class="mono" style="color:var(--gray-500);font-size:10px;">${escapeHtml(t.user?.email || '')}</span></td>
+                <td>${kindLabel}</td>
+                <td><strong>${fmtMoney(t.amount)}</strong></td>
+                <td class="mono">${escapeHtml(t.phone || '—')}</td>
+                <td><span class="pill ${statusPill}">${t.status}</span>
+                    ${t.reason ? `<br><span style="font-size:10px;color:var(--gray-500);">${escapeHtml(t.reason)}</span>` : ''}</td>
+                <td class="mono">${escapeHtml(t.mpesaRef || '—')}</td>
+                <td>${timeAgo(t.completedAt || t.createdAt)}</td>
+              </tr>`;
+          }).join('')
+        : `<tr><td colspan="7"><div class="empty"><div class="empty-ic">💳</div>No transactions</div></td></tr>`;
+      const totalPages = Math.ceil(data.total / size);
+      $('txnsPageInfo').textContent = `Page ${page} of ${totalPages || 1}`;
+      document.querySelector('[data-page-prev="txns"]').disabled = page <= 1;
+      document.querySelector('[data-page-next="txns"]').disabled = page >= totalPages;
+    } catch (err) { console.error(err); }
+  }
+
+  // ── VISITS ──
+  async function loadVisits() {
+    try {
+      const { page, size } = state.visits;
+      const data = await api(`/api/admin/visits?page=${page}&size=${size}`);
+      $('visitsCount').textContent = `(${data.total.toLocaleString()})`;
+      $('visitsBody').innerHTML = data.visits.length
+        ? data.visits.map(v => `
+          <tr>
+            <td class="mono">${escapeHtml(v.ip || 'unknown')}</td>
+            <td class="mono truncate">${escapeHtml(v.path || '/')}</td>
+            <td class="truncate">${escapeHtml(v.referrer || '—')}</td>
+            <td>${deviceFrom(v.ua)}</td>
+            <td>${timeAgo(v.createdAt)}</td>
+          </tr>`).join('')
+        : `<tr><td colspan="5"><div class="empty"><div class="empty-ic">👀</div>No visits recorded yet</div></td></tr>`;
+      const totalPages = Math.ceil(data.total / size);
+      $('visitsPageInfo').textContent = `Page ${page} of ${totalPages || 1}`;
+      document.querySelector('[data-page-prev="visits"]').disabled = page <= 1;
+      document.querySelector('[data-page-next="visits"]').disabled = page >= totalPages;
+    } catch (err) { console.error(err); }
+  }
+
+  // ── LOGINS ──
+  async function loadLogins() {
+    try {
+      const { page, size, success } = state.logins;
+      const data = await api(`/api/admin/login-attempts?page=${page}&size=${size}&success=${success}`);
+      $('loginsCount').textContent = `(${data.total.toLocaleString()})`;
+      $('loginsBody').innerHTML = data.attempts.length
+        ? data.attempts.map(a => `
+          <tr>
+            <td class="truncate">${escapeHtml(a.email || '—')}</td>
+            <td><span class="pill ${a.success ? 'green' : 'red'}">${a.success ? '✓ Success' : '✕ Failed'}</span></td>
+            <td>${escapeHtml(a.reason || '—')}</td>
+            <td class="mono">${escapeHtml(a.ip || '—')}</td>
+            <td>${timeAgo(a.createdAt)}</td>
+          </tr>`).join('')
+        : `<tr><td colspan="5"><div class="empty"><div class="empty-ic">🔐</div>No login attempts</div></td></tr>`;
+      const totalPages = Math.ceil(data.total / size);
+      $('loginsPageInfo').textContent = `Page ${page} of ${totalPages || 1}`;
+      document.querySelector('[data-page-prev="logins"]').disabled = page <= 1;
+      document.querySelector('[data-page-next="logins"]').disabled = page >= totalPages;
+    } catch (err) { console.error(err); }
+  }
+
+  // ── TABS ──
+  document.querySelectorAll('.tab').forEach(t => {
+    t.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+      document.querySelectorAll('.tab-pane').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      $('pane-' + t.dataset.tab).classList.add('active');
+    });
+  });
+
+  // ── PAGER ──
+  document.querySelectorAll('.pager-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const prev = btn.dataset.pagePrev;
+      const next = btn.dataset.pageNext;
+      if (prev && state[prev]) { state[prev].page = Math.max(1, state[prev].page - 1); reload(prev); }
+      if (next && state[next]) { state[next].page++; reload(next); }
+    });
+  });
+  function reload(kind) {
+    if (kind === 'users') loadUsers();
+    if (kind === 'txns') loadTxns();
+    if (kind === 'visits') loadVisits();
+    if (kind === 'logins') loadLogins();
+  }
+
+  // ── FILTERS ──
+  document.querySelectorAll('[data-txn-filter]').forEach(b => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('[data-txn-filter]').forEach(x => x.style.background = '');
+      b.style.background = 'var(--green-light)';
+      state.txns.status = b.dataset.txnFilter;
+      state.txns.page = 1;
+      loadTxns();
+    });
+  });
+  document.querySelectorAll('[data-login-filter]').forEach(b => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('[data-login-filter]').forEach(x => x.style.background = '');
+      b.style.background = 'var(--green-light)';
+      state.logins.success = b.dataset.loginFilter;
+      state.logins.page = 1;
+      loadLogins();
+    });
+  });
+
+  // ── SEARCH ──
+  let searchTimer;
+  $('userSearch').addEventListener('input', (e) => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+      state.users.q = e.target.value;
+      state.users.page = 1;
+      loadUsers();
+    }, 300);
+  });
+
+  // ── REFRESH ──
+  $('refreshBtn').addEventListener('click', () => {
+    loadStats(); loadUsers(); loadSubs(); loadTxns(); loadVisits(); loadLogins();
+  });
+
+  // ── INIT ──
+  if (token) {
+    api('/api/admin/stats').then(() => enterApp()).catch(() => logout());
+  }
+})();
+</script>
+</body>
+  </html>
