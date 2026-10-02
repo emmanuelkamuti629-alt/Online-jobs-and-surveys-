@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#43B02A" />
+<title>JobPay – Surveys & Tasks</title>
+<style>
+  :root {
+    --green:        #43B02A;
+    --green-dark:   #2E7D1E;
+    --green-light:  #E8F7E4;
+    --green-mid:    #7AC943;
+    --red:          #E60000;
+    --red-light:    #FDEAEA;
+    --ink:          #1A1A1A;
+    --gray-700:     #4D4D4D;
+    --gray-500:     #7A7A7A;
+    --gray-200:     #E4E4E4;
+    --gray-100:     #F2F2F2;
+    --gray-50:      #F8F8F8;
+    --white:        #FFFFFF;
+    --yellow:       #F5A623;
+    --gold:         #D4AF37;
+    --radius:       14px;
+    --shadow:       0 4px 20px rgba(0,0,0,0.07);
+    --shadow-green: 0 6px 20px rgba(67,176,42,0.30);
+    --nav-h:        64px;
+    --header-h:     56px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: var(--gray-50);
+    color: var(--ink);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    padding-top: calc(var(--header-h) + env(safe-area-inset-top, 0px));
+    padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px));
+    min-height: 100vh;
+  }
+  /* ── HEADER ── */
+  .header {
+    position: fixed; top: 0; left: 0; right: 0;
+    height: calc(var(--header-h) + env(safe-area-inset-top, 0px));
+    padding-top: env(safe-area-inset-top, 0px);
+    background: var(--white);
+    border-bottom: 1px solid var(--gray-200);
+    z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding-left: 16px; padding-right: 16px;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand-mark {
+    width: 34px; height: 34px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--green), var(--green-mid));
+    display: grid; place-items: center;
+    color: white; font-weight: 900; font-size: 16px;
+    box-shadow: var(--shadow-green);
+  }
+  .brand-name { font-size: 16px; font-weight: 800; letter-spacing: -0.3px; }
+  .brand-name span { color: var(--green); }
+  .header-right { display: flex; align-items: center; gap: 8px; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 5px 10px; border-radius: 999px;
+    font-size: 11px; font-weight: 700;
+    background: var(--gray-100); color: var(--gray-700);
+  }
+  .pill.green { background: var(--green-light); color: var(--green-dark); }
+  .pill.gold  { background: #FFF8E1; color: #8D6E00; }
+  .pill.red   { background: var(--red-light); color: var(--red); }
+  .logout-btn {
+    background: none; border: 1.5px solid var(--gray-200);
+    border-radius: 8px; padding: 6px 12px;
+    font-size: 11px; font-weight: 700; color: var(--gray-700);
+    cursor: pointer; font-family: inherit;
+  }
+  /* ── SCREENS ── */
+  .screen { display: none; padding: 16px; padding-bottom: 32px; animation: fade .2s ease-out; }
+  .screen.active { display: block; }
+  @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  /* ── CARDS ── */
+  .card {
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 18px;
+    margin-bottom: 14px;
+    border: 1px solid var(--gray-200);
+  }
+  .card.green-border { border-color: var(--green); box-shadow: var(--shadow-green); }
+  .section-title {
+    font-size: 11px; font-weight: 800;
+    text-transform: uppercase; letter-spacing: 0.8px;
+    color: var(--gray-500);
+    margin-bottom: 14px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section-title::before {
+    content: ''; width: 3px; height: 14px;
+    background: var(--green); border-radius: 2px;
+  }
+  /* ── FORMS ── */
+  .field { margin-bottom: 14px; }
+  .field:last-child { margin-bottom: 0; }
+  .field label {
+    display: block; font-size: 12px; font-weight: 700;
+    color: var(--gray-700); margin-bottom: 6px;
+  }
+  .field input {
+    width: 100%; padding: 13px 14px;
+    font-size: 15px; font-family: inherit; font-weight: 600;
+    color: var(--ink); background: var(--gray-50);
+    border: 1.5px solid var(--gray-200);
+    border-radius: 12px;
+    transition: border-color .15s, background .15s;
+    -webkit-appearance: none;
+  }
+  .field input:focus {
+    outline: none; border-color: var(--green);
+    background: var(--white);
+    box-shadow: 0 0 0 3px rgba(67,176,42,0.15);
+  }
+  /* ── BUTTONS ── */
+  .btn {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; padding: 15px 20px;
+    font-size: 15px; font-weight: 800; font-family: inherit;
+    border: none; border-radius: 12px; cursor: pointer;
+    transition: transform .1s, box-shadow .15s, opacity .15s;
+    letter-spacing: 0.3px;
+  }
+  .btn:active:not(:disabled) { transform: scale(0.98); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--green), var(--green-dark));
+    color: var(--white); box-shadow: var(--shadow-green);
+  }
+  .btn-danger {
+    background: var(--red); color: var(--white);
+    box-shadow: 0 4px 16px rgba(230,0,0,0.25);
+  }
+  .btn-ghost {
+    background: var(--white); color: var(--green-dark);
+    border: 1.5px solid var(--green);
+  }
+  .btn-sm { padding: 10px 14px; font-size: 13px; border-radius: 10px; }
+  .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  /* ── STATS ── */
+  .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 14px; }
+  .stat {
+    background: var(--white); border-radius: 12px;
+    padding: 14px; border: 1px solid var(--gray-200);
+    box-shadow: var(--shadow);
+  }
+  .stat-label {
+    font-size: 10px; font-weight: 800;
+    text-transform: uppercase; letter-spacing: 0.6px;
+    color: var(--gray-500); margin-bottom: 6px;
+  }
+  .stat-value {
+    font-size: 24px; font-weight: 900;
+    color: var(--ink); font-variant-numeric: tabular-nums;
+    line-height: 1.1; letter-spacing: -0.5px;
+  }
+  .stat-value.green { color: var(--green); }
+  .stat-value.red   { color: var(--red); }
+  .stat-value.gold  { color: var(--gold); }
+  .stat-sub { font-size: 11px; color: var(--gray-500); margin-top: 4px; font-weight: 600; }
+  /* ── TIER CARDS ── */
+  .tier-grid { display: flex; flex-direction: column; gap: 12px; margin-bottom: 14px; }
+  .tier-card {
+    background: var(--white); border-radius: var(--radius);
+    border: 1.5px solid var(--gray-200);
+    box-shadow: var(--shadow); padding: 18px;
+    position: relative; overflow: hidden;
+    transition: transform .15s, border-color .15s;
+  }
+  .tier-card:active { transform: scale(0.99); }
+  .tier-card.classic { border-color: var(--green); }
+  .tier-card.premium { border-color: #2196F3; }
+  .tier-card.golden  { border-color: var(--gold); }
+  .tier-badge {
+    position: absolute; top: 14px; right: 14px;
+    font-size: 10px; font-weight: 800;
+    padding: 4px 10px; border-radius: 999px;
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .tier-badge.classic { background: var(--green-light); color: var(--green-dark); }
+  .tier-badge.premium { background: #E3F2FD; color: #0D47A1; }
+  .tier-badge.golden  { background: #FFF8E1; color: #8D6E00; }
+  .tier-name { font-size: 18px; font-weight: 900; margin-bottom: 4px; }
+  .tier-price { font-size: 26px; font-weight: 900; color: var(--green); letter-spacing: -0.5px; }
+  .tier-price span { font-size: 13px; font-weight: 600; color: var(--gray-500); }
+  .tier-limit { font-size: 13px; color: var(--gray-700); font-weight: 600; margin: 6px 0 14px; }
+  .tier-btn {
+    width: 100%; padding: 13px; border-radius: 10px;
+    font-size: 14px; font-weight: 800; font-family: inherit;
+    border: none; cursor: pointer; transition: transform .1s;
+  }
+  .tier-btn:active { transform: scale(0.98); }
+  .tier-btn.classic { background: var(--green); color: white; }
+  .tier-btn.premium { background: #2196F3; color: white; }
+  .tier-btn.golden  { background: var(--gold); color: #1A1A1A; }
+  .tier-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  /* ── TASK CARDS ── */
+  .task {
+    background: var(--white); border-radius: 12px;
+    border: 1px solid var(--gray-200);
+    box-shadow: var(--shadow); padding: 14px;
+    margin-bottom: 10px; position: relative; overflow: hidden;
+  }
+  .task::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+    width: 4px; background: var(--green); border-radius: 0 4px 4px 0;
+  }
+  .task.survey::before { background: #2196F3; }
+  .task-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+  .task-title { font-size: 15px; font-weight: 800; color: var(--ink); }
+  .task-type {
+    font-size: 10px; font-weight: 800;
+    padding: 3px 8px; border-radius: 6px;
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .task-type.survey { background: #E3F2FD; color: #0D47A1; }
+  .task-type.task   { background: var(--green-light); color: var(--green-dark); }
+  .task-meta { display: flex; gap: 16px; font-size: 12px; color: var(--gray-500); font-weight: 600; }
+  .task-meta span { display: flex; align-items: center; gap: 4px; }
+  .task-reward { color: var(--green); font-weight: 900; font-size: 15px; }
+  .task-btn {
+    margin-top: 12px; width: 100%; padding: 11px;
+    border-radius: 10px; font-size: 13px; font-weight: 800;
+    font-family: inherit; border: none; cursor: pointer;
+    background: var(--green); color: white;
+    transition: transform .1s;
+  }
+  .task-btn:active { transform: scale(0.98); }
+  .task-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  /* ── EMPTY ── */
+  .empty { text-align: center; padding: 40px 20px; }
+  .empty-icon {
+    width: 64px; height: 64px; border-radius: 20px;
+    background: var(--green-light); color: var(--green);
+    display: grid; place-items: center;
+    margin: 0 auto 14px; font-size: 28px;
+  }
+  .empty-title { font-size: 16px; font-weight: 800; margin-bottom: 6px; }
+  .empty-text { font-size: 13px; color: var(--gray-500); line-height: 1.5; max-width: 280px; margin: 0 auto; }
+  /* ── MESSAGES ── */
+  .msg {
+    padding: 12px 14px; border-radius: 10px;
+    margin-bottom: 14px; font-size: 13px; font-weight: 700;
+    display: none;
+  }
+  .msg.show { display: block; }
+  .msg.success { background: var(--green-light); color: var(--green-dark); border: 1px solid rgba(67,176,42,0.3); }
+  .msg.error   { background: var(--red-light); color: var(--red); border: 1px solid rgba(230,0,0,0.2); }
+  /* ── BOTTOM NAV ── */
+  .bottom-nav {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    height: var(--nav-h);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    background: var(--white);
+    border-top: 1px solid var(--gray-200);
+    display: flex; z-index: 100;
+    box-shadow: 0 -2px 12px rgba(0,0,0,0.04);
+  }
+  .nav-btn {
+    flex: 1; background: none; border: none;
+    font-family: inherit; cursor: pointer;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 3px; color: var(--gray-500);
+    font-size: 10px; font-weight: 700;
+    padding: 8px 4px; transition: color .15s;
+    position: relative; letter-spacing: 0.2px;
+  }
+  .nav-btn .nav-icon { font-size: 20px; line-height: 1; transition: transform .15s; }
+  .nav-btn.active { color: var(--green); }
+  .nav-btn.active .nav-icon { transform: translateY(-1px); }
+  .nav-btn.active::before {
+    content: ''; position: absolute; top: 0; left: 50%;
+    transform: translateX(-50%);
+    width: 32px; height: 3px;
+    background: var(--green); border-radius: 0 0 3px 3px;
+  }
+  /* ── LOADER ── */
+  .loader {
+    display: inline-block; width: 18px; height: 18px;
+    border: 2.5px solid rgba(255,255,255,0.3);
+    border-top-color: white; border-radius: 50%;
+    animation: spin .6s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  /* ── RESPONSIVE ── */
+  @media (min-width: 500px) {
+    .tier-grid { flex-direction: row; }
+    .tier-card { flex: 1; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="brand">
+    <div class="brand-mark">◆</div>
+    <div class="brand-name">Job<span>Pay</span></div>
+  </div>
+  <div class="header-right" id="headerRight" style="display:none;">
+    <span class="pill" id="tierPill">Free</span>
+    <button class="logout-btn" id="logoutBtn">Logout</button>
+  </div>
+</header>
+
+<!-- ═══════════════ AUTH SCREEN ═══════════════ -->
+<section class="screen active" id="screen-auth">
+  <div class="card green-border">
+    <div class="section-title">Welcome to JobPay</div>
+    <p style="font-size:13px;color:var(--gray-500);margin-bottom:16px;font-weight:600;">
+      Complete surveys &amp; tasks. Get paid. Upgrade to unlock more daily jobs.
+    </p>
+    <div id="authMsg" class="msg"></div>
+    <div class="field">
+      <label for="authUsername">Username</label>
+      <input type="text" id="authUsername" placeholder="e.g. john_doe" autocomplete="username" />
+    </div>
+    <div class="field">
+      <label for="authEmail">Email</label>
+      <input type="email" id="authEmail" placeholder="you@example.com" autocomplete="email" />
+    </div>
+    <div class="field">
+      <label for="authPhone">M‑Pesa Phone</label>
+      <input type="tel" id="authPhone" placeholder="0712 345 678" autocomplete="tel" />
+    </div>
+    <div class="field">
+      <label for="authPassword">Password</label>
+      <input type="password" id="authPassword" placeholder="••••••••" autocomplete="current-password" />
+    </div>
+    <div class="btn-row" style="margin-top:6px;">
+      <button class="btn btn-primary" id="btnRegister">Register</button>
+      <button class="btn btn-ghost" id="btnLogin">Login</button>
+    </div>
+  </div>
+  <div class="card" style="text-align:center;">
+    <div style="font-size:12px;color:var(--gray-500);font-weight:600;line-height:1.6;">
+      New here? Register once — you’ll be logged in automatically.<br/>
+      Already have an account? Tap <strong>Login</strong>.
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ DASHBOARD ═══════════════ -->
+<section class="screen" id="screen-dashboard">
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-label">Tasks Today</div>
+      <div class="stat-value green" id="dashDone">0</div>
+      <div class="stat-sub" id="dashLimit">of 0 limit</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Remaining</div>
+      <div class="stat-value" id="dashRemaining">0</div>
+      <div class="stat-sub">today</div>
+    </div>
+  </div>
+  <div class="card" id="subStatusCard">
+    <div class="section-title">Subscription</div>
+    <div id="subStatusBody"></div>
+  </div>
+  <div class="section-title">Available Tasks</div>
+  <div id="taskList"></div>
+</section>
+
+<!-- ═══════════════ SUBSCRIPTION ═══════════════ -->
+<section class="screen" id="screen-subscribe">
+  <div class="msg" id="subMsg"></div>
+  <div class="tier-grid">
+    <div class="tier-card classic">
+      <span class="tier-badge classic">Classic</span>
+      <div class="tier-name">Classic</div>
+      <div class="tier-price">KES 200 <span>/ week</span></div>
+      <div class="tier-limit">📋 10 surveys / tasks per day</div>
+      <button class="tier-btn classic" data-tier="classic">Upgrade – KES 200</button>
+    </div>
+    <div class="tier-card premium">
+      <span class="tier-badge premium">Premium</span>
+      <div class="tier-name">Premium</div>
+      <div class="tier-price" style="color:#2196F3;">KES 350 <span>/ week</span></div>
+      <div class="tier-limit">📋 20 surveys / tasks per day</div>
+      <button class="tier-btn premium" data-tier="premium">Upgrade – KES 350</button>
+    </div>
+    <div class="tier-card golden">
+      <span class="tier-badge golden">Golden</span>
+      <div class="tier-name">Golden</div>
+      <div class="tier-price" style="color:var(--gold);">KES 450 <span>/ week</span></div>
+      <div class="tier-limit">📋 50+ surveys / tasks per day</div>
+      <button class="tier-btn golden" data-tier="golden">Upgrade – KES 450</button>
+    </div>
+  </div>
+  <div class="card">
+    <div style="font-size:12px;color:var(--gray-500);font-weight:600;line-height:1.7;">
+      💡 <strong>How it works:</strong> Tap an upgrade button. You’ll receive an M‑Pesa STK push on your phone.
+      Enter your PIN to pay. Your subscription activates instantly and is valid for <strong>7 days</strong>.
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ PROFILE ═══════════════ -->
+<section class="screen" id="screen-profile">
+  <div class="card">
+    <div class="section-title">Account Details</div>
+    <div id="profileBody"></div>
+  </div>
+  <div class="card">
+    <div class="section-title">Subscription History</div>
+    <div id="historyBody"></div>
+  </div>
+</section>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav" id="bottomNav" style="display:none;">
+  <button class="nav-btn active" data-screen="dashboard">
+    <span class="nav-icon">📊</span><span>Dashboard</span>
+  </button>
+  <button class="nav-btn" data-screen="subscribe">
+    <span class="nav-icon">⭐</span><span>Upgrade</span>
+  </button>
+  <button class="nav-btn" data-screen="profile">
+    <span class="nav-icon">👤</span><span>Profile</span>
+  </button>
+</nav>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const API = ''; // same origin
+  let token = localStorage.getItem('jobpay_token');
+  let user = JSON.parse(localStorage.getItem('jobpay_user') || 'null');
+
+  // ── API HELPER ──
+  async function api(path, opts = {}) {
+    const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const res = await fetch(API + path, { ...opts, headers });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Request failed');
+    return data;
+  }
+
+  // ── NAVIGATION ──
+  function goTo(name) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    const el = document.getElementById('screen-' + name);
+    if (el) el.classList.add('active');
+    document.querySelectorAll('.nav-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.screen === name);
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  document.querySelectorAll('.nav-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const s = btn.dataset.screen;
+      if (s === 'dashboard') loadDashboard();
+      if (s === 'subscribe') loadSubscribe();
+      if (s === 'profile') loadProfile();
+      goTo(s);
+    });
+  });
+
+  // ── MESSAGES ──
+  function showMsg(el, text, type = 'success') {
+    el.textContent = text;
+    el.className = `msg show ${type}`;
+    setTimeout(() => el.classList.remove('show'), 5000);
+  }
+
+  // ── AUTH ──
+  async function register() {
+    const username = $('authUsername').value.trim();
+    const email = $('authEmail').value.trim();
+    const phone = $('authPhone').value.trim();
+    const password = $('authPassword').value;
+
+    if (!username || !email || !phone || !password) {
+      return showMsg($('authMsg'), 'Please fill all fields', 'error');
+    }
+    if (password.length < 6) {
+      return showMsg($('authMsg'), 'Password must be at least 6 characters', 'error');
+    }
+
+    try {
+      $('btnRegister').disabled = true;
+      $('btnRegister').innerHTML = '<span class="loader"></span>';
+      const data = await api('/api/register', {
+        method: 'POST',
+        body: JSON.stringify({ username, email, phone, password })
+      });
+      token = data.token;
+      user = data.user;
+      localStorage.setItem('jobpay_token', token);
+      localStorage.setItem('jobpay_user', JSON.stringify(user));
+      enterApp();
+    } catch (err) {
+      showMsg($('authMsg'), err.message, 'error');
+    } finally {
+      $('btnRegister').disabled = false;
+      $('btnRegister').textContent = 'Register';
+    }
+  }
+
+  async function login() {
+    const email = $('authEmail').value.trim();
+    const password = $('authPassword').value;
+    if (!email || !password) return showMsg($('authMsg'), 'Enter email and password', 'error');
+
+    try {
+      $('btnLogin').disabled = true;
+      $('btnLogin').innerHTML = '<span class="loader"></span>';
+      const data = await api('/api/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password })
+      });
+      token = data.token;
+      user = data.user;
+      localStorage.setItem('jobpay_token', token);
+      localStorage.setItem('jobpay_user', JSON.stringify(user));
+      enterApp();
+    } catch (err) {
+      showMsg($('authMsg'), err.message, 'error');
+    } finally {
+      $('btnLogin').disabled = false;
+      $('btnLogin').textContent = 'Login';
+    }
+  }
+
+  $('btnRegister').addEventListener('click', register);
+  $('btnLogin').addEventListener('click', login);
+
+  // ── ENTER APP ──
+  function enterApp() {
+    $('screen-auth').classList.remove('active');
+    $('headerRight').style.display = 'flex';
+    $('bottomNav').style.display = 'flex';
+    updateHeaderPill();
+    loadDashboard();
+    goTo('dashboard');
+  }
+
+  function updateHeaderPill() {
+    const tier = user?.subscriptionTier || 'free';
+    const pill = $('tierPill');
+    pill.className = 'pill';
+    if (tier === 'classic') { pill.classList.add('green'); pill.textContent = 'Classic'; }
+    else if (tier === 'premium') { pill.textContent = 'Premium'; pill.style.background = '#E3F2FD'; pill.style.color = '#0D47A1'; }
+    else if (tier === 'golden') { pill.classList.add('gold'); pill.textContent = 'Golden'; }
+    else { pill.textContent = 'Free'; }
+  }
+
+  // ── LOGOUT ──
+  $('logoutBtn').addEventListener('click', () => {
+    token = null; user = null;
+    localStorage.removeItem('jobpay_token');
+    localStorage.removeItem('jobpay_user');
+    $('headerRight').style.display = 'none';
+    $('bottomNav').style.display = 'none';
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    $('screen-auth').classList.add('active');
+  });
+
+  // ── DASHBOARD ──
+  async function loadDashboard() {
+    try {
+      const me = await api('/api/me');
+      user = me;
+      localStorage.setItem('jobpay_user', JSON.stringify(me));
+      updateHeaderPill();
+
+      $('dashDone').textContent = me.tasksCompletedToday || 0;
+      $('dashLimit').textContent = `of ${me.dailyLimit} limit`;
+      $('dashRemaining').textContent = me.tasksRemaining || 0;
+      $('dashRemaining').className = 'stat-value ' + (me.tasksRemaining > 0 ? 'green' : 'red');
+
+      // Subscription status card
+      const body = $('subStatusBody');
+      if (me.subscriptionTier === 'free' || !me.subscriptionExpiry) {
+        body.innerHTML = `
+          <div class="empty">
+            <div class="empty-icon">🔒</div>
+            <div class="empty-title">No active subscription</div>
+            <div class="empty-text">Upgrade to Classic, Premium, or Golden to unlock daily surveys and tasks.</div>
+            <button class="btn btn-primary" style="margin-top:16px;" onclick="document.querySelector('[data-screen=subscribe]').click()">
+              View Plans
+            </button>
+          </div>`;
+      } else {
+        const expiry = new Date(me.subscriptionExpiry);
+        const daysLeft = Math.ceil((expiry - new Date()) / (1000 * 60 * 60 * 24));
+        body.innerHTML = `
+          <div class="kv-row" style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-100);">
+            <span style="color:var(--gray-500);font-weight:600;">Plan</span>
+            <span style="font-weight:800;color:var(--green);">${me.subscriptionTier.charAt(0).toUpperCase() + me.subscriptionTier.slice(1)}</span>
+          </div>
+          <div class="kv-row" style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-100);">
+            <span style="color:var(--gray-500);font-weight:600;">Daily limit</span>
+            <span style="font-weight:800;">${me.dailyLimit} tasks</span>
+          </div>
+          <div class="kv-row" style="display:flex;justify-content:space-between;padding:8px 0;">
+            <span style="color:var(--gray-500);font-weight:600;">Expires in</span>
+            <span style="font-weight:800;color:${daysLeft <= 2 ? 'var(--red)' : 'var(--green)'};">${daysLeft} day${daysLeft !== 1 ? 's' : ''}</span>
+          </div>`;
+      }
+
+      // Tasks
+      const taskData = await api('/api/tasks');
+      const list = $('taskList');
+      if (!taskData.subscriptionActive) {
+        list.innerHTML = `
+          <div class="card">
+            <div class="empty">
+              <div class="empty-icon">📋</div>
+              <div class="empty-title">No tasks available</div>
+              <div class="empty-text">Upgrade to a paid plan to start earning from surveys and tasks.</div>
+            </div>
+          </div>`;
+        return;
+      }
+      if (taskData.tasks.length === 0) {
+        list.innerHTML = `
+          <div class="card">
+            <div class="empty">
+              <div class="empty-icon">✅</div>
+              <div class="empty-title">All tasks completed!</div>
+              <div class="empty-text">You've reached your daily limit. Come back tomorrow for more.</div>
+            </div>
+          </div>`;
+        return;
+      }
+      list.innerHTML = taskData.tasks.map(t => `
+        <div class="task ${t.type}">
+          <div class="task-head">
+            <div class="task-title">${t.title}</div>
+            <span class="task-type ${t.type}">${t.type}</span>
+          </div>
+          <div class="task-meta">
+            <span>⏱ ${t.time}</span>
+            <span class="task-reward">KES ${t.reward}</span>
+          </div>
+          <button class="task-btn" data-id="${t.id}">Complete & Earn</button>
+        </div>
+      `).join('');
+
+      // Attach complete handlers
+      list.querySelectorAll('.task-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          btn.disabled = true;
+          btn.innerHTML = '<span class="loader"></span>';
+          try {
+            await api('/api/tasks/complete', {
+              method: 'POST',
+              body: JSON.stringify({ taskId: Number(btn.dataset.id) })
+            });
+            btn.textContent = '✓ Done';
+            btn.style.background = 'var(--gray-200)';
+            btn.style.color = 'var(--gray-500)';
+            setTimeout(() => loadDashboard(), 800);
+          } catch (err) {
+            alert(err.message);
+            btn.disabled = false;
+            btn.textContent = 'Complete & Earn';
+          }
+        });
+      });
+    } catch (err) {
+      console.error('Dashboard error:', err);
+    }
+  }
+
+  // ── SUBSCRIBE ──
+  async function loadSubscribe() {
+    // nothing dynamic needed; buttons are static
+  }
+
+  document.querySelectorAll('.tier-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const tier = btn.dataset.tier;
+      const original = btn.textContent;
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loader"></span>';
+      try {
+        const data = await api('/api/subscribe', {
+          method: 'POST',
+          body: JSON.stringify({ tier })
+        });
+        showMsg($('subMsg'), `📲 STK push sent to your phone. Enter your M‑Pesa PIN to complete payment of KES ${data.amount}.`, 'success');
+        // Poll for activation
+        let attempts = 0;
+        const poll = setInterval(async () => {
+          attempts++;
+          try {
+            const me = await api('/api/me');
+            if (me.subscriptionTier === tier && me.subscriptionExpiry) {
+              clearInterval(poll);
+              user = me;
+              localStorage.setItem('jobpay_user', JSON.stringify(me));
+              updateHeaderPill();
+              showMsg($('subMsg'), `✅ ${tier.charAt(0).toUpperCase() + tier.slice(1)} activated! Valid for 7 days.`, 'success');
+              setTimeout(() => { loadDashboard(); goTo('dashboard'); }, 1200);
+            }
+          } catch {}
+          if (attempts > 20) clearInterval(poll);
+        }, 3000);
+      } catch (err) {
+        showMsg($('subMsg'), err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = original;
+      }
+    });
+  });
+
+  // ── PROFILE ──
+  async function loadProfile() {
+    try {
+      const me = await api('/api/me');
+      $('profileBody').innerHTML = `
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--gray-100);">
+          <span style="color:var(--gray-500);font-weight:600;">Username</span>
+          <span style="font-weight:800;">${me.username}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--gray-100);">
+          <span style="color:var(--gray-500);font-weight:600;">Email</span>
+          <span style="font-weight:800;font-size:13px;">${me.email}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--gray-100);">
+          <span style="color:var(--gray-500);font-weight:600;">Phone</span>
+          <span style="font-weight:800;">${me.phone || '—'}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0;">
+          <span style="color:var(--gray-500);font-weight:600;">Plan</span>
+          <span style="font-weight:800;color:var(--green);">${me.subscriptionTier.charAt(0).toUpperCase() + me.subscriptionTier.slice(1)}</span>
+        </div>`;
+
+      $('historyBody').innerHTML = `
+        <div style="text-align:center;padding:24px 0;color:var(--gray-500);font-size:13px;font-weight:600;">
+          Payment history will appear here once available.
+        </div>`;
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  // ── INIT ──
+  if (token && user) {
+    enterApp();
+  }
+})();
+</script>
+</body>
+</html>
