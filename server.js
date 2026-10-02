@@ -29,7 +29,7 @@ const SUBSCRIPTION_DAYS = 7;
 const FREE_TASK_REWARD = 21;
 const MIN_DEPOSIT = 50;
 const MIN_WITHDRAWAL = 200;
-const PAYMENT_TIMEOUT_MS = 60 * 1000; // 60 seconds
+const PAYMENT_TIMEOUT_MS = 60 * 1000;
 const SEED_VERSION = 3;
 
 let db, usersCol, txnsCol, tasksCol, walletCol, historyCol, metaCol, visitsCol, loginAttemptsCol;
@@ -62,7 +62,7 @@ async function connectDB() {
   console.log('✅ MongoDB connected');
 }
 
-// ── SEED ──────────────────────────────────────────────────────────────────
+// ─── SEED ──────────────────────────────────────────────────────────────────
 const OWNER_NAMES = ['Sarah M.','James K.','Grace W.','David O.','Amina H.','Peter N.','Lucy A.','Brian C.','Faith M.','Kevin R.','Njeri K.','Otieno J.','Wanjiku S.','Hassan A.','Esther M.','Mercy W.','Kimani T.','Achieng O.','Mwangi D.','Zawadi L.'];
 const OWNER_AVATARS = ['👩‍💼','👨‍💼','🧑‍💻','👨‍🔬','👩‍🔬','🧑‍🎓','👨‍🏫','👩‍🏫','🧑‍🎨','👩‍💻','👨‍💻','🧑‍🔧','👨‍⚕️','👩‍⚕️','🧑‍🍳','🧑‍🌾','👩‍🎤','👨‍🎤','🧑‍🚀','👩‍✈️'];
 const OWNER_COUNTRIES = ['Kenya','Kenya','Kenya','Uganda','Tanzania','Rwanda','Kenya'];
@@ -151,7 +151,7 @@ async function seedTasks() {
   console.log(`✅ Seeded ${tasks.length} tasks`);
 }
 
-// ── QUESTIONS ─────────────────────────────────────────────────────────────
+// ─── QUESTIONS ─────────────────────────────────────────────────────────────
 const QT = [
   { q:'How often do you use {topic} products or services?', o:['Daily','Weekly','Monthly','Rarely or never'] },
   { q:'How would you rate your overall experience with {topic}?', o:['Very satisfied','Satisfied','Neutral','Dissatisfied'] },
@@ -186,7 +186,7 @@ function generateQuestions(task) {
   return out;
 }
 
-// ── HELPERS ───────────────────────────────────────────────────────────────
+// ─── HELPERS ───────────────────────────────────────────────────────────────
 function normalizePhone(phone) {
   let p = String(phone || '').replace(/\D/g, '');
   if (p.startsWith('0')) p = '254' + p.slice(1);
@@ -214,8 +214,6 @@ function resetDailyTasks(u) {
   if (u.lastTaskDate !== today) { u.tasksCompletedToday = 0; u.lastTaskDate = today; return true; }
   return false;
 }
-
-// Auto‑flip stale pending payments to failed after 60s
 async function autoFailStalePayments() {
   const cutoff = new Date(Date.now() - PAYMENT_TIMEOUT_MS);
   await txnsCol.updateMany(
@@ -223,7 +221,6 @@ async function autoFailStalePayments() {
     { $set: { status: 'failed', reason: 'No M‑Pesa response (timeout)' } }
   );
 }
-
 function publicUser(u) {
   const active = isSubscriptionActive(u);
   const limit = dailyLimit(u);
@@ -405,7 +402,6 @@ app.get('/api/tasks/:id', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Server error' }); }
 });
 
-// Task completion → funds go to PENDING balance
 app.post('/api/tasks/:id/complete', auth, async (req, res) => {
   try {
     const { answers } = req.body || {};
@@ -420,7 +416,6 @@ app.post('/api/tasks/:id/complete', auth, async (req, res) => {
     if (!task) return res.status(404).json({ error: 'Task not found' });
     const reward = user.subscriptionTier === 'free' ? FREE_TASK_REWARD : task.reward;
 
-    // 1) Create wallet txn (PENDING)
     const wTxn = {
       userId: user._id,
       type: 'task_reward',
@@ -437,12 +432,10 @@ app.post('/api/tasks/:id/complete', auth, async (req, res) => {
     };
     const wRes = await walletCol.insertOne(wTxn);
 
-    // 2) Increment pendingBalance + totalEarnings (NOT balance)
     await usersCol.updateOne({ _id: user._id }, {
       $inc: { tasksCompletedToday: 1, pendingBalance: reward, totalEarnings: reward }
     });
 
-    // 3) History entry linked to wallet txn
     await historyCol.insertOne({
       userId: user._id, taskId: task.id, taskTitle: task.title,
       taskType: task.type, taskCategory: task.category, owner: task.owner,
@@ -476,23 +469,51 @@ app.get('/api/history', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Server error' }); }
 });
 
+// ── SUBSCRIBE (accepts phone) ─────────────────────────────────────────────
 app.post('/api/subscribe', auth, async (req, res) => {
   try {
-    const { tier } = req.body || {};
+    const { tier, phone: phoneInput } = req.body || {};
     if (!TIERS[tier] || tier === 'free') return res.status(400).json({ error: 'Invalid tier' });
     const user = await usersCol.findOne({ _id: new ObjectId(req.userId) });
     if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const phone = normalizePhone(phoneInput || user.phone);
+    if (!isValidKenyanPhone(phone)) {
+      return res.status(400).json({ error: 'Enter a valid M‑Pesa number (e.g. 0712345678)' });
+    }
+
     const amount = TIERS[tier].price;
     const reference = `sub_${user._id}_${tier}_${Date.now()}`;
-    await txnsCol.insertOne({ userId: user._id, tier, amount, reference, phone: user.phone, status:'pending', kind:'subscription', createdAt: new Date() });
-    const payload = { api_key: process.env.PAYHERO_API_KEY, username: process.env.PAYHERO_USERNAME, amount, phone: user.phone, user_reference: reference, callback_url: PAYHERO_CALLBACK_URL };
-    const { data } = await axios.post(PAYHERO_API_URL, payload, { headers: { 'Content-Type': 'application/json' }, timeout: 20000 });
+
+    await txnsCol.insertOne({
+      userId: user._id, tier, amount, reference, phone,
+      status: 'pending', kind: 'subscription', createdAt: new Date()
+    });
+
+    const payload = {
+      api_key: process.env.PAYHERO_API_KEY,
+      username: process.env.PAYHERO_USERNAME,
+      amount, phone,
+      user_reference: reference,
+      callback_url: PAYHERO_CALLBACK_URL
+    };
+    console.log('📤 Subscribe STK to', phone);
+    const { data } = await axios.post(PAYHERO_API_URL, payload, {
+      headers: { 'Content-Type': 'application/json' }, timeout: 20000
+    });
     await txnsCol.updateOne({ reference }, { $set: { payheroResponse: data } });
-    res.json({ message: 'STK push sent. Check your phone.', reference, amount, tier });
-  } catch (err) { console.error('Subscribe error:', err.response?.data || err.message); res.status(500).json({ error: 'Payment initiation failed' }); }
+
+    res.json({
+      message: `STK push sent to ${phone}. Enter your M‑Pesa PIN to complete payment.`,
+      reference, amount, tier, phone
+    });
+  } catch (err) {
+    console.error('Subscribe error:', err.response?.data || err.message);
+    res.status(500).json({ error: 'Payment initiation failed' });
+  }
 });
 
-// ── DEPOSIT: accepts phone from client ────────────────────────────────────
+// ── DEPOSIT ───────────────────────────────────────────────────────────────
 app.post('/api/wallet/deposit', auth, async (req, res) => {
   try {
     const amount = Number(req.body?.amount) || 0;
@@ -534,7 +555,6 @@ app.post('/api/wallet/deposit', auth, async (req, res) => {
   }
 });
 
-// ── WITHDRAW: pending admin approval ──────────────────────────────────────
 app.post('/api/wallet/withdraw', auth, async (req, res) => {
   try {
     const amount = Number(req.body?.amount) || 0;
@@ -543,7 +563,6 @@ app.post('/api/wallet/withdraw', auth, async (req, res) => {
     if (!user) return res.status(404).json({ error: 'User not found' });
     if ((user.balance || 0) < amount) return res.status(400).json({ error: 'Insufficient balance' });
 
-    // Deduct immediately so they can't double‑spend
     const upd = await usersCol.updateOne({ _id: user._id, balance: { $gte: amount } }, { $inc: { balance: -amount } });
     if (upd.modifiedCount === 0) return res.status(400).json({ error: 'Insufficient balance' });
 
@@ -557,7 +576,6 @@ app.post('/api/wallet/withdraw', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Withdrawal failed' }); }
 });
 
-// ── HISTORY: split wallet + payments ──────────────────────────────────────
 app.get('/api/wallet/history', auth, async (req, res) => {
   try {
     await autoFailStalePayments();
@@ -601,7 +619,6 @@ app.post('/api/payhero/callback', async (req, res) => {
     const txn = await txnsCol.findOne({ reference: userRef });
     if (!txn) return res.status(404).json({ error: 'Transaction not found' });
     if (txn.status === 'completed') return res.json({ message: 'Already processed' });
-    // NOTE: allow failed → completed (late callbacks still credit)
     const amountNum = Number(amountRaw) || 0;
     const userId = String(txn.userId);
 
@@ -839,7 +856,6 @@ app.get('/api/admin/subscriptions', adminAuth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Server error' }); }
 });
 
-// ── PENDING REWARDS ───────────────────────────────────────────────────────
 app.get('/api/admin/pending-rewards', adminAuth, async (req, res) => {
   try {
     const items = await walletCol.find({ type:'task_reward', status:'pending' })
@@ -920,7 +936,6 @@ app.post('/api/admin/wallet/confirm-all', adminAuth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Server error' }); }
 });
 
-// ── PENDING WITHDRAWALS ───────────────────────────────────────────────────
 app.get('/api/admin/pending-withdrawals', adminAuth, async (req, res) => {
   try {
     const items = await walletCol.find({ type:'withdrawal', status:'pending' })
@@ -958,7 +973,6 @@ app.post('/api/admin/withdrawal/reject/:id', adminAuth, async (req, res) => {
     if (!txn) return res.status(404).json({ error: 'Not found' });
     if (txn.status !== 'pending') return res.status(400).json({ error: 'Not pending' });
     const reason = req.body?.reason || 'Rejected by admin';
-    // Refund the user
     await usersCol.updateOne({ _id: txn.userId }, { $inc: { balance: Math.abs(txn.amount) } });
     await walletCol.updateOne({ _id: txn._id }, {
       $set: { status:'failed', reason, rejectedAt: new Date() }
