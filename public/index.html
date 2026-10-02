@@ -294,10 +294,30 @@
     width:38px; height:38px; border-radius:50%;
     display:grid; place-items:center; font-size:20px; flex-shrink:0;
   }
+  .hist-avatar.sub {
+    background:var(--green-light); color:var(--green-dark);
+    border-radius:12px;
+  }
   .hist-body { flex:1; min-width:0; }
   .hist-title { font-size:13px; font-weight:800; margin-bottom:3px; }
   .hist-meta { font-size:11px; color:var(--gray-500); font-weight:600; }
   .hist-reward { font-size:14px; font-weight:900; color:var(--green); white-space:nowrap; }
+  .hist-reward.negative { color:var(--red); }
+  .hist-section-head {
+    font-size:11px; font-weight:900; text-transform:uppercase;
+    letter-spacing:0.8px; color:var(--gray-500);
+    margin: 20px 0 10px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .hist-section-head:first-child { margin-top:0; }
+  .hist-section-head::before {
+    content:''; width:3px; height:14px; background:var(--green); border-radius:2px;
+  }
+  .hist-filters {
+    display:flex; gap:8px; margin-bottom:14px; overflow-x:auto;
+    padding-bottom:4px;
+  }
+  .hist-filters::-webkit-scrollbar { display:none; }
   .modal-backdrop {
     position:fixed; inset:0; background:rgba(0,0,0,0.5);
     display:none; z-index:200; align-items:flex-end;
@@ -422,6 +442,17 @@
   .success-amount { font-size:38px; font-weight:900; color:var(--green); letter-spacing:-1px; margin:12px 0; }
   .success-amount.pending { color:#D4901A; }
   .success-sub { font-size:13px; color:var(--gray-500); font-weight:600; margin-bottom:24px; line-height:1.6; }
+  .tx-row {
+    display:flex; justify-content:space-between; align-items:center;
+    padding:14px 0; border-bottom:1px solid var(--gray-100); gap:10px;
+  }
+  .tx-row:last-child { border-bottom:none; }
+  .tx-left { flex:1; min-width:0; display:flex; flex-direction:column; gap:4px; }
+  .tx-label { font-size:13.5px; font-weight:800; }
+  .tx-sub { font-size:11px; color:var(--gray-500); font-weight:600; }
+  .tx-amount { font-size:15px; font-weight:900; white-space:nowrap; }
+  .tx-amount.positive { color:var(--green); }
+  .tx-amount.negative { color:var(--red); }
   @media (min-width:500px) {
     .tier-grid { flex-direction:row; }
     .tier-card { flex:1; }
@@ -585,14 +616,18 @@
   </div>
 
   <div class="card">
-    <div class="section-title">Transaction History</div>
+    <div class="section-title">Deposits &amp; Withdrawals</div>
     <div id="txList"></div>
   </div>
 </section>
 
 <!-- HISTORY -->
 <section class="screen" id="screen-history">
-  <div class="section-title">Completed Tasks</div>
+  <div class="hist-filters" id="historyFilters">
+    <button class="filter-chip active" data-hfilter="">All</button>
+    <button class="filter-chip" data-hfilter="tasks">📋 Tasks</button>
+    <button class="filter-chip" data-hfilter="subscriptions">⭐ Upgrades</button>
+  </div>
   <div id="historyList"></div>
 </section>
 
@@ -645,15 +680,13 @@
       </span>
       &nbsp;Pay KES <span id="subTierPrice">200</span> for 7 days
     </div>
-
     <div class="msg" id="subModalMsg"></div>
-
     <div id="subModalForm">
       <div class="field">
         <label for="subPhone">M‑Pesa Number</label>
         <input type="tel" id="subPhone" class="no-icon" placeholder="0712 345 678" inputmode="tel" />
       </div>
-      <div id="subPhoneAccount" style="font-size:11px;color:var(--gray-500);font-weight:600;margin-top:-8px;margin-bottom:14px;">
+      <div style="font-size:11px;color:var(--gray-500);font-weight:600;margin-top:-8px;margin-bottom:14px;">
         This is the number on your account. You can change it.
       </div>
       <button class="btn btn-primary" id="confirmSubscribe">Send STK Push</button>
@@ -680,23 +713,21 @@
       &nbsp;Minimum KES 50
     </div>
     <div class="msg" id="depositModalMsg"></div>
-    <div id="depositForm">
-      <div class="field">
-        <label for="depositPhone">M‑Pesa Number</label>
-        <input type="tel" id="depositPhone" class="no-icon" placeholder="0712 345 678" inputmode="tel" />
-      </div>
-      <input type="number" class="amount-input" id="depositAmount" placeholder="0" inputmode="numeric" />
-      <div class="quick-amounts">
-        <button class="quick-amt" data-amt="50">50</button>
-        <button class="quick-amt" data-amt="100">100</button>
-        <button class="quick-amt" data-amt="200">200</button>
-        <button class="quick-amt" data-amt="500">500</button>
-        <button class="quick-amt" data-amt="1000">1000</button>
-        <button class="quick-amt" data-amt="2000">2000</button>
-      </div>
-      <button class="btn btn-mpesa" id="confirmDeposit">Send STK to this number</button>
-      <div class="modal-note">You'll receive an STK push on your phone. Enter your M‑Pesa PIN to complete.</div>
+    <div class="field">
+      <label for="depositPhone">M‑Pesa Number</label>
+      <input type="tel" id="depositPhone" class="no-icon" placeholder="0712 345 678" inputmode="tel" />
     </div>
+    <input type="number" class="amount-input" id="depositAmount" placeholder="0" inputmode="numeric" />
+    <div class="quick-amounts">
+      <button class="quick-amt" data-amt="50">50</button>
+      <button class="quick-amt" data-amt="100">100</button>
+      <button class="quick-amt" data-amt="200">200</button>
+      <button class="quick-amt" data-amt="500">500</button>
+      <button class="quick-amt" data-amt="1000">1000</button>
+      <button class="quick-amt" data-amt="2000">2000</button>
+    </div>
+    <button class="btn btn-mpesa" id="confirmDeposit">Send STK to this number</button>
+    <div class="modal-note">You'll receive an STK push. Enter your M‑Pesa PIN to complete.</div>
   </div>
 </div>
 
@@ -766,6 +797,7 @@
   let totalTaskCount = 0;
   let survey = { task:null, questions:[], current:0, answers:[] };
   let currentSubscribeTier = null;
+  let historyFilter = ''; // '', 'tasks', 'subscriptions'
 
   async function api(path, opts = {}) {
     const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
@@ -1026,9 +1058,9 @@
     loadDashboard(currentPage, true);
   });
 
-  document.querySelectorAll('.filter-chip').forEach(chip => {
+  document.querySelectorAll('.filter-chip[data-type]').forEach(chip => {
     chip.addEventListener('click', () => {
-      document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+      document.querySelectorAll('.filter-chip[data-type]').forEach(c => c.classList.remove('active'));
       chip.classList.add('active');
       currentType = chip.dataset.type;
       loadDashboard();
@@ -1137,41 +1169,104 @@
     $('surveyFooter').style.display = 'flex';
   });
 
-  // ── HISTORY ──
+  // ── HISTORY (tasks + upgrade transactions) ──
   async function loadHistory() {
     try {
-      const list = await api('/api/history');
+      const [taskList, walletData] = await Promise.all([
+        api('/api/history'),
+        api('/api/wallet/history')
+      ]);
+
+      const taskEntries = (taskList || []).map(h => ({
+        _kind: 'task',
+        id: h.id,
+        title: h.taskTitle,
+        owner: h.owner,
+        reward: h.reward,
+        answersCount: h.answersCount,
+        status: h.status,
+        at: new Date(h.completedAt)
+      }));
+
+      const subEntries = (walletData.paymentTransactions || [])
+        .filter(t => t.kind === 'subscription')
+        .map(t => {
+          const ageMs = Date.now() - new Date(t.createdAt).getTime();
+          let status = t.status;
+          if (status === 'pending' && ageMs > 60000) status = 'failed';
+          return {
+            _kind: 'subscription',
+            id: t.id,
+            tier: t.tier || 'subscription',
+            amount: t.amount,
+            status,
+            at: new Date(t.createdAt)
+          };
+        });
+
+      // Apply filter
+      let entries = [...taskEntries, ...subEntries];
+      if (historyFilter === 'tasks') entries = taskEntries;
+      if (historyFilter === 'subscriptions') entries = subEntries;
+      entries.sort((a, b) => b.at - a.at);
+
       const el = $('historyList');
-      if (!list.length) {
+      if (!entries.length) {
         el.innerHTML = `<div class="card"><div class="empty">
           <div class="empty-icon">📜</div>
-          <div class="empty-title">No history yet</div>
-          <div class="empty-text">Complete a task to see it here.</div>
+          <div class="empty-title">Nothing here yet</div>
+          <div class="empty-text">Complete a task or upgrade your plan to see activity.</div>
         </div></div>`;
         return;
       }
-      el.innerHTML = list.map(h => {
-        const d = new Date(h.completedAt);
-        const date = d.toLocaleDateString() + ' • ' + d.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
-        const pillCls = { completed:'green', failed:'red', pending:'yellow' }[h.status] || 'gray';
-        const pillLabel = { completed:'✓ Confirmed', failed:'✕ Rejected', pending:'⏳ Pending' }[h.status] || h.status;
-        return `
-          <div class="hist-item">
-            <div class="hist-avatar" style="background:${h.owner?.color || '#43B02A'}20;color:${h.owner?.color || '#43B02A'};">
-              ${h.owner?.avatar || '📋'}
-            </div>
-            <div class="hist-body">
-              <div class="hist-title">${h.taskTitle}</div>
-              <div class="hist-meta">${date} • ${h.answersCount} answers</div>
-              <span class="pill ${pillCls}" style="font-size:9px;padding:2px 7px;margin-top:4px;display:inline-block;">${pillLabel}</span>
-            </div>
-            <div class="hist-reward">+KES ${h.reward}</div>
-          </div>`;
+
+      el.innerHTML = entries.map(e => {
+        const date = e.at.toLocaleDateString() + ' • ' + e.at.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+        const pillCls = { completed:'green', failed:'red', pending:'yellow' }[e.status] || 'gray';
+        const pillLabel = { completed:'✓ Confirmed', failed:'✕ Failed', pending:'⏳ Pending' }[e.status] || e.status;
+
+        if (e._kind === 'task') {
+          const taskPillLabel = { completed:'✓ Confirmed', failed:'✕ Rejected', pending:'⏳ Pending' }[e.status] || e.status;
+          return `
+            <div class="hist-item">
+              <div class="hist-avatar" style="background:${e.owner?.color || '#43B02A'}20;color:${e.owner?.color || '#43B02A'};">
+                ${e.owner?.avatar || '📋'}
+              </div>
+              <div class="hist-body">
+                <div class="hist-title">${e.title}</div>
+                <div class="hist-meta">${date} • ${e.answersCount} answers</div>
+                <span class="pill ${pillCls}" style="font-size:9px;padding:2px 7px;margin-top:4px;display:inline-block;">${taskPillLabel}</span>
+              </div>
+              <div class="hist-reward">+KES ${e.reward}</div>
+            </div>`;
+        } else {
+          const tierName = e.tier.charAt(0).toUpperCase() + e.tier.slice(1);
+          return `
+            <div class="hist-item">
+              <div class="hist-avatar sub">⭐</div>
+              <div class="hist-body">
+                <div class="hist-title">${tierName} Upgrade</div>
+                <div class="hist-meta">${date} • 7‑day subscription</div>
+                <span class="pill ${pillCls}" style="font-size:9px;padding:2px 7px;margin-top:4px;display:inline-block;">${pillLabel}</span>
+              </div>
+              <div class="hist-reward">-KES ${e.amount.toLocaleString()}</div>
+            </div>`;
+        }
       }).join('');
     } catch (err) { console.error(err); }
   }
 
-  // ── ACCOUNT ──
+  // History filter chips
+  document.querySelectorAll('.filter-chip[data-hfilter]').forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('.filter-chip[data-hfilter]').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      historyFilter = chip.dataset.hfilter;
+      loadHistory();
+    });
+  });
+
+  // ── ACCOUNT (deposits & withdrawals only) ──
   async function loadAccount() {
     try {
       const me = await api('/api/me');
@@ -1182,59 +1277,55 @@
       $('withdrawNote').innerHTML = `Funds sent to <strong>${me.phone}</strong> after admin approval.`;
 
       const data = await api('/api/wallet/history');
-      const all = [
-        ...(data.walletTransactions || []).map(t => ({ ...t, _src:'wallet' })),
-        ...(data.paymentTransactions || []).map(t => ({ ...t, _src:'payment' }))
-      ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+      const deposits = (data.paymentTransactions || [])
+        .filter(t => t.kind === 'deposit')
+        .map(t => ({ ...t, _type:'deposit' }));
+
+      const withdrawals = (data.walletTransactions || [])
+        .filter(t => t.type === 'withdrawal')
+        .map(t => ({ ...t, _type:'withdrawal' }));
+
+      const all = [...deposits, ...withdrawals].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
       const list = $('txList');
       if (!all.length) {
-        list.innerHTML = `<div class="empty" style="padding:20px 0;"><div class="empty-text">No transactions yet.</div></div>`;
+        list.innerHTML = `<div class="empty" style="padding:20px 0;">
+          <div class="empty-text">No deposits or withdrawals yet.</div>
+        </div>`;
         return;
       }
 
-      list.innerHTML = all.slice(0, 40).map(tx => {
+      list.innerHTML = all.map(tx => {
         const d = new Date(tx.createdAt);
         const date = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
         const ageMs = Date.now() - d.getTime();
 
         let displayStatus = tx.status;
-        if (tx._src === 'payment' && tx.status === 'pending' && ageMs > 60000) displayStatus = 'failed';
+        if (tx._type === 'deposit' && tx.status === 'pending' && ageMs > 60000) displayStatus = 'failed';
 
         let label, amountCls, amountTxt;
-        if (tx._src === 'payment') {
-          label = tx.kind === 'deposit' ? '💳 Deposit' : `⭐ ${(tx.tier||'Subscription').charAt(0).toUpperCase()+ (tx.tier||'').slice(1)}`;
+        if (tx._type === 'deposit') {
+          label = '💳 Deposit';
           amountCls = 'positive';
           amountTxt = `+KES ${tx.amount.toLocaleString()}`;
         } else {
-          if (tx.type === 'withdrawal') {
-            label = '💸 Withdrawal';
-            amountCls = 'negative';
-            amountTxt = `-KES ${Math.abs(tx.amount).toLocaleString()}`;
-          } else if (tx.type === 'deposit') {
-            label = '💳 Deposit';
-            amountCls = 'positive';
-            amountTxt = `+KES ${tx.amount.toLocaleString()}`;
-          } else {
-            label = '✅ Task Reward';
-            amountCls = 'positive';
-            amountTxt = `+KES ${tx.amount.toLocaleString()}`;
-          }
+          label = '💸 Withdrawal';
+          amountCls = 'negative';
+          amountTxt = `-KES ${Math.abs(tx.amount).toLocaleString()}`;
         }
 
         const pillCls = { completed:'green', failed:'red', pending:'yellow' }[displayStatus] || 'gray';
         const pillLabel = { completed:'✓ Successful', failed:'✕ Failed', pending:'⏳ Pending' }[displayStatus] || displayStatus;
 
         return `
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--gray-100);gap:10px;">
-            <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:0;">
-              <div style="font-size:13px;font-weight:700;">${label}</div>
-              <div style="font-size:11px;color:var(--gray-500);font-weight:600;">${date}</div>
+          <div class="tx-row">
+            <div class="tx-left">
+              <div class="tx-label">${label}</div>
+              <div class="tx-sub">${date}</div>
               <span class="pill ${pillCls}" style="align-self:flex-start;font-size:9px;padding:2px 7px;">${pillLabel}</span>
             </div>
-            <div style="font-size:15px;font-weight:900;color:${amountCls==='positive'?'var(--green)':'var(--red)'};white-space:nowrap;">
-              ${amountTxt}
-            </div>
+            <div class="tx-amount ${amountCls}">${amountTxt}</div>
           </div>`;
       }).join('');
     } catch (err) { console.error(err); }
@@ -1366,4 +1457,101 @@
           if (me.balance > startBal) {
             clearInterval(poll);
             user = me;
-            showMsg($('depositModalMsg'), `✅ Deposit successful! New balance: KES ${me.balance.toLocaleString()}`, '
+            showMsg($('depositModalMsg'), `✅ Deposit successful! New balance: KES ${me.balance.toLocaleString()}`, 'success');
+            setTimeout(() => {
+              closeModal('depositModal');
+              loadAccount();
+            }, 1500);
+            return;
+          }
+        } catch {}
+        if (attempts > 30) {
+          clearInterval(poll);
+          showMsg($('depositModalMsg'), '⏳ Payment not received. Check your phone or try again.', 'error');
+          btn.disabled = false;
+          btn.textContent = 'Send STK to this number';
+        }
+      }, 3000);
+    } catch (err) {
+      showMsg($('depositModalMsg'), err.message, 'error');
+      btn.disabled = false;
+      btn.textContent = 'Send STK to this number';
+    }
+  });
+
+  $('btnWithdraw').addEventListener('click', () => {
+    $('withdrawAmount').value = '';
+    clearMsg($('withdrawModalMsg'));
+    $('confirmWithdraw').disabled = false;
+    $('confirmWithdraw').textContent = 'Withdraw to M‑Pesa';
+    openModal('withdrawModal');
+  });
+
+  $('confirmWithdraw').addEventListener('click', async () => {
+    const amount = Number($('withdrawAmount').value) || 0;
+    if (amount < 200) return showMsg($('withdrawModalMsg'), 'Minimum withdrawal is KES 200', 'error');
+    if (amount > (user.balance || 0)) return showMsg($('withdrawModalMsg'), 'Insufficient balance', 'error');
+    const btn = $('confirmWithdraw');
+    btn.disabled = true; btn.innerHTML = '<span class="loader"></span>';
+    try {
+      const res = await api('/api/wallet/withdraw', { method:'POST', body: JSON.stringify({ amount }) });
+      showMsg($('withdrawModalMsg'), `✅ ${res.message}`, 'success');
+      setTimeout(() => {
+        closeModal('withdrawModal');
+        loadAccount();
+      }, 1800);
+    } catch (err) {
+      showMsg($('withdrawModalMsg'), err.message, 'error');
+      btn.disabled = false;
+      btn.textContent = 'Withdraw to M‑Pesa';
+    }
+  });
+
+  document.querySelectorAll('.quick-amt').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const modal = btn.closest('.modal');
+      modal.querySelector('input.amount-input').value = btn.dataset.amt;
+    });
+  });
+
+  // ── PROFILE ──
+  async function loadProfile() {
+    try {
+      const me = await api('/api/me');
+      $('profileBody').innerHTML = `
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--gray-100);">
+          <span style="color:var(--gray-500);font-weight:600;">Username</span>
+          <span style="font-weight:800;">${me.username}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--gray-100);">
+          <span style="color:var(--gray-500);font-weight:600;">Email</span>
+          <span style="font-weight:800;font-size:13px;">${me.email}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--gray-100);">
+          <span style="color:var(--gray-500);font-weight:600;">Phone</span>
+          <span style="font-weight:800;">${me.phone || '—'}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--gray-100);">
+          <span style="color:var(--gray-500);font-weight:600;">Plan</span>
+          <span style="font-weight:800;color:var(--green);text-transform:capitalize;">${me.subscriptionTier}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--gray-100);">
+          <span style="color:var(--gray-500);font-weight:600;">Total earned</span>
+          <span style="font-weight:800;color:var(--green);">KES ${(me.totalEarnings||0).toLocaleString()}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--gray-100);">
+          <span style="color:var(--gray-500);font-weight:600;">Available balance</span>
+          <span style="font-weight:800;">KES ${(me.balance||0).toLocaleString()}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0;">
+          <span style="color:var(--gray-500);font-weight:600;">Pending balance</span>
+          <span style="font-weight:800;color:var(--yellow);">KES ${(me.pendingBalance||0).toLocaleString()}</span>
+        </div>`;
+    } catch (err) { console.error(err); }
+  }
+
+  if (token && user) enterApp();
+})();
+</script>
+</body>
+  </html>
