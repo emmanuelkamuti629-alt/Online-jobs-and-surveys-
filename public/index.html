@@ -24,7 +24,6 @@
     padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom,0px));
     min-height:100vh;
   }
-  /* HEADER */
   .header {
     position:fixed; top:0; left:0; right:0;
     height:calc(var(--header-h) + env(safe-area-inset-top,0px));
@@ -61,11 +60,9 @@
     font-size:11px; font-weight:700; color:var(--gray-700);
     cursor:pointer; font-family:inherit;
   }
-  /* SCREENS */
   .screen { display:none; padding:16px; padding-bottom:32px; animation:fade .2s ease-out; }
   .screen.active { display:block; }
   @keyframes fade { from{opacity:0;transform:translateY(6px);} to{opacity:1;transform:translateY(0);} }
-  /* CARDS */
   .card {
     background:var(--white); border-radius:var(--radius);
     box-shadow:var(--shadow); padding:18px; margin-bottom:14px;
@@ -78,7 +75,6 @@
     display:flex; align-items:center; gap:8px;
   }
   .section-title::before { content:''; width:3px; height:14px; background:var(--green); border-radius:2px; }
-  /* FORMS */
   .field { margin-bottom:14px; position:relative; }
   .field:last-child { margin-bottom:0; }
   .field label {
@@ -110,7 +106,6 @@
   .pw-hint { font-size:11px; margin-top:6px; display:flex; gap:10px; flex-wrap:wrap; font-weight:600; }
   .pw-hint span { display:flex; align-items:center; gap:4px; color:var(--gray-500); }
   .pw-hint span.ok { color:var(--green); }
-  /* BUTTONS */
   .btn {
     display:flex; align-items:center; justify-content:center; gap:8px;
     width:100%; padding:15px 20px;
@@ -127,7 +122,6 @@
   .btn-mpesa { background:linear-gradient(135deg,#4CAF50,#388E3C); color:var(--white); box-shadow:0 4px 16px rgba(76,175,80,0.30); }
   .btn-sm { padding:10px 14px; font-size:13px; border-radius:10px; }
   .btn-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-  /* STATS */
   .stats { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:14px; }
   .stat { background:var(--white); border-radius:12px; padding:14px; border:1px solid var(--gray-200); box-shadow:var(--shadow); }
   .stat-label { font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:0.6px; color:var(--gray-500); margin-bottom:6px; }
@@ -135,7 +129,6 @@
   .stat-value.green { color:var(--green); }
   .stat-value.yellow { color:var(--yellow); }
   .stat-sub { font-size:11px; color:var(--gray-500); margin-top:4px; font-weight:600; }
-  /* TIER CARDS */
   .tier-grid { display:flex; flex-direction:column; gap:12px; margin-bottom:14px; }
   .tier-card { background:var(--white); border-radius:var(--radius); border:1.5px solid var(--gray-200); box-shadow:var(--shadow); padding:18px; position:relative; }
   .tier-card.classic{ border-color:var(--green); }
@@ -158,7 +151,6 @@
   .tier-btn.classic{ background:var(--green); color:white; }
   .tier-btn.premium{ background:var(--blue); color:white; }
   .tier-btn.golden{ background:var(--gold); color:#1A1A1A; }
-  /* TASK CARDS */
   .task {
     background:var(--white); border-radius:14px;
     border:1px solid var(--gray-200); box-shadow:var(--shadow);
@@ -222,7 +214,6 @@
   .task-action .btn-start:active { transform:scale(0.98); }
   .task-action .btn-locked { background:#FFF3CD; color:#8A6D3B; border:1px solid #FFE8A1; }
   .task-action .btn-done { background:var(--gray-100); color:var(--gray-500); cursor:not-allowed; }
-  /* FILTERS */
   .filter-row { display:flex; gap:8px; margin-bottom:12px; overflow-x:auto; padding-bottom:4px; }
   .filter-row::-webkit-scrollbar { display:none; }
   .filter-chip {
@@ -232,7 +223,6 @@
     cursor:pointer; font-family:inherit; white-space:nowrap;
   }
   .filter-chip.active { background:var(--green); color:white; border-color:var(--green); }
-  /* EMPTY */
   .empty { text-align:center; padding:40px 20px; }
   .empty-icon {
     width:64px; height:64px; border-radius:20px;
@@ -241,12 +231,10 @@
   }
   .empty-title { font-size:16px; font-weight:800; margin-bottom:6px; }
   .empty-text { font-size:13px; color:var(--gray-500); line-height:1.5; max-width:280px; margin:0 auto; }
-  /* MSG */
   .msg { padding:12px 14px; border-radius:10px; margin-bottom:14px; font-size:13px; font-weight:700; display:none; }
   .msg.show { display:block; }
   .msg.success { background:var(--green-light); color:var(--green-dark); border:1px solid rgba(67,176,42,0.3); }
   .msg.error { background:var(--red-light); color:var(--red); border:1px solid rgba(230,0,0,0.2); }
-  /* NAV */
   .bottom-nav {
     position:fixed; bottom:0; left:0; right:0;
     height:var(--nav-h);
@@ -266,7 +254,6 @@
     content:''; position:absolute; top:0; left:50%; transform:translateX(-50%);
     width:32px; height:3px; background:var(--green); border-radius:0 0 3px 3px;
   }
-  /* LOADER */
   .loader {
     display:inline-block; width:18px; height:18px;
     border:2.5px solid rgba(255,255,255,0.3);
@@ -274,7 +261,6 @@
     animation:spin .6s linear infinite;
   }
   @keyframes spin { to{transform:rotate(360deg);} }
-  /* BALANCE */
   .balance-card {
     background:linear-gradient(135deg,var(--green),var(--green-dark));
     color:white; border-radius:var(--radius); padding:22px;
@@ -288,10 +274,7 @@
     background:#FFF8E1; border:1.5px solid #FFE8A1;
     border-radius:var(--radius); padding:18px; margin-bottom:14px;
   }
-  .pending-label {
-    font-size:11px; font-weight:900; text-transform:uppercase;
-    letter-spacing:0.6px; color:#8A6D3B; margin-bottom:6px;
-  }
+  .pending-label { font-size:11px; font-weight:900; text-transform:uppercase; letter-spacing:0.6px; color:#8A6D3B; margin-bottom:6px; }
   .pending-value { font-size:26px; font-weight:900; color:#8A6D3B; letter-spacing:-0.5px; }
   .pending-sub { font-size:11px; color:#8A6D3B; font-weight:600; margin-top:4px; opacity:0.8; }
   .mpesa-logo {
@@ -301,7 +284,6 @@
     font-size:11px; font-weight:900; letter-spacing:0.3px;
   }
   .mpesa-icon { width:16px; height:16px; }
-  /* HISTORY */
   .hist-item {
     background:var(--white); border-radius:12px; padding:14px;
     border:1px solid var(--gray-200); box-shadow:var(--shadow);
@@ -316,7 +298,6 @@
   .hist-title { font-size:13px; font-weight:800; margin-bottom:3px; }
   .hist-meta { font-size:11px; color:var(--gray-500); font-weight:600; }
   .hist-reward { font-size:14px; font-weight:900; color:var(--green); white-space:nowrap; }
-  /* MODALS */
   .modal-backdrop {
     position:fixed; inset:0; background:rgba(0,0,0,0.5);
     display:none; z-index:200; align-items:flex-end;
@@ -356,7 +337,6 @@
   }
   .quick-amt:active { background:var(--green-light); border-color:var(--green); }
   .modal-note { font-size:12px; color:var(--gray-500); font-weight:600; text-align:center; margin-top:12px; line-height:1.5; }
-  /* SURVEY FULL-SCREEN MODAL */
   .survey-backdrop {
     position:fixed; inset:0; background:rgba(0,0,0,0.55);
     display:none; z-index:300; align-items:stretch; justify-content:center;
@@ -396,9 +376,7 @@
     margin-top:8px; display:flex; justify-content:space-between;
   }
   .survey-body { flex:1; overflow-y:auto; padding:22px 18px; }
-  .survey-q {
-    font-size:17px; font-weight:800; line-height:1.4; margin-bottom:20px;
-  }
+  .survey-q { font-size:17px; font-weight:800; line-height:1.4; margin-bottom:20px; }
   .survey-options { display:flex; flex-direction:column; gap:10px; }
   .survey-opt {
     display:flex; align-items:center; gap:12px;
@@ -424,7 +402,6 @@
     display:flex; gap:10px;
   }
   .survey-footer .btn { flex:1; }
-  /* SUCCESS SCREEN */
   .survey-success {
     display:flex; flex-direction:column; align-items:center; justify-content:center;
     padding:40px 24px; text-align:center; flex:1;
@@ -465,7 +442,7 @@
   </div>
 </header>
 
-<!-- ═══════════════ AUTH ═══════════════ -->
+<!-- AUTH -->
 <section class="screen active" id="screen-auth">
   <div class="card green-border">
     <div class="section-title">Welcome to JobPay</div>
@@ -508,7 +485,7 @@
   </div>
 </section>
 
-<!-- ═══════════════ DASHBOARD ═══════════════ -->
+<!-- DASHBOARD -->
 <section class="screen" id="screen-dashboard">
   <div class="stats">
     <div class="stat">
@@ -538,7 +515,7 @@
   </div>
 </section>
 
-<!-- ═══════════════ SUBSCRIBE ═══════════════ -->
+<!-- SUBSCRIBE -->
 <section class="screen" id="screen-subscribe">
   <div class="msg" id="subMsg"></div>
   <div class="tier-grid">
@@ -566,13 +543,13 @@
   </div>
   <div class="card">
     <div style="font-size:12px;color:var(--gray-500);font-weight:600;line-height:1.7;">
-      💡 Tap an upgrade button. You'll receive an M‑Pesa STK push. Enter your PIN to pay.
+      💡 Tap an upgrade button. You'll be asked to confirm your M‑Pesa number, then receive an STK push. Enter your PIN to pay.
       Subscription activates instantly and is valid for <strong>7 days</strong>.
     </div>
   </div>
 </section>
 
-<!-- ═══════════════ ACCOUNT ═══════════════ -->
+<!-- ACCOUNT -->
 <section class="screen" id="screen-account">
   <div class="balance-card">
     <div class="balance-label">Available Balance</div>
@@ -613,13 +590,13 @@
   </div>
 </section>
 
-<!-- ═══════════════ HISTORY ═══════════════ -->
+<!-- HISTORY -->
 <section class="screen" id="screen-history">
   <div class="section-title">Completed Tasks</div>
   <div id="historyList"></div>
 </section>
 
-<!-- ═══════════════ PROFILE ═══════════════ -->
+<!-- PROFILE -->
 <section class="screen" id="screen-profile">
   <div class="card">
     <div class="section-title">Account Details</div>
@@ -627,7 +604,7 @@
   </div>
 </section>
 
-<!-- ═══════════════ NAV ═══════════════ -->
+<!-- NAV -->
 <nav class="bottom-nav" id="bottomNav" style="display:none;">
   <button class="nav-btn active" data-screen="dashboard"><span class="nav-icon">📊</span><span>Tasks</span></button>
   <button class="nav-btn" data-screen="subscribe"><span class="nav-icon">⭐</span><span>Upgrade</span></button>
@@ -636,7 +613,7 @@
   <button class="nav-btn" data-screen="profile"><span class="nav-icon">👤</span><span>Profile</span></button>
 </nav>
 
-<!-- ═══════════════ UPGRADE PROMPT MODAL ═══════════════ -->
+<!-- UPGRADE PROMPT MODAL -->
 <div class="modal-backdrop" id="upgradeModal">
   <div class="modal">
     <button class="modal-close" data-close="upgradeModal">✕</button>
@@ -653,7 +630,41 @@
   </div>
 </div>
 
-<!-- ═══════════════ DEPOSIT MODAL ═══════════════ -->
+<!-- SUBSCRIBE MODAL -->
+<div class="modal-backdrop" id="subscribeModal">
+  <div class="modal">
+    <button class="modal-close" data-close="subscribeModal">✕</button>
+    <div class="modal-title">Upgrade to <span id="subTierName" style="color:var(--green);">Classic</span></div>
+    <div class="modal-sub">
+      <span class="mpesa-logo">
+        <svg class="mpesa-icon" viewBox="0 0 24 24" fill="none">
+          <rect x="3" y="4" width="18" height="16" rx="3" fill="#fff"/>
+          <circle cx="12" cy="12" r="4" fill="#4CAF50"/>
+        </svg>
+        M‑Pesa
+      </span>
+      &nbsp;Pay KES <span id="subTierPrice">200</span> for 7 days
+    </div>
+
+    <div class="msg" id="subModalMsg"></div>
+
+    <div id="subModalForm">
+      <div class="field">
+        <label for="subPhone">M‑Pesa Number</label>
+        <input type="tel" id="subPhone" class="no-icon" placeholder="0712 345 678" inputmode="tel" />
+      </div>
+      <div id="subPhoneAccount" style="font-size:11px;color:var(--gray-500);font-weight:600;margin-top:-8px;margin-bottom:14px;">
+        This is the number on your account. You can change it.
+      </div>
+      <button class="btn btn-primary" id="confirmSubscribe">Send STK Push</button>
+      <div class="modal-note">
+        A prompt will appear on your phone. Enter your M‑Pesa PIN to complete payment.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DEPOSIT MODAL -->
 <div class="modal-backdrop" id="depositModal">
   <div class="modal">
     <button class="modal-close" data-close="depositModal">✕</button>
@@ -668,25 +679,28 @@
       </span>
       &nbsp;Minimum KES 50
     </div>
-    <div class="field">
-      <label for="depositPhone">M‑Pesa Number</label>
-      <input type="tel" id="depositPhone" class="no-icon" placeholder="0712 345 678" inputmode="tel" />
+    <div class="msg" id="depositModalMsg"></div>
+    <div id="depositForm">
+      <div class="field">
+        <label for="depositPhone">M‑Pesa Number</label>
+        <input type="tel" id="depositPhone" class="no-icon" placeholder="0712 345 678" inputmode="tel" />
+      </div>
+      <input type="number" class="amount-input" id="depositAmount" placeholder="0" inputmode="numeric" />
+      <div class="quick-amounts">
+        <button class="quick-amt" data-amt="50">50</button>
+        <button class="quick-amt" data-amt="100">100</button>
+        <button class="quick-amt" data-amt="200">200</button>
+        <button class="quick-amt" data-amt="500">500</button>
+        <button class="quick-amt" data-amt="1000">1000</button>
+        <button class="quick-amt" data-amt="2000">2000</button>
+      </div>
+      <button class="btn btn-mpesa" id="confirmDeposit">Send STK to this number</button>
+      <div class="modal-note">You'll receive an STK push on your phone. Enter your M‑Pesa PIN to complete.</div>
     </div>
-    <input type="number" class="amount-input" id="depositAmount" placeholder="0" inputmode="numeric" />
-    <div class="quick-amounts">
-      <button class="quick-amt" data-amt="50">50</button>
-      <button class="quick-amt" data-amt="100">100</button>
-      <button class="quick-amt" data-amt="200">200</button>
-      <button class="quick-amt" data-amt="500">500</button>
-      <button class="quick-amt" data-amt="1000">1000</button>
-      <button class="quick-amt" data-amt="2000">2000</button>
-    </div>
-    <button class="btn btn-mpesa" id="confirmDeposit">Send STK to this number</button>
-    <div class="modal-note">You'll receive an STK push on your phone. Enter your M‑Pesa PIN to complete.</div>
   </div>
 </div>
 
-<!-- ═══════════════ WITHDRAW MODAL ═══════════════ -->
+<!-- WITHDRAW MODAL -->
 <div class="modal-backdrop" id="withdrawModal">
   <div class="modal">
     <button class="modal-close" data-close="withdrawModal">✕</button>
@@ -701,6 +715,7 @@
       </span>
       &nbsp;Minimum KES 200
     </div>
+    <div class="msg" id="withdrawModalMsg"></div>
     <input type="number" class="amount-input" id="withdrawAmount" placeholder="0" inputmode="numeric" />
     <div class="quick-amounts">
       <button class="quick-amt" data-amt="200">200</button>
@@ -715,7 +730,7 @@
   </div>
 </div>
 
-<!-- ═══════════════ SURVEY FULL-SCREEN ═══════════════ -->
+<!-- SURVEY FULL-SCREEN -->
 <div class="survey-backdrop" id="surveyModal">
   <div class="survey-panel">
     <div class="survey-topbar">
@@ -750,6 +765,7 @@
   let currentType = '';
   let totalTaskCount = 0;
   let survey = { task:null, questions:[], current:0, answers:[] };
+  let currentSubscribeTier = null;
 
   async function api(path, opts = {}) {
     const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
@@ -781,8 +797,8 @@
   function showMsg(el, text, type='success') {
     el.textContent = text;
     el.className = `msg show ${type}`;
-    setTimeout(() => el.classList.remove('show'), 6000);
   }
+  function clearMsg(el) { el.className = 'msg'; el.textContent = ''; }
 
   // ── PASSWORD TOGGLE & STRENGTH ──
   function attachToggle(btnId, inputId) {
@@ -1030,9 +1046,7 @@
       $('surveyFooter').style.display = 'flex';
       renderSurveyQuestion();
       openModal('surveyModal');
-    } catch (err) {
-      alert(err.message);
-    }
+    } catch (err) { alert(err.message); }
   }
 
   function renderSurveyQuestion() {
@@ -1241,35 +1255,108 @@
     goTo('subscribe');
   });
 
+  // ── SUBSCRIBE FLOW ──
+  document.querySelectorAll('.tier-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentSubscribeTier = btn.dataset.tier;
+      const names  = { classic:'Classic', premium:'Premium', golden:'Golden' };
+      const prices = { classic:200, premium:350, golden:450 };
+
+      $('subTierName').textContent  = names[currentSubscribeTier];
+      $('subTierPrice').textContent = prices[currentSubscribeTier];
+      $('subPhone').value = user?.phone || '';
+      clearMsg($('subModalMsg'));
+      $('subModalForm').style.display = 'block';
+      $('confirmSubscribe').disabled = false;
+      $('confirmSubscribe').textContent = 'Send STK Push';
+      openModal('subscribeModal');
+    });
+  });
+
+  $('confirmSubscribe').addEventListener('click', async () => {
+    if (!currentSubscribeTier) return;
+    const phone = $('subPhone').value.trim();
+    if (!phone) return showMsg($('subModalMsg'), 'Please enter your M‑Pesa number', 'error');
+
+    const btn = $('confirmSubscribe');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="loader"></span>';
+
+    try {
+      const data = await api('/api/subscribe', {
+        method: 'POST',
+        body: JSON.stringify({ tier: currentSubscribeTier, phone })
+      });
+
+      showMsg($('subModalMsg'),
+        `📲 STK push sent to ${data.phone}. Check your phone and enter your M‑Pesa PIN to complete payment.`,
+        'success');
+
+      btn.textContent = 'Waiting for payment…';
+      btn.disabled = true;
+
+      let attempts = 0;
+      const tier = currentSubscribeTier;
+      const poll = setInterval(async () => {
+        attempts++;
+        try {
+          const me = await api('/api/me');
+          if (me.subscriptionTier === tier && me.subscriptionExpiry) {
+            clearInterval(poll);
+            user = me;
+            localStorage.setItem('jobpay_user', JSON.stringify(me));
+            updateHeaderPill();
+            showMsg($('subModalMsg'), `✅ ${tier.charAt(0).toUpperCase() + tier.slice(1)} activated! Valid for 7 days.`, 'success');
+            setTimeout(() => {
+              closeModal('subscribeModal');
+              loadDashboard();
+              goTo('dashboard');
+            }, 1500);
+            return;
+          }
+        } catch {}
+
+        if (attempts > 30) {
+          clearInterval(poll);
+          showMsg($('subModalMsg'),
+            '⏳ Payment not received yet. If you already paid, your plan will activate automatically. Otherwise try again.',
+            'error');
+          btn.disabled = false;
+          btn.textContent = 'Send STK Push';
+        }
+      }, 3000);
+
+    } catch (err) {
+      showMsg($('subModalMsg'), err.message, 'error');
+      btn.disabled = false;
+      btn.textContent = 'Send STK Push';
+    }
+  });
+
+  // ── DEPOSIT ──
   $('btnDeposit').addEventListener('click', () => {
     $('depositAmount').value = '';
     $('depositPhone').value = user?.phone || '';
+    clearMsg($('depositModalMsg'));
+    $('confirmDeposit').disabled = false;
+    $('confirmDeposit').textContent = 'Send STK to this number';
     openModal('depositModal');
-  });
-  $('btnWithdraw').addEventListener('click', () => {
-    $('withdrawAmount').value = '';
-    openModal('withdrawModal');
-  });
-
-  document.querySelectorAll('.quick-amt').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const modal = btn.closest('.modal');
-      modal.querySelector('input.amount-input').value = btn.dataset.amt;
-    });
   });
 
   $('confirmDeposit').addEventListener('click', async () => {
     const amount = Number($('depositAmount').value) || 0;
     const phone  = $('depositPhone').value.trim();
-    if (!phone) return alert('Please enter your M‑Pesa number');
-    if (amount < 50) return alert('Minimum deposit is KES 50');
-    const btn = $('confirmDeposit'); btn.disabled = true; btn.innerHTML = '<span class="loader"></span>';
+    if (!phone) return showMsg($('depositModalMsg'), 'Please enter your M‑Pesa number', 'error');
+    if (amount < 50) return showMsg($('depositModalMsg'), 'Minimum deposit is KES 50', 'error');
+    const btn = $('confirmDeposit');
+    btn.disabled = true; btn.innerHTML = '<span class="loader"></span>';
     try {
       const res = await api('/api/wallet/deposit', {
         method:'POST', body: JSON.stringify({ amount, phone })
       });
-      closeModal('depositModal');
-      alert(res.message);
+      showMsg($('depositModalMsg'), `📲 STK push sent to ${res.phone}. Approve KES ${res.amount} on your phone.`, 'success');
+      btn.textContent = 'Waiting for payment…';
+
       const startBal = user.balance || 0;
       let attempts = 0;
       const poll = setInterval(async () => {
@@ -1279,97 +1366,4 @@
           if (me.balance > startBal) {
             clearInterval(poll);
             user = me;
-            loadAccount();
-            alert('✓ Deposit successful!');
-          }
-        } catch {}
-        if (attempts > 30) clearInterval(poll);
-      }, 3000);
-    } catch (err) { alert(err.message); }
-    finally { btn.disabled = false; btn.textContent = 'Send STK to this number'; }
-  });
-
-  $('confirmWithdraw').addEventListener('click', async () => {
-    const amount = Number($('withdrawAmount').value) || 0;
-    if (amount < 200) return alert('Minimum withdrawal is KES 200');
-    const btn = $('confirmWithdraw'); btn.disabled = true; btn.innerHTML = '<span class="loader"></span>';
-    try {
-      const res = await api('/api/wallet/withdraw', { method:'POST', body: JSON.stringify({ amount }) });
-      closeModal('withdrawModal');
-      alert(res.message);
-      loadAccount();
-    } catch (err) { alert(err.message); }
-    finally { btn.disabled = false; btn.textContent = 'Withdraw to M‑Pesa'; }
-  });
-
-  // ── SUBSCRIBE ──
-  document.querySelectorAll('.tier-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const tier = btn.dataset.tier;
-      const original = btn.textContent;
-      btn.disabled = true; btn.innerHTML = '<span class="loader"></span>';
-      try {
-        const data = await api('/api/subscribe', { method:'POST', body: JSON.stringify({ tier }) });
-        showMsg($('subMsg'), `📲 STK push sent for KES ${data.amount}. Enter your M‑Pesa PIN.`, 'success');
-        let attempts = 0;
-        const poll = setInterval(async () => {
-          attempts++;
-          try {
-            const me = await api('/api/me');
-            if (me.subscriptionTier === tier && me.subscriptionExpiry) {
-              clearInterval(poll);
-              user = me;
-              localStorage.setItem('jobpay_user', JSON.stringify(me));
-              updateHeaderPill();
-              showMsg($('subMsg'), `✅ ${tier} activated! Valid for 7 days.`, 'success');
-              setTimeout(() => { loadDashboard(); goTo('dashboard'); }, 1200);
-            }
-          } catch {}
-          if (attempts > 20) clearInterval(poll);
-        }, 3000);
-      } catch (err) { showMsg($('subMsg'), err.message, 'error'); }
-      finally { btn.disabled = false; btn.textContent = original; }
-    });
-  });
-
-  // ── PROFILE ──
-  async function loadProfile() {
-    try {
-      const me = await api('/api/me');
-      $('profileBody').innerHTML = `
-        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--gray-100);">
-          <span style="color:var(--gray-500);font-weight:600;">Username</span>
-          <span style="font-weight:800;">${me.username}</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--gray-100);">
-          <span style="color:var(--gray-500);font-weight:600;">Email</span>
-          <span style="font-weight:800;font-size:13px;">${me.email}</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--gray-100);">
-          <span style="color:var(--gray-500);font-weight:600;">Phone</span>
-          <span style="font-weight:800;">${me.phone || '—'}</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--gray-100);">
-          <span style="color:var(--gray-500);font-weight:600;">Plan</span>
-          <span style="font-weight:800;color:var(--green);text-transform:capitalize;">${me.subscriptionTier}</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--gray-100);">
-          <span style="color:var(--gray-500);font-weight:600;">Total earned</span>
-          <span style="font-weight:800;color:var(--green);">KES ${(me.totalEarnings||0).toLocaleString()}</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--gray-100);">
-          <span style="color:var(--gray-500);font-weight:600;">Available balance</span>
-          <span style="font-weight:800;">KES ${(me.balance||0).toLocaleString()}</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;padding:10px 0;">
-          <span style="color:var(--gray-500);font-weight:600;">Pending balance</span>
-          <span style="font-weight:800;color:var(--yellow);">KES ${(me.pendingBalance||0).toLocaleString()}</span>
-        </div>`;
-    } catch (err) { console.error(err); }
-  }
-
-  if (token && user) enterApp();
-})();
-</script>
-</body>
-        </html>
+            showMsg($('depositModalMsg'), `✅ Deposit successful! New balance: KES ${me.balance.toLocaleString()}`, '
