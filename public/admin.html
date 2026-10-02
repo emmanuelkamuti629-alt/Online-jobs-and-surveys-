@@ -21,7 +21,6 @@
     line-height:1.5; -webkit-font-smoothing:antialiased;
     min-height:100vh; padding-bottom:40px;
   }
-  /* LOGIN */
   .login-wrap {
     display:flex; align-items:center; justify-content:center;
     min-height:100vh; padding:20px; background:linear-gradient(135deg,#1A1A1A,#2E7D1E);
@@ -59,7 +58,6 @@
   .msg { padding:12px 14px; border-radius:10px; margin-bottom:14px; font-size:13px; font-weight:700; display:none; }
   .msg.show { display:block; }
   .msg.error { background:var(--red-light); color:var(--red); }
-  /* LAYOUT */
   .layout { display:none; min-height:100vh; }
   .layout.show { display:block; }
   .topbar {
@@ -83,7 +81,6 @@
     font-size:11px; font-weight:800; cursor:pointer; font-family:inherit;
   }
   .container { max-width:1400px; margin:0 auto; padding:20px; }
-  /* TABS */
   .tabs {
     display:flex; gap:6px; margin-bottom:20px; overflow-x:auto;
     padding-bottom:4px; border-bottom:1px solid var(--gray-200);
@@ -98,7 +95,6 @@
   .tab-pane { display:none; }
   .tab-pane.active { display:block; animation:fade .2s; }
   @keyframes fade { from{opacity:0;} to{opacity:1;} }
-  /* STATS GRID */
   .stat-grid {
     display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
     gap:14px; margin-bottom:24px;
@@ -133,7 +129,6 @@
   .stat-val.red { color:var(--red); }
   .stat-val.gold { color:var(--gold); }
   .stat-val.yellow { color:#D4901A; }
-  /* TABLE */
   .table-card {
     background:white; border-radius:var(--radius); overflow:hidden;
     box-shadow:var(--shadow); border:1px solid var(--gray-200);
@@ -181,7 +176,6 @@
     font-weight:600; font-size:13px;
   }
   .empty-ic { font-size:38px; margin-bottom:10px; opacity:0.4; }
-  /* PAGINATION */
   .pager {
     display:flex; align-items:center; justify-content:space-between;
     padding:14px 20px; border-top:1px solid var(--gray-200); font-size:12px;
@@ -211,7 +205,7 @@
 </head>
 <body>
 
-<!-- ═══════════════ LOGIN ═══════════════ -->
+<!-- LOGIN -->
 <div class="login-wrap" id="loginWrap">
   <div class="login-card">
     <div class="login-logo">🛡</div>
@@ -230,7 +224,7 @@
   </div>
 </div>
 
-<!-- ═══════════════ DASHBOARD ═══════════════ -->
+<!-- DASHBOARD -->
 <div class="layout" id="layout">
   <div class="topbar">
     <div class="topbar-brand">
@@ -272,7 +266,7 @@
             <thead>
               <tr>
                 <th>Username</th><th>Email</th><th>Phone</th>
-                <th>Plan</th><th>Available</th><th>Pending</th><th>Earned</th>
+                <th>Plan</th><th>Activation</th><th>Available</th><th>Pending</th><th>Earned</th>
                 <th>Last Login</th><th>Joined</th>
               </tr>
             </thead>
@@ -321,7 +315,7 @@
         <div class="table-wrap">
           <table>
             <thead>
-              <tr><th>User</th><th>Type</th><th>Amount</th><th>Phone</th><th>Status</th><th>MPESA Ref</th><th>When</th></tr>
+              <tr><th>User</th><th>Type</th><th>Amount</th><th>Phone</th><th>Status</th><th>MPESA Ref</th><th>When</th><th>Action</th></tr>
             </thead>
             <tbody id="txnsBody"></tbody>
           </table>
@@ -445,7 +439,6 @@
     logins:  { page:1, size:50, success:'' }
   };
 
-  // ── API ──
   async function api(path, opts = {}) {
     const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
     if (token) headers.Authorization = `Bearer ${token}`;
@@ -456,7 +449,6 @@
     return data;
   }
 
-  // ── HELPERS ──
   function fmtDate(d) {
     if (!d) return '—';
     const dt = new Date(d);
@@ -524,7 +516,6 @@
   }
   $('logoutBtn').addEventListener('click', () => { if (confirm('Logout?')) logout(); });
 
-  // ── ENTER APP ──
   function enterApp() {
     $('loginWrap').style.display = 'none';
     $('layout').classList.add('show');
@@ -548,6 +539,7 @@
         { cls:'', ic:'⭐', lbl:'Active Subs', val: s.subscriptions.active, sub:`${s.subscriptions.classic}C • ${s.subscriptions.premium}P • ${s.subscriptions.golden}G` },
         { cls:'red', ic:'✕', lbl:'Failed Payments', val: s.transactions.failed, sub:`${s.transactions.pending} pending` },
         { cls:'', ic:'✓', lbl:'Successful Payments', val: s.transactions.completed, sub:`${s.transactions.total} total attempts` },
+        { cls:'purple', ic:'🔓', lbl:'Activations', val: s.pending.activations || 0, sub:`${fmtMoney(s.revenue.activations||0)} collected` },
         { cls:'yellow', ic:'⏳', lbl:'Pending Rewards', val: s.pending.rewards, sub:`${fmtMoney(s.pending.rewardsAmount)} awaiting` },
         { cls:'purple', ic:'💸', lbl:'Pending Withdrawals', val: s.pending.withdrawals, sub:'awaiting payout' },
         { cls:'blue', ic:'👀', lbl:'Site Visits', val: s.visits.total.toLocaleString(), sub:`${s.visits.today} today • ${s.visits.uniqueToday} unique` },
@@ -579,13 +571,16 @@
             <td class="mono">${escapeHtml(u.phone || '—')}</td>
             <td><span class="sub-badge ${u.subscriptionTier}">${u.subscriptionTier}</span>
                 ${u.subscriptionActive ? ' <span class="pill green">Active</span>' : ''}</td>
+            <td>${u.activationFeePaid
+              ? '<span class="pill green">✓ Paid</span>'
+              : '<span class="pill red">✗ Not paid</span>'}</td>
             <td><strong>${fmtMoney(u.balance)}</strong></td>
             <td style="color:#D4901A;font-weight:800;">${fmtMoney(u.pendingBalance || 0)}</td>
             <td style="color:var(--green);font-weight:800;">${fmtMoney(u.totalEarnings)}</td>
             <td title="${u.lastLoginIp || ''}">${u.lastLoginAt ? timeAgo(u.lastLoginAt) : '<span style="color:var(--gray-500);">never</span>'}</td>
             <td>${timeAgo(u.createdAt)}</td>
           </tr>`).join('')
-        : `<tr><td colspan="9"><div class="empty"><div class="empty-ic">👥</div>No users yet</div></td></tr>`;
+        : `<tr><td colspan="10"><div class="empty"><div class="empty-ic">👥</div>No users yet</div></td></tr>`;
       const totalPages = Math.ceil(data.total / size);
       $('usersPageInfo').textContent = `Page ${page} of ${totalPages || 1}`;
       document.querySelector('[data-page-prev="users"]').disabled = page <= 1;
@@ -621,7 +616,18 @@
       $('txnsBody').innerHTML = data.transactions.length
         ? data.transactions.map(t => {
             const statusPill = { completed:'green', failed:'red', pending:'yellow' }[t.status] || 'gray';
-            const kindLabel = t.kind === 'deposit' ? '💳 Deposit' : `⭐ ${t.tier || 'sub'}`;
+            const kindLabel = t.kind === 'deposit'
+              ? '💳 Deposit'
+              : t.kind === 'activation'
+              ? '🔓 Activation'
+              : `⭐ ${t.tier || 'sub'}`;
+            const canMarkPaid = (t.status === 'failed' || t.status === 'pending');
+            const actionCell = canMarkPaid
+              ? `<button class="pager-btn mark-paid-btn" data-id="${t.id}"
+                   style="background:var(--green);color:white;border-color:var(--green);padding:5px 10px;font-size:11px;">
+                   ✓ Mark Paid
+                 </button>`
+              : `<span style="color:var(--gray-500);font-size:11px;">—</span>`;
             return `
               <tr>
                 <td><strong>${escapeHtml(t.user?.username || '—')}</strong><br>
@@ -633,9 +639,30 @@
                     ${t.reason ? `<br><span style="font-size:10px;color:var(--gray-500);">${escapeHtml(t.reason)}</span>` : ''}</td>
                 <td class="mono">${escapeHtml(t.mpesaRef || '—')}</td>
                 <td>${timeAgo(t.completedAt || t.createdAt)}</td>
+                <td>${actionCell}</td>
               </tr>`;
           }).join('')
-        : `<tr><td colspan="7"><div class="empty"><div class="empty-ic">💳</div>No transactions</div></td></tr>`;
+        : `<tr><td colspan="8"><div class="empty"><div class="empty-ic">💳</div>No transactions</div></td></tr>`;
+
+      // Attach Mark Paid handlers
+      document.querySelectorAll('.mark-paid-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          if (!confirm('Mark this transaction as PAID? This will credit the user\'s account or activate their subscription.')) return;
+          btn.disabled = true;
+          btn.textContent = '...';
+          try {
+            await api(`/api/admin/transactions/${btn.dataset.id}/mark-paid`, { method: 'POST' });
+            alert('✓ Marked as paid and user credited.');
+            loadTxns();
+            loadStats();
+          } catch (e) {
+            alert(e.message);
+            btn.disabled = false;
+            btn.textContent = '✓ Mark Paid';
+          }
+        });
+      });
+
       const totalPages = Math.ceil(data.total / size);
       $('txnsPageInfo').textContent = `Page ${page} of ${totalPages || 1}`;
       document.querySelector('[data-page-prev="txns"]').disabled = page <= 1;
@@ -811,7 +838,6 @@
       document.querySelectorAll('.tab-pane').forEach(x => x.classList.remove('active'));
       t.classList.add('active');
       $('pane-' + t.dataset.tab).classList.add('active');
-      // Lazy reload each tab when opened
       if (t.dataset.tab === 'users') loadUsers();
       if (t.dataset.tab === 'subs') loadSubs();
       if (t.dataset.tab === 'txns') loadTxns();
@@ -872,20 +898,12 @@
 
   // ── REFRESH ──
   $('refreshBtn').addEventListener('click', () => {
-    loadStats();
-    loadUsers();
-    loadSubs();
-    loadTxns();
-    loadPending();
-    loadWithdrawals();
-    loadVisits();
-    loadLogins();
+    loadStats(); loadUsers(); loadSubs(); loadTxns();
+    loadPending(); loadWithdrawals(); loadVisits(); loadLogins();
   });
 
   // ── AUTO REFRESH STATS every 30s ──
-  setInterval(() => {
-    if (token) loadStats();
-  }, 30000);
+  setInterval(() => { if (token) loadStats(); }, 30000);
 
   // ── INIT ──
   if (token) {
@@ -894,4 +912,4 @@
 })();
 </script>
 </body>
-        </html>
+                                                                                            </html>
