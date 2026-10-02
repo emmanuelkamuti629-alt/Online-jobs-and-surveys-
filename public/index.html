@@ -277,7 +277,6 @@
   .pending-label { font-size:11px; font-weight:900; text-transform:uppercase; letter-spacing:0.6px; color:#8A6D3B; margin-bottom:6px; }
   .pending-value { font-size:26px; font-weight:900; color:#8A6D3B; letter-spacing:-0.5px; }
   .pending-sub { font-size:11px; color:#8A6D3B; font-weight:600; margin-top:4px; opacity:0.8; }
-  /* ══════ M-PESA LOGO ══════ */
   .mpesa-logo {
     display:inline-flex;
     align-items:center;
@@ -459,6 +458,43 @@
   .tx-amount { font-size:15px; font-weight:900; white-space:nowrap; }
   .tx-amount.positive { color:var(--green); }
   .tx-amount.negative { color:var(--red); }
+
+  /* ══════ FLOWER SPRINKLE CELEBRATION ══════ */
+  .flower-sprinkle {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 500;
+    overflow: hidden;
+  }
+  .flower {
+    position: absolute;
+    top: -60px;
+    font-size: 28px;
+    line-height: 1;
+    opacity: 0;
+    animation-name: flowerFall;
+    animation-timing-function: linear;
+    animation-fill-mode: forwards;
+    will-change: transform, opacity;
+  }
+  @keyframes flowerFall {
+    0% { transform: translateY(-60px) rotate(0deg) scale(0.5); opacity: 0; }
+    10% { opacity: 1; }
+    85% { opacity: 1; }
+    100% { transform: translateY(105vh) rotate(720deg) scale(1.1); opacity: 0; }
+  }
+  .success-title.celebrate {
+    animation: celebratePulse 0.7s ease-out;
+    color: var(--green-dark);
+    font-size: 26px;
+  }
+  @keyframes celebratePulse {
+    0%   { transform: scale(0.6); opacity: 0; }
+    50%  { transform: scale(1.15); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
   @media (min-width:500px) {
     .tier-grid { flex-direction:row; }
     .tier-card { flex:1; }
@@ -737,6 +773,57 @@
   </div>
 </div>
 
+<!-- ACTIVATION FEE MODAL -->
+<div class="modal-backdrop" id="activationModal">
+  <div class="modal">
+    <button class="modal-close" data-close="activationModal">✕</button>
+    <div class="modal-title">Account Activation</div>
+    <div class="modal-sub mpesa-modal-sub">
+      <span class="mpesa-logo">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 64">
+          <rect width="200" height="64" rx="10" fill="#43B02A"/>
+          <text x="14" y="46" font-family="'Arial Black','Helvetica Neue',Arial,sans-serif"
+                font-size="38" font-weight="900" fill="#FFFFFF" letter-spacing="-1">M</text>
+          <g transform="translate(64,10)">
+            <rect x="0" y="0" width="26" height="44" rx="5" fill="none" stroke="#FFFFFF" stroke-width="3"/>
+            <rect x="5" y="5" width="16" height="30" rx="2" fill="#7AC943"/>
+            <circle cx="13" cy="40" r="2" fill="#FFFFFF"/>
+          </g>
+          <path d="M 58 26 Q 77 16 96 28" stroke="#E30613" stroke-width="4"
+                fill="none" stroke-linecap="round"/>
+          <text x="102" y="46" font-family="'Arial Black','Helvetica Neue',Arial,sans-serif"
+                font-size="38" font-weight="900" fill="#FFFFFF" letter-spacing="-1">PESA</text>
+        </svg>
+      </span>
+      <span class="mpesa-modal-text">One-time activation fee</span>
+    </div>
+
+    <div style="background:#FFF8E1;border:1.5px solid #FFE8A1;border-radius:14px;
+                padding:18px;margin-bottom:16px;">
+      <div style="font-size:11px;font-weight:900;text-transform:uppercase;
+                  letter-spacing:0.6px;color:#8A6D3B;margin-bottom:6px;">
+        ⚠️ One-time fee required
+      </div>
+      <div style="font-size:28px;font-weight:900;color:#8A6D3B;">KES 499</div>
+      <div style="font-size:12px;color:#8A6D3B;font-weight:600;margin-top:6px;line-height:1.5;">
+        To unlock withdrawals, you must pay a one-time account activation fee of
+        <strong>KES 499</strong>. This is charged only once before your first withdrawal.
+      </div>
+    </div>
+
+    <div class="msg" id="activationModalMsg"></div>
+
+    <div class="field">
+      <label for="activationPhone">M‑Pesa Number</label>
+      <input type="tel" id="activationPhone" class="no-icon" placeholder="0712 345 678" inputmode="tel" />
+    </div>
+    <button class="btn btn-mpesa" id="confirmActivation">Pay KES 499 Activation Fee</button>
+    <div class="modal-note">
+      You'll receive an STK push on your phone. Enter your M‑Pesa PIN to complete.
+    </div>
+  </div>
+</div>
+
 <!-- DEPOSIT MODAL -->
 <div class="modal-backdrop" id="depositModal">
   <div class="modal">
@@ -862,7 +949,12 @@
     if (token) headers.Authorization = `Bearer ${token}`;
     const res = await fetch(path, { ...opts, headers });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Request failed');
+    if (!res.ok) {
+      const err = new Error(data.error || data.message || 'Request failed');
+      err.code = data.error;
+      err.data = data;
+      throw err;
+    }
     return data;
   }
 
@@ -1191,22 +1283,51 @@
     }
   });
 
+  function sprinkleFlowers(durationMs = 5500) {
+    const container = document.createElement('div');
+    container.className = 'flower-sprinkle';
+    document.body.appendChild(container);
+
+    const flowers = ['🌸','🌺','🌼','🌻','🌷','💐','🌹','🏵️','💮','🌾','🎉','✨'];
+    const total = 45;
+
+    for (let i = 0; i < total; i++) {
+      const f = document.createElement('div');
+      f.className = 'flower';
+      f.textContent = flowers[Math.floor(Math.random() * flowers.length)];
+      f.style.left = (Math.random() * 100) + '%';
+      f.style.fontSize = (16 + Math.random() * 26) + 'px';
+      f.style.animationDuration = (2.5 + Math.random() * 2.5) + 's';
+      f.style.animationDelay = (Math.random() * 1.8) + 's';
+      container.appendChild(f);
+    }
+
+    setTimeout(() => container.remove(), durationMs);
+  }
+
   function showSurveySuccess(reward) {
     $('surveyProgressBar').style.width = '100%';
     $('surveyProgressPct').textContent = '100%';
-    $('surveyProgressText').textContent = 'Submitted';
+    $('surveyProgressText').textContent = 'Completed';
     $('surveyFooter').style.display = 'none';
+
     $('surveyBody').innerHTML = `
       <div class="survey-success">
-        <div class="success-icon pending">⏳</div>
-        <div class="success-title">Task Submitted!</div>
-        <div class="success-amount pending">KES ${reward}</div>
+        <div class="success-icon" style="background:linear-gradient(135deg,#43B02A,#7AC943);">🎉</div>
+        <div class="success-title celebrate">Congratulations!</div>
+        <div style="font-size:15px;font-weight:800;color:var(--green-dark);margin:2px 0 6px;">
+          You have completed the task!
+        </div>
+        <div class="success-amount pending" style="color:#D4901A;">KES ${reward}</div>
         <div class="success-sub">
           Your reward is <strong>pending admin confirmation</strong>.<br>
           It will be added to your Available Balance once approved.
         </div>
         <button class="btn btn-primary" id="successDone" style="width:100%;">Back to Tasks</button>
       </div>`;
+
+    sprinkleFlowers();
+
     $('successDone').addEventListener('click', () => {
       closeModal('surveyModal');
       $('surveyFooter').style.display = 'flex';
@@ -1526,12 +1647,82 @@
     }
   });
 
+  // ── WITHDRAW (with activation gate) ──
   $('btnWithdraw').addEventListener('click', () => {
+    // Rule: activation fee must be paid before the first withdrawal
+    if (user?.activationFeePaid !== true) {
+      if ((user?.balance || 0) < 200) {
+        alert('You need at least KES 200 in your Available Balance to withdraw.');
+        return;
+      }
+      $('activationPhone').value = user?.phone || '';
+      clearMsg($('activationModalMsg'));
+      $('confirmActivation').disabled = false;
+      $('confirmActivation').textContent = 'Pay KES 499 Activation Fee';
+      openModal('activationModal');
+      return;
+    }
     $('withdrawAmount').value = '';
     clearMsg($('withdrawModalMsg'));
     $('confirmWithdraw').disabled = false;
     $('confirmWithdraw').textContent = 'Withdraw to M‑Pesa';
     openModal('withdrawModal');
+  });
+
+  // ── ACTIVATION FEE ──
+  $('confirmActivation').addEventListener('click', async () => {
+    const phone = $('activationPhone').value.trim();
+    if (!phone) return showMsg($('activationModalMsg'), 'Please enter your M‑Pesa number', 'error');
+    const btn = $('confirmActivation');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="loader"></span>';
+    try {
+      const res = await api('/api/wallet/pay-activation', {
+        method: 'POST',
+        body: JSON.stringify({ phone })
+      });
+      showMsg($('activationModalMsg'),
+        `📲 STK push sent to ${res.phone}. Pay KES ${res.amount} to activate your account.`,
+        'success');
+      btn.textContent = 'Waiting for payment…';
+
+      let attempts = 0;
+      const poll = setInterval(async () => {
+        attempts++;
+        try {
+          const me = await api('/api/me');
+          if (me.activationFeePaid === true) {
+            clearInterval(poll);
+            user = me;
+            localStorage.setItem('jobpay_user', JSON.stringify(me));
+            showMsg($('activationModalMsg'),
+              '✅ Account activated! You can now request a withdrawal.',
+              'success');
+            setTimeout(() => {
+              closeModal('activationModal');
+              $('withdrawAmount').value = '';
+              clearMsg($('withdrawModalMsg'));
+              $('confirmWithdraw').disabled = false;
+              $('confirmWithdraw').textContent = 'Withdraw to M‑Pesa';
+              openModal('withdrawModal');
+            }, 1500);
+            return;
+          }
+        } catch {}
+        if (attempts > 30) {
+          clearInterval(poll);
+          showMsg($('activationModalMsg'),
+            '⏳ Payment not received. If you already paid, please wait a moment or reopen this window.',
+            'error');
+          btn.disabled = false;
+          btn.textContent = 'Pay KES 499 Activation Fee';
+        }
+      }, 3000);
+    } catch (err) {
+      showMsg($('activationModalMsg'), err.message, 'error');
+      btn.disabled = false;
+      btn.textContent = 'Pay KES 499 Activation Fee';
+    }
   });
 
   $('confirmWithdraw').addEventListener('click', async () => {
@@ -1548,6 +1739,16 @@
         loadAccount();
       }, 1800);
     } catch (err) {
+      // If backend says activation required, open activation modal
+      if (err.code === 'ACTIVATION_REQUIRED') {
+        closeModal('withdrawModal');
+        $('activationPhone').value = user?.phone || '';
+        clearMsg($('activationModalMsg'));
+        $('confirmActivation').disabled = false;
+        $('confirmActivation').textContent = 'Pay KES 499 Activation Fee';
+        openModal('activationModal');
+        return;
+      }
       showMsg($('withdrawModalMsg'), err.message, 'error');
       btn.disabled = false;
       btn.textContent = 'Withdraw to M‑Pesa';
@@ -1582,6 +1783,12 @@
           <span style="font-weight:800;color:var(--green);text-transform:capitalize;">${me.subscriptionTier}</span>
         </div>
         <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--gray-100);">
+          <span style="color:var(--gray-500);font-weight:600;">Activation</span>
+          <span style="font-weight:800;color:${me.activationFeePaid ? 'var(--green)' : 'var(--red)'};">
+            ${me.activationFeePaid ? '✓ Paid' : '✗ Not paid'}
+          </span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--gray-100);">
           <span style="color:var(--gray-500);font-weight:600;">Total earned</span>
           <span style="font-weight:800;color:var(--green);">KES ${(me.totalEarnings||0).toLocaleString()}</span>
         </div>
@@ -1600,4 +1807,4 @@
 })();
 </script>
 </body>
-  </html>
+                                                                                      </html>
