@@ -40,6 +40,7 @@ const SUBSCRIPTION_DAYS = 7;
 const FREE_TASK_REWARD = 21;
 const MIN_DEPOSIT = 50;
 const MIN_WITHDRAWAL = 200;
+const ACTIVATION_FEE = 499;
 const PAYMENT_TIMEOUT_MS = 60 * 1000;
 const SEED_VERSION = 3;
 
@@ -258,7 +259,8 @@ function publicUser(u) {
     tasksRemaining: Math.max(0, limit - done),
     balance: u.balance || 0,
     pendingBalance: u.pendingBalance || 0,
-    totalEarnings: u.totalEarnings || 0
+    totalEarnings: u.totalEarnings || 0,
+    activationFeePaid: u.activationFeePaid === true
   };
 }
 function auth(req, res, next) {
@@ -278,21 +280,13 @@ function adminAuth(req, res, next) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// PAYHERO PAYMENT MODULE — reusable for subscriptions & deposits
+// PAYHERO PAYMENT MODULE
 // ═══════════════════════════════════════════════════════════════════════════
 function payheroAuthHeader() {
   const t = PAYHERO_BASIC_AUTH_TOKEN || '';
   return t.startsWith('Basic ') ? t : `Basic ${t}`;
 }
 
-/**
- * Send an STK push via PayHero v2 API.
- * @param {object} p
- * @param {number} p.amount       - Whole KES amount
- * @param {string} p.phone        - 2547xxxxxxxx
- * @param {string} p.reference    - Your unique external_reference
- * @returns {Promise<{ok:boolean, data:any, message:string}>}
- */
 async function sendPayHeroStk({ amount, phone, reference }) {
   if (!PAYHERO_BASIC_AUTH_TOKEN) return { ok: false, data: null, message: 'PayHero token not configured' };
   if (!PAYHERO_CHANNEL_ID)       return { ok: false, data: null, message: 'PayHero channel not configured' };
@@ -338,9 +332,6 @@ async function sendPayHeroStk({ amount, phone, reference }) {
   }
 }
 
-/**
- * Map PayHero/M‑Pesa ResultCode → friendly user message.
- */
 function mapPayHeroFailureReason(resultCode, resultDesc) {
   const code = String(resultCode);
   const map = {
@@ -405,6 +396,7 @@ app.post('/api/register', async (req, res) => {
       password: hashed, subscriptionTier: 'free', subscriptionExpiry: null,
       tasksCompletedToday: 0, lastTaskDate: today,
       balance: 0, pendingBalance: 0, totalEarnings: 0,
+      activationFeePaid: false,
       signupIp: ip, signupUa: req.headers['user-agent'] || '', createdAt: new Date()
     };
     const result = await usersCol.insertOne(user);
@@ -661,14 +653,73 @@ app.post('/api/wallet/deposit', auth, async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// WITHDRAW
+// ACTIVATION FEE (one-time KES 499, required before first withdrawal)
+// ═══════════════════════════════════════════════════════════════════════════
+app.post('/api/wallet/pay-activation', auth, async (req, res) => {
+  try {
+    const phoneInput = req.body?.phone;
+    const user = await usersCol.findOne({ _id: new ObjectId(req.userId) });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    if (user.activationFeePaid === true) {
+      return res.status(400).json({ error: 'Activation fee already paid' });
+    }
+
+    const phone = normalizePhone(phoneInput || user.phone);
+    if (!isValidKenyanPhone(phone)) {
+      return res.status(400).json({ error: 'Enter a valid M‑Pesa number' });
+    }
+
+    const amount = ACTIVATION_FEE;
+    const reference = `act_${user._id}_${Date.now()}`;
+
+    await txnsCol.insertOne({
+      userId: user._id, amount, reference, phone,
+      status: 'pending', kind: 'activation', createdAt: new Date()
+    });
+
+    const stk = await sendPayHeroStk({ amount, phone, reference });
+
+    if (!stk.ok) {
+      await txnsCol.updateOne(
+        { reference },
+        { $set: { status: 'failed', reason: stk.message, payheroResponse: stk.data } }
+      );
+      return res.status(400).json({ error: stk.message });
+    }
+
+    await txnsCol.updateOne({ reference }, { $set: { payheroResponse: stk.data } });
+
+    res.json({
+      message: `STK push sent to ${phone}. Pay KES ${amount} to activate your account.`,
+      reference, amount, phone
+    });
+  } catch (err) {
+    console.error('Activation error:', err.response?.data || err.message);
+    res.status(500).json({ error: 'Activation initiation failed' });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WITHDRAW (requires activation)
 // ═══════════════════════════════════════════════════════════════════════════
 app.post('/api/wallet/withdraw', auth, async (req, res) => {
   try {
     const amount = Number(req.body?.amount) || 0;
     if (amount < MIN_WITHDRAWAL) return res.status(400).json({ error: `Minimum withdrawal is KES ${MIN_WITHDRAWAL}` });
+
     const user = await usersCol.findOne({ _id: new ObjectId(req.userId) });
     if (!user) return res.status(404).json({ error: 'User not found' });
+
+    // ✨ Require one-time activation fee before the first withdrawal
+    if (user.activationFeePaid !== true) {
+      return res.status(403).json({
+        error: 'ACTIVATION_REQUIRED',
+        message: `Pay a one-time KES ${ACTIVATION_FEE} activation fee before your first withdrawal.`,
+        amount: ACTIVATION_FEE
+      });
+    }
+
     if ((user.balance || 0) < amount) return res.status(400).json({ error: 'Insufficient balance' });
 
     const upd = await usersCol.updateOne({ _id: user._id, balance: { $gte: amount } }, { $inc: { balance: -amount } });
@@ -798,6 +849,17 @@ app.post('/api/payhero/callback', async (req, res) => {
         mpesaRef, createdAt: new Date(), confirmedAt: new Date()
       });
       console.log(`💰 Deposit KES ${amount} credited to user ${userId}`);
+    } else if (prefix === 'act') {
+      await usersCol.updateOne(
+        { _id: new ObjectId(userId) },
+        { $set: { activationFeePaid: true, activationPaidAt: new Date() } }
+      );
+      await walletCol.insertOne({
+        userId: new ObjectId(userId), type: 'activation_fee', amount: -ACTIVATION_FEE,
+        phone: txn.phone, status: 'completed', reference,
+        mpesaRef, createdAt: new Date(), confirmedAt: new Date()
+      });
+      console.log(`✅ Activation fee paid by user ${userId} — withdrawals unlocked`);
     }
 
     await txnsCol.updateOne(
@@ -848,7 +910,8 @@ app.get('/api/admin/stats', adminAuth, async (req, res) => {
       loginSuccess, loginFail,
       txnsAll, txnsCompleted, txnsFailed, txnsPending,
       tasksCompletedAll,
-      pendingRewardsCount, pendingWithdrawalsCount
+      pendingRewardsCount, pendingWithdrawalsCount,
+      activationsCount
     ] = await Promise.all([
       usersCol.countDocuments({}),
       usersCol.countDocuments({ createdAt: { $gte: todayStart } }),
@@ -868,7 +931,8 @@ app.get('/api/admin/stats', adminAuth, async (req, res) => {
       txnsCol.countDocuments({ status: 'pending' }),
       historyCol.countDocuments({}),
       walletCol.countDocuments({ type:'task_reward', status:'pending' }),
-      walletCol.countDocuments({ type:'withdrawal', status:'pending' })
+      walletCol.countDocuments({ type:'withdrawal', status:'pending' }),
+      txnsCol.countDocuments({ kind: 'activation', status: 'completed' })
     ]);
 
     const revAgg = await txnsCol.aggregate([
@@ -889,6 +953,12 @@ app.get('/api/admin/stats', adminAuth, async (req, res) => {
     ]).toArray();
     const totalDeposits = depAgg[0]?.total || 0;
 
+    const actAgg = await txnsCol.aggregate([
+      { $match: { status:'completed', kind:'activation' } },
+      { $group: { _id: null, total: { $sum:'$amount' } } }
+    ]).toArray();
+    const totalActivation = actAgg[0]?.total || 0;
+
     const payoutsAgg = await walletCol.aggregate([
       { $match: { type:'task_reward', status:'completed' } },
       { $group: { _id: null, total: { $sum:'$amount' } } }
@@ -907,9 +977,9 @@ app.get('/api/admin/stats', adminAuth, async (req, res) => {
       visits: { total: totalVisits, today: visitsToday, uniqueToday: uniqueVisitorsToday },
       logins: { success: loginSuccess, failed: loginFail },
       transactions: { total: txnsAll, completed: txnsCompleted, failed: txnsFailed, pending: txnsPending },
-      revenue: { total: totalRevenue, today: revenueToday, deposits: totalDeposits, payouts: totalPayouts },
+      revenue: { total: totalRevenue, today: revenueToday, deposits: totalDeposits, payouts: totalPayouts, activations: totalActivation },
       tasksCompleted: tasksCompletedAll,
-      pending: { rewards: pendingRewardsCount, rewardsAmount: pendingRewardsAmount, withdrawals: pendingWithdrawalsCount }
+      pending: { rewards: pendingRewardsCount, rewardsAmount: pendingRewardsAmount, withdrawals: pendingWithdrawalsCount, activations: activationsCount }
     });
   } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
 });
@@ -941,6 +1011,7 @@ app.get('/api/admin/users', adminAuth, async (req, res) => {
           balance: u.balance || 0,
           pendingBalance: u.pendingBalance || 0,
           totalEarnings: u.totalEarnings || 0,
+          activationFeePaid: u.activationFeePaid === true,
           tasksCompletedToday: u.tasksCompletedToday || 0,
           lastLoginAt: u.lastLoginAt, lastLoginIp: u.lastLoginIp,
           signupIp: u.signupIp, createdAt: u.createdAt
