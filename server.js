@@ -41,7 +41,7 @@ const FREE_TASK_REWARD = 21;
 const MIN_DEPOSIT = 50;
 const MIN_WITHDRAWAL = 200;
 const ACTIVATION_FEE = 499;
-const PAYMENT_TIMEOUT_MS = 60 * 1000;
+const PAYMENT_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 const SEED_VERSION = 3;
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -238,7 +238,11 @@ function resetDailyTasks(u) {
 async function autoFailStalePayments() {
   const cutoff = new Date(Date.now() - PAYMENT_TIMEOUT_MS);
   await txnsCol.updateMany(
-    { status: 'pending', createdAt: { $lt: cutoff } },
+    {
+      status: 'pending',
+      createdAt: { $lt: cutoff },
+      mpesaRef: { $in: [null, undefined, ''] }
+    },
     { $set: { status: 'failed', reason: 'No M‑Pesa response (timeout)' } }
   );
 }
@@ -653,7 +657,7 @@ app.post('/api/wallet/deposit', auth, async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// ACTIVATION FEE (one-time KES 499, required before first withdrawal)
+// ACTIVATION FEE
 // ═══════════════════════════════════════════════════════════════════════════
 app.post('/api/wallet/pay-activation', auth, async (req, res) => {
   try {
@@ -701,7 +705,7 @@ app.post('/api/wallet/pay-activation', auth, async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// WITHDRAW (requires activation)
+// WITHDRAW
 // ═══════════════════════════════════════════════════════════════════════════
 app.post('/api/wallet/withdraw', auth, async (req, res) => {
   try {
@@ -711,7 +715,6 @@ app.post('/api/wallet/withdraw', auth, async (req, res) => {
     const user = await usersCol.findOne({ _id: new ObjectId(req.userId) });
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    // ✨ Require one-time activation fee before the first withdrawal
     if (user.activationFeePaid !== true) {
       return res.status(403).json({
         error: 'ACTIVATION_REQUIRED',
@@ -765,50 +768,91 @@ app.get('/api/wallet/history', auth, async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// PAYHERO CALLBACK (v2)
+// PAYHERO CALLBACK (robust parser)
 // ═══════════════════════════════════════════════════════════════════════════
 app.post('/api/payhero/callback', async (req, res) => {
   try {
-    console.log('📬 PayHero callback:', JSON.stringify(req.body, null, 2));
+    console.log('📬 PayHero callback (raw):', JSON.stringify(req.body, null, 2));
 
-    const d = req.body?.response || req.body || {};
-    const reference = d.external_reference || d.externalReference ||
-                      d.User_Reference || d.user_reference || d.reference;
+    const body = req.body || {};
+    const resp = body.response || body || {};
 
-    const resultCode = d.ResultCode !== undefined ? d.ResultCode
-                     : d.result_code !== undefined ? d.result_code
-                     : d.status_code;
+    // ── Reference (try every possible field name) ──
+    const reference =
+      body.external_reference || body.externalReference ||
+      resp.external_reference || resp.externalReference ||
+      body.User_Reference || body.user_reference ||
+      resp.User_Reference || resp.user_reference ||
+      body.reference || resp.reference ||
+      body.ExternalReference || resp.ExternalReference ||
+      body.account_reference || resp.account_reference;
 
-    const resultDesc = d.ResultDesc || d.result_desc || d.status_description || null;
-    const statusRaw  = d.Status || d.status;
-    const mpesaRef   = d.MpesaReceiptNumber || d.mpesa_receipt || d.MPESA_Reference || null;
+    // ── M-Pesa Receipt (present ONLY if money was actually received) ──
+    const mpesaRef =
+      body.MpesaReceiptNumber || resp.MpesaReceiptNumber ||
+      body.mpesa_receipt || resp.mpesa_receipt ||
+      body.MpesaReceipt || resp.MpesaReceipt ||
+      body.MPESA_Reference || resp.MPESA_Reference ||
+      body.receipt || resp.receipt ||
+      body.TransactionReceipt || resp.TransactionReceipt;
 
-    const isSuccess =
-      resultCode === 0 || resultCode === '0' ||
-      String(statusRaw).toLowerCase() === 'success' ||
-      String(statusRaw).toLowerCase() === 'completed';
+    // ── Result codes / statuses ──
+    const resultCodeRaw =
+      body.ResultCode ?? body.result_code ?? body.response_code ?? body.ResponseCode ??
+      resp.ResultCode ?? resp.result_code ?? resp.response_code ?? resp.ResponseCode;
+    const resultDesc =
+      body.ResultDesc || body.result_desc || body.ResponseDescription ||
+      resp.ResultDesc || resp.result_desc || resp.ResponseDescription || null;
+    const statusRaw =
+      body.Status || body.status ||
+      resp.Status || resp.status;
+
+    // ── Success detection ──
+    const hasReceipt = !!(mpesaRef && String(mpesaRef).trim().length > 3);
+    const resultCodeOk = resultCodeRaw === 0 || resultCodeRaw === '0';
+    const statusOk = /^(success|completed|complete|paid)$/i.test(String(statusRaw || '').trim());
+    const boolOk = body.success === true || resp.success === true || body.paid === true || resp.paid === true;
+    const isSuccess = hasReceipt || resultCodeOk || statusOk || boolOk;
+
+    const statusFail = /^(fail|failed|error|cancelled|canceled|rejected|timeout)$/i.test(String(statusRaw || '').trim());
+    const isExplicitFailure = !isSuccess && (statusFail || (resultCodeRaw !== undefined && !resultCodeOk));
+
+    console.log('🔎 Parsed →', {
+      reference, mpesaRef, resultCodeRaw, resultDesc, statusRaw,
+      hasReceipt, resultCodeOk, statusOk, boolOk, isSuccess, isExplicitFailure
+    });
 
     if (!reference) {
-      console.warn('Callback missing external_reference');
+      console.warn('⚠️ Callback missing reference — ignoring');
       return res.status(200).json({ status: 'received' });
     }
 
     const txn = await txnsCol.findOne({ reference });
     if (!txn) {
-      console.warn('Callback txn not found:', reference);
+      console.warn('⚠️ Callback txn not found:', reference);
       return res.status(200).json({ status: 'received' });
     }
     if (txn.status === 'completed') {
+      console.log('↩️ Already completed:', reference);
       return res.status(200).json({ status: 'already-processed' });
     }
 
-    if (!isSuccess) {
-      const reason = mapPayHeroFailureReason(resultCode, resultDesc);
+    if (isExplicitFailure && !isSuccess) {
+      const reason = mapPayHeroFailureReason(resultCodeRaw, resultDesc);
       await txnsCol.updateOne(
         { _id: txn._id },
-        { $set: { status: 'failed', reason, callback: req.body, completedAt: new Date() } }
+        { $set: { status: 'failed', reason, callback: body, completedAt: new Date() } }
       );
       console.log(`❌ Payment failed: ${reference} → ${reason}`);
+      return res.status(200).json({ status: 'received' });
+    }
+
+    if (!isSuccess) {
+      console.warn('❓ Callback received with no clear status — leaving pending:', reference);
+      await txnsCol.updateOne(
+        { _id: txn._id },
+        { $set: { lastCallback: body, lastCallbackAt: new Date() } }
+      );
       return res.status(200).json({ status: 'received' });
     }
 
@@ -864,7 +908,7 @@ app.post('/api/payhero/callback', async (req, res) => {
 
     await txnsCol.updateOne(
       { _id: txn._id },
-      { $set: { status: 'completed', mpesaRef, callback: req.body, completedAt: new Date() } }
+      { $set: { status: 'completed', mpesaRef, callback: body, completedAt: new Date() } }
     );
 
     res.status(200).json({ status: 'received' });
@@ -1045,6 +1089,66 @@ app.get('/api/admin/transactions', adminAuth, async (req, res) => {
       }))
     });
   } catch (err) { res.status(500).json({ error: 'Server error' }); }
+});
+
+// ── MANUAL: mark any transaction as paid & credit user ───────────────────
+app.post('/api/admin/transactions/:id/mark-paid', adminAuth, async (req, res) => {
+  try {
+    const txn = await txnsCol.findOne({ _id: new ObjectId(req.params.id) });
+    if (!txn) return res.status(404).json({ error: 'Transaction not found' });
+    if (txn.status === 'completed') return res.status(400).json({ error: 'Already completed' });
+
+    const userId = String(txn.userId);
+    const prefix = String(txn.reference).split('_')[0];
+
+    if (prefix === 'sub') {
+      const user = await usersCol.findOne({ _id: new ObjectId(userId) });
+      if (!user) return res.status(404).json({ error: 'User not found' });
+      const tier = txn.tier;
+      if (!TIERS[tier]) return res.status(400).json({ error: 'Invalid tier' });
+      const base = isSubscriptionActive(user) && user.subscriptionTier === tier
+        ? new Date(user.subscriptionExpiry) : new Date();
+      const expiry = new Date(base);
+      expiry.setDate(expiry.getDate() + SUBSCRIPTION_DAYS);
+      await usersCol.updateOne({ _id: user._id }, {
+        $set: {
+          subscriptionTier: tier,
+          subscriptionExpiry: expiry,
+          tasksCompletedToday: 0,
+          lastTaskDate: new Date().toISOString().slice(0, 10)
+        }
+      });
+    } else if (prefix === 'dep') {
+      const amount = Number(txn.amount) || 0;
+      await usersCol.updateOne({ _id: new ObjectId(userId) }, { $inc: { balance: amount } });
+      await walletCol.insertOne({
+        userId: new ObjectId(userId), type: 'deposit', amount,
+        phone: txn.phone, status: 'completed', reference: txn.reference,
+        mpesaRef: txn.mpesaRef || null, createdAt: new Date(), confirmedAt: new Date()
+      });
+    } else if (prefix === 'act') {
+      await usersCol.updateOne(
+        { _id: new ObjectId(userId) },
+        { $set: { activationFeePaid: true, activationPaidAt: new Date() } }
+      );
+      await walletCol.insertOne({
+        userId: new ObjectId(userId), type: 'activation_fee', amount: -ACTIVATION_FEE,
+        phone: txn.phone, status: 'completed', reference: txn.reference,
+        mpesaRef: txn.mpesaRef || null, createdAt: new Date(), confirmedAt: new Date()
+      });
+    }
+
+    await txnsCol.updateOne(
+      { _id: txn._id },
+      { $set: { status: 'completed', reason: 'Manually marked as paid by admin', manualOverrideAt: new Date(), manualOverrideBy: 'admin' } }
+    );
+
+    console.log(`✅ Admin marked txn ${txn.reference} as paid`);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Mark-paid error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
 });
 
 app.get('/api/admin/visits', adminAuth, async (req, res) => {
