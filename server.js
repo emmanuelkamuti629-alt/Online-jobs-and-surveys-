@@ -44,10 +44,18 @@ const ACTIVATION_FEE = 499;
 const PAYMENT_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 const SEED_VERSION = 3;
 
+// In-memory cache of tier prices (loaded on startup, updated by admin)
+let tierPrices = { classic: 200, premium: 350, golden: 450 };
+
+function getTierPrice(tier) {
+  if (tier === 'free') return 0;
+  return tierPrices[tier] ?? TIERS[tier]?.price ?? 0;
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // MONGODB
 // ═══════════════════════════════════════════════════════════════════════════
-let db, usersCol, txnsCol, tasksCol, walletCol, historyCol, metaCol, visitsCol, loginAttemptsCol;
+let db, usersCol, txnsCol, tasksCol, walletCol, historyCol, metaCol, visitsCol, loginAttemptsCol, settingsCol;
 
 async function connectDB() {
   if (!process.env.MONGODB_URI) throw new Error('MONGODB_URI is not set');
@@ -62,6 +70,7 @@ async function connectDB() {
   metaCol          = db.collection('meta');
   visitsCol        = db.collection('site_visits');
   loginAttemptsCol = db.collection('login_attempts');
+  settingsCol      = db.collection('settings');
 
   await usersCol.createIndex({ email: 1 }, { unique: true });
   await usersCol.createIndex({ username: 1 }, { unique: true });
@@ -74,7 +83,26 @@ async function connectDB() {
   await loginAttemptsCol.createIndex({ createdAt: -1 });
 
   await seedTasks();
+  await loadTierPrices();
   console.log('✅ MongoDB connected');
+}
+
+async function loadTierPrices() {
+  const doc = await settingsCol.findOne({ key: 'tier_prices' });
+  if (doc) {
+    tierPrices = {
+      classic: Number(doc.classic) || 200,
+      premium: Number(doc.premium) || 350,
+      golden:  Number(doc.golden)  || 450
+    };
+  } else {
+    await settingsCol.insertOne({
+      key: 'tier_prices',
+      classic: 200, premium: 350, golden: 450,
+      updatedAt: new Date()
+    });
+  }
+  console.log('💵 Tier prices loaded:', tierPrices);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -377,6 +405,11 @@ app.use(express.static(path.join(__dirname, 'public')));
 // ═══════════════════════════════════════════════════════════════════════════
 app.get('/healthz', (req, res) => res.json({ ok: true, uptime: process.uptime() }));
 
+// Public prices endpoint for the frontend
+app.get('/api/prices', (req, res) => {
+  res.json(tierPrices);
+});
+
 app.post('/api/register', async (req, res) => {
   try {
     const { username, email, password, confirmPassword, phone } = req.body || {};
@@ -583,7 +616,7 @@ app.post('/api/subscribe', auth, async (req, res) => {
       return res.status(400).json({ error: 'Enter a valid M‑Pesa number (e.g. 0712345678)' });
     }
 
-    const amount = TIERS[tier].price;
+    const amount = getTierPrice(tier);
     const reference = `sub_${user._id}_${tier}_${Date.now()}`;
 
     await txnsCol.insertOne({
@@ -777,7 +810,6 @@ app.post('/api/payhero/callback', async (req, res) => {
     const body = req.body || {};
     const resp = body.response || body || {};
 
-    // ── Reference (try every possible field name) ──
     const reference =
       body.external_reference || body.externalReference ||
       resp.external_reference || resp.externalReference ||
@@ -787,7 +819,6 @@ app.post('/api/payhero/callback', async (req, res) => {
       body.ExternalReference || resp.ExternalReference ||
       body.account_reference || resp.account_reference;
 
-    // ── M-Pesa Receipt (present ONLY if money was actually received) ──
     const mpesaRef =
       body.MpesaReceiptNumber || resp.MpesaReceiptNumber ||
       body.mpesa_receipt || resp.mpesa_receipt ||
@@ -796,7 +827,6 @@ app.post('/api/payhero/callback', async (req, res) => {
       body.receipt || resp.receipt ||
       body.TransactionReceipt || resp.TransactionReceipt;
 
-    // ── Result codes / statuses ──
     const resultCodeRaw =
       body.ResultCode ?? body.result_code ?? body.response_code ?? body.ResponseCode ??
       resp.ResultCode ?? resp.result_code ?? resp.response_code ?? resp.ResponseCode;
@@ -807,7 +837,6 @@ app.post('/api/payhero/callback', async (req, res) => {
       body.Status || body.status ||
       resp.Status || resp.status;
 
-    // ── Success detection ──
     const hasReceipt = !!(mpesaRef && String(mpesaRef).trim().length > 3);
     const resultCodeOk = resultCodeRaw === 0 || resultCodeRaw === '0';
     const statusOk = /^(success|completed|complete|paid)$/i.test(String(statusRaw || '').trim());
@@ -920,7 +949,15 @@ app.post('/api/payhero/callback', async (req, res) => {
 
 app.get('/api/tiers', (req, res) => {
   const out = {};
-  for (const [k, v] of Object.entries(TIERS)) out[k] = { name:v.name, price:v.price, dailyLimit:v.dailyLimit, label:v.label, days:SUBSCRIPTION_DAYS };
+  for (const [k, v] of Object.entries(TIERS)) {
+    out[k] = {
+      name: v.name,
+      price: getTierPrice(k),
+      dailyLimit: v.dailyLimit,
+      label: v.label,
+      days: SUBSCRIPTION_DAYS
+    };
+  }
   res.json(out);
 });
 
@@ -1091,7 +1128,6 @@ app.get('/api/admin/transactions', adminAuth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Server error' }); }
 });
 
-// ── MANUAL: mark any transaction as paid & credit user ───────────────────
 app.post('/api/admin/transactions/:id/mark-paid', adminAuth, async (req, res) => {
   try {
     const txn = await txnsCol.findOne({ _id: new ObjectId(req.params.id) });
@@ -1311,6 +1347,38 @@ app.post('/api/admin/withdrawal/reject/:id', adminAuth, async (req, res) => {
     });
     res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: 'Server error' }); }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ADMIN: PRICE SETTINGS
+// ═══════════════════════════════════════════════════════════════════════════
+app.get('/api/admin/settings/prices', adminAuth, (req, res) => {
+  res.json(tierPrices);
+});
+
+app.put('/api/admin/settings/prices', adminAuth, async (req, res) => {
+  try {
+    const { classic, premium, golden } = req.body || {};
+    const c = Number(classic), p = Number(premium), g = Number(golden);
+
+    if ([c, p, g].some(v => !Number.isFinite(v) || v < 1 || v > 1000000)) {
+      return res.status(400).json({ error: 'Prices must be numbers between 1 and 1,000,000' });
+    }
+
+    tierPrices = { classic: c, premium: p, golden: g };
+
+    await settingsCol.updateOne(
+      { key: 'tier_prices' },
+      { $set: { ...tierPrices, updatedAt: new Date() } },
+      { upsert: true }
+    );
+
+    console.log('💵 Tier prices updated by admin:', tierPrices);
+    res.json({ ok: true, prices: tierPrices });
+  } catch (err) {
+    console.error('Update prices error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
 });
 
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
