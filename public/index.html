@@ -553,7 +553,6 @@
       <strong style="color:var(--green);">2 free tasks (KES 21 each) every day</strong>.
     </p>
 
-    <!-- Tab switcher -->
     <div class="auth-tabs">
       <button class="auth-tab active" id="tabRegister" type="button">Create Account</button>
       <button class="auth-tab" id="tabLogin" type="button">Login</button>
@@ -561,7 +560,6 @@
 
     <div id="authMsg" class="msg"></div>
 
-    <!-- ═══ REGISTER FORM ═══ -->
     <div id="authRegisterForm">
       <div class="field">
         <label for="authUsername">Username</label>
@@ -594,7 +592,6 @@
       <button class="btn btn-primary" id="btnRegister" style="margin-top:6px;">Create Account</button>
     </div>
 
-    <!-- ═══ LOGIN FORM ═══ -->
     <div id="authLoginForm" style="display:none;">
       <div class="field">
         <label for="loginEmail">Email</label>
@@ -647,23 +644,23 @@
     <div class="tier-card classic">
       <span class="tier-badge classic">Classic</span>
       <div class="tier-name">Classic</div>
-      <div class="tier-price">KES 200 <span>/ week</span></div>
+      <div class="tier-price" id="tierPriceClassic">KES 200 <span>/ week</span></div>
       <div class="tier-limit">🔓 Unlock 10 tasks per day</div>
-      <button class="tier-btn classic" data-tier="classic">Upgrade – KES 200</button>
+      <button class="tier-btn classic" data-tier="classic" id="tierBtnClassic">Upgrade – KES 200</button>
     </div>
     <div class="tier-card premium">
       <span class="tier-badge premium">Premium</span>
       <div class="tier-name">Premium</div>
-      <div class="tier-price" style="color:var(--blue);">KES 350 <span>/ week</span></div>
+      <div class="tier-price" id="tierPricePremium" style="color:var(--blue);">KES 350 <span>/ week</span></div>
       <div class="tier-limit">🔓 Unlock 20 tasks per day</div>
-      <button class="tier-btn premium" data-tier="premium">Upgrade – KES 350</button>
+      <button class="tier-btn premium" data-tier="premium" id="tierBtnPremium">Upgrade – KES 350</button>
     </div>
     <div class="tier-card golden">
       <span class="tier-badge golden">Golden</span>
       <div class="tier-name">Golden</div>
-      <div class="tier-price" style="color:var(--gold);">KES 450 <span>/ week</span></div>
+      <div class="tier-price" id="tierPriceGolden" style="color:var(--gold);">KES 450 <span>/ week</span></div>
       <div class="tier-limit">🔓 Unlock 50+ tasks per day</div>
-      <button class="tier-btn golden" data-tier="golden">Upgrade – KES 450</button>
+      <button class="tier-btn golden" data-tier="golden" id="tierBtnGolden">Upgrade – KES 450</button>
     </div>
   </div>
   <div class="card">
@@ -997,6 +994,9 @@
   let currentSubscribeTier = null;
   let historyFilter = '';
 
+  // Cache of tier prices fetched from server
+  let publicPrices = { classic: 200, premium: 350, golden: 450 };
+
   async function api(path, opts = {}) {
     const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
     if (token) headers.Authorization = `Bearer ${token}`;
@@ -1025,6 +1025,7 @@
       if (s === 'account') loadAccount();
       if (s === 'history') loadHistory();
       if (s === 'profile') loadProfile();
+      if (s === 'subscribe') loadPublicPrices(); // ← always refresh prices
       goTo(s);
     });
   });
@@ -1034,6 +1035,38 @@
     el.className = `msg show ${type}`;
   }
   function clearMsg(el) { el.className = 'msg'; el.textContent = ''; }
+
+  // ══════ LIVE PRICE LOADER ══════
+  async function loadPublicPrices() {
+    try {
+      const res = await fetch('/api/prices?_=' + Date.now(), { cache: 'no-store' });
+      if (!res.ok) return;
+      const p = await res.json();
+      publicPrices = {
+        classic: Number(p.classic) || 200,
+        premium: Number(p.premium) || 350,
+        golden:  Number(p.golden)  || 450
+      };
+
+      // Update tier card prices using IDs (safest)
+      const priceElC = $('tierPriceClassic');
+      const priceElP = $('tierPricePremium');
+      const priceElG = $('tierPriceGolden');
+      if (priceElC) priceElC.innerHTML = `KES ${publicPrices.classic} <span>/ week</span>`;
+      if (priceElP) priceElP.innerHTML = `KES ${publicPrices.premium} <span>/ week</span>`;
+      if (priceElG) priceElG.innerHTML = `KES ${publicPrices.golden} <span>/ week</span>`;
+
+      // Update button labels
+      const btnC = $('tierBtnClassic');
+      const btnP = $('tierBtnPremium');
+      const btnG = $('tierBtnGolden');
+      if (btnC) btnC.textContent = `Upgrade – KES ${publicPrices.classic}`;
+      if (btnP) btnP.textContent = `Upgrade – KES ${publicPrices.premium}`;
+      if (btnG) btnG.textContent = `Upgrade – KES ${publicPrices.golden}`;
+
+      console.log('💵 Prices loaded:', publicPrices);
+    } catch (err) { console.error('Load prices error:', err); }
+  }
 
   function attachToggle(btnId, inputId) {
     $(btnId).addEventListener('click', () => {
@@ -1150,7 +1183,6 @@
     $('headerRight').style.display = 'none'; $('bottomNav').style.display = 'none';
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     $('screen-auth').classList.add('active');
-    // Reset to Create Account tab and clear inputs
     setAuthTab('register');
     ['authUsername','authEmail','authPhone','authPassword','authConfirm','loginEmail','loginPassword'].forEach(id => {
       const el = $(id); if (el) el.value = '';
@@ -1438,7 +1470,7 @@
         .map(t => {
           const ageMs = Date.now() - new Date(t.createdAt).getTime();
           let status = t.status;
-          if (status === 'pending' && ageMs > 60000) status = 'failed';
+          if (status === 'pending' && ageMs > 5 * 60 * 1000) status = 'failed';
           return {
             _kind: 'subscription',
             id: t.id,
@@ -1544,7 +1576,7 @@
         const ageMs = Date.now() - d.getTime();
 
         let displayStatus = tx.status;
-        if (tx._type === 'deposit' && tx.status === 'pending' && ageMs > 60000) displayStatus = 'failed';
+        if (tx._type === 'deposit' && tx.status === 'pending' && ageMs > 5 * 60 * 1000) displayStatus = 'failed';
 
         let label, amountCls, amountTxt;
         if (tx._type === 'deposit') {
@@ -1585,16 +1617,17 @@
   $('upgradeFromModal').addEventListener('click', () => {
     closeModal('upgradeModal');
     goTo('subscribe');
+    loadPublicPrices();
   });
 
+  // ── SUBSCRIBE FLOW ──
   document.querySelectorAll('.tier-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       currentSubscribeTier = btn.dataset.tier;
-      const names  = { classic:'Classic', premium:'Premium', golden:'Golden' };
-      const prices = { classic:200, premium:350, golden:450 };
+      const names = { classic:'Classic', premium:'Premium', golden:'Golden' };
 
       $('subTierName').textContent  = names[currentSubscribeTier];
-      $('subTierPrice').textContent = prices[currentSubscribeTier];
+      $('subTierPrice').textContent = publicPrices[currentSubscribeTier];
       $('subPhone').value = user?.phone || '';
       clearMsg($('subModalMsg'));
       $('subModalForm').style.display = 'block';
@@ -1647,7 +1680,7 @@
           }
         } catch {}
 
-        if (attempts > 30) {
+        if (attempts > 60) {
           clearInterval(poll);
           showMsg($('subModalMsg'),
             '⏳ Payment not received yet. If you already paid, your plan will activate automatically. Otherwise try again.',
@@ -1704,7 +1737,7 @@
             return;
           }
         } catch {}
-        if (attempts > 30) {
+        if (attempts > 60) {
           clearInterval(poll);
           showMsg($('depositModalMsg'), '⏳ Payment not received. Check your phone or try again.', 'error');
           btn.disabled = false;
@@ -1779,7 +1812,7 @@
             return;
           }
         } catch {}
-        if (attempts > 30) {
+        if (attempts > 60) {
           clearInterval(poll);
           showMsg($('activationModalMsg'),
             '⏳ Payment not received. If you already paid, please wait a moment or reopen this window.',
@@ -1871,6 +1904,20 @@
         </div>`;
     } catch (err) { console.error(err); }
   }
+
+  // ── Always fetch current prices on load ──
+  loadPublicPrices();
+
+  // ── Refresh prices whenever the tab regains focus ──
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') loadPublicPrices();
+  });
+
+  // ── Auto-poll prices every 15 seconds ──
+  setInterval(() => {
+    const sub = document.getElementById('screen-subscribe');
+    if (sub && sub.classList.contains('active')) loadPublicPrices();
+  }, 15000);
 
   if (token && user) enterApp();
 })();
