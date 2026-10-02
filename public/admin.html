@@ -132,6 +132,7 @@
   .stat-val.green { color:var(--green); }
   .stat-val.red { color:var(--red); }
   .stat-val.gold { color:var(--gold); }
+  .stat-val.yellow { color:#D4901A; }
   /* TABLE */
   .table-card {
     background:white; border-radius:var(--radius); overflow:hidden;
@@ -210,7 +211,7 @@
 </head>
 <body>
 
-<!-- LOGIN -->
+<!-- ═══════════════ LOGIN ═══════════════ -->
 <div class="login-wrap" id="loginWrap">
   <div class="login-card">
     <div class="login-logo">🛡</div>
@@ -229,7 +230,7 @@
   </div>
 </div>
 
-<!-- DASHBOARD -->
+<!-- ═══════════════ DASHBOARD ═══════════════ -->
 <div class="layout" id="layout">
   <div class="topbar">
     <div class="topbar-brand">
@@ -253,11 +254,13 @@
       <button class="tab active" data-tab="users">👥 Users</button>
       <button class="tab" data-tab="subs">⭐ Active Subscriptions</button>
       <button class="tab" data-tab="txns">💳 Transactions</button>
+      <button class="tab" data-tab="pending">⏳ Pending Rewards</button>
+      <button class="tab" data-tab="withdrawals">💸 Pending Withdrawals</button>
       <button class="tab" data-tab="visits">👀 Site Visits</button>
       <button class="tab" data-tab="logins">🔐 Login Attempts</button>
     </div>
 
-    <!-- USERS -->
+    <!-- ═══ USERS ═══ -->
     <div class="tab-pane active" id="pane-users">
       <div class="table-card">
         <div class="table-head">
@@ -269,7 +272,7 @@
             <thead>
               <tr>
                 <th>Username</th><th>Email</th><th>Phone</th>
-                <th>Plan</th><th>Balance</th><th>Earned</th>
+                <th>Plan</th><th>Available</th><th>Pending</th><th>Earned</th>
                 <th>Last Login</th><th>Joined</th>
               </tr>
             </thead>
@@ -286,7 +289,7 @@
       </div>
     </div>
 
-    <!-- ACTIVE SUBS -->
+    <!-- ═══ ACTIVE SUBS ═══ -->
     <div class="tab-pane" id="pane-subs">
       <div class="table-card">
         <div class="table-head">
@@ -303,16 +306,16 @@
       </div>
     </div>
 
-    <!-- TRANSACTIONS -->
+    <!-- ═══ TRANSACTIONS ═══ -->
     <div class="tab-pane" id="pane-txns">
       <div class="table-card">
         <div class="table-head">
           <div class="table-title">Transactions <span id="txnsCount">—</span></div>
           <div style="display:flex;gap:6px;flex-wrap:wrap;">
-            <button class="pager-btn" data-txn-filter="">All</button>
-            <button class="pager-btn" data-txn-filter="completed">✓ Completed</button>
-            <button class="pager-btn" data-txn-filter="failed">✕ Failed</button>
-            <button class="pager-btn" data-txn-filter="pending">⏳ Pending</button>
+            <button class="pager-btn txn-filter-btn" data-txn-filter="" style="background:var(--green-light);">All</button>
+            <button class="pager-btn txn-filter-btn" data-txn-filter="completed">✓ Completed</button>
+            <button class="pager-btn txn-filter-btn" data-txn-filter="failed">✕ Failed</button>
+            <button class="pager-btn txn-filter-btn" data-txn-filter="pending">⏳ Pending</button>
           </div>
         </div>
         <div class="table-wrap">
@@ -333,7 +336,49 @@
       </div>
     </div>
 
-    <!-- VISITS -->
+    <!-- ═══ PENDING REWARDS ═══ -->
+    <div class="tab-pane" id="pane-pending">
+      <div class="table-card">
+        <div class="table-head">
+          <div class="table-title">Pending Task Rewards <span id="pendingCount">—</span></div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <div style="font-size:14px;font-weight:900;color:#D4901A;" id="pendingTotal">KES 0</div>
+            <button class="pager-btn" id="confirmAllBtn"
+              style="background:var(--green);color:white;border-color:var(--green);padding:8px 14px;">
+              ✓ Confirm All
+            </button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>User</th><th>Task</th><th>Owner</th><th>Answers</th><th>Amount</th><th>Submitted</th><th>Action</th></tr>
+            </thead>
+            <tbody id="pendingBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ PENDING WITHDRAWALS ═══ -->
+    <div class="tab-pane" id="pane-withdrawals">
+      <div class="table-card">
+        <div class="table-head">
+          <div class="table-title">Pending Withdrawals <span id="wdrCount">—</span></div>
+          <div style="font-size:14px;font-weight:900;color:#D4901A;" id="wdrTotal">KES 0</div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>User</th><th>Phone</th><th>Amount</th><th>Requested</th><th>Action</th></tr>
+            </thead>
+            <tbody id="wdrBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ VISITS ═══ -->
     <div class="tab-pane" id="pane-visits">
       <div class="table-card">
         <div class="table-head">
@@ -357,15 +402,15 @@
       </div>
     </div>
 
-    <!-- LOGIN ATTEMPTS -->
+    <!-- ═══ LOGIN ATTEMPTS ═══ -->
     <div class="tab-pane" id="pane-logins">
       <div class="table-card">
         <div class="table-head">
           <div class="table-title">Login Attempts <span id="loginsCount">—</span></div>
           <div style="display:flex;gap:6px;flex-wrap:wrap;">
-            <button class="pager-btn" data-login-filter="">All</button>
-            <button class="pager-btn" data-login-filter="true">✓ Success</button>
-            <button class="pager-btn" data-login-filter="false">✕ Failed</button>
+            <button class="pager-btn login-filter-btn" data-login-filter="" style="background:var(--green-light);">All</button>
+            <button class="pager-btn login-filter-btn" data-login-filter="true">✓ Success</button>
+            <button class="pager-btn login-filter-btn" data-login-filter="false">✕ Failed</button>
           </div>
         </div>
         <div class="table-wrap">
@@ -394,12 +439,13 @@
   const $ = (id) => document.getElementById(id);
   let token = sessionStorage.getItem('admin_token');
   const state = {
-    users:  { page:1, size:50, q:'' },
-    txns:   { page:1, size:50, status:'' },
-    visits: { page:1, size:50 },
-    logins: { page:1, size:50, success:'' }
+    users:   { page:1, size:50, q:'' },
+    txns:    { page:1, size:50, status:'' },
+    visits:  { page:1, size:50 },
+    logins:  { page:1, size:50, success:'' }
   };
 
+  // ── API ──
   async function api(path, opts = {}) {
     const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
     if (token) headers.Authorization = `Bearer ${token}`;
@@ -410,6 +456,7 @@
     return data;
   }
 
+  // ── HELPERS ──
   function fmtDate(d) {
     if (!d) return '—';
     const dt = new Date(d);
@@ -477,7 +524,7 @@
   }
   $('logoutBtn').addEventListener('click', () => { if (confirm('Logout?')) logout(); });
 
-  // ── ENTER ──
+  // ── ENTER APP ──
   function enterApp() {
     $('loginWrap').style.display = 'none';
     $('layout').classList.add('show');
@@ -485,6 +532,8 @@
     loadUsers();
     loadSubs();
     loadTxns();
+    loadPending();
+    loadWithdrawals();
     loadVisits();
     loadLogins();
   }
@@ -494,11 +543,13 @@
     try {
       const s = await api('/api/admin/stats');
       const cards = [
-        { cls:'', ic:'👥', lbl:'Total Users', val: s.users.total, sub:`+${s.users.today} today • +${s.users.week} this week` },
+        { cls:'', ic:'👥', lbl:'Total Users', val: s.users.total.toLocaleString(), sub:`+${s.users.today} today • +${s.users.week} this week` },
         { cls:'gold', ic:'💰', lbl:'Total Revenue', val: fmtMoney(s.revenue.total), sub:`+${fmtMoney(s.revenue.today)} today` },
         { cls:'', ic:'⭐', lbl:'Active Subs', val: s.subscriptions.active, sub:`${s.subscriptions.classic}C • ${s.subscriptions.premium}P • ${s.subscriptions.golden}G` },
         { cls:'red', ic:'✕', lbl:'Failed Payments', val: s.transactions.failed, sub:`${s.transactions.pending} pending` },
         { cls:'', ic:'✓', lbl:'Successful Payments', val: s.transactions.completed, sub:`${s.transactions.total} total attempts` },
+        { cls:'yellow', ic:'⏳', lbl:'Pending Rewards', val: s.pending.rewards, sub:`${fmtMoney(s.pending.rewardsAmount)} awaiting` },
+        { cls:'purple', ic:'💸', lbl:'Pending Withdrawals', val: s.pending.withdrawals, sub:'awaiting payout' },
         { cls:'blue', ic:'👀', lbl:'Site Visits', val: s.visits.total.toLocaleString(), sub:`${s.visits.today} today • ${s.visits.uniqueToday} unique` },
         { cls:'purple', ic:'🔐', lbl:'Logins', val: s.logins.success, sub:`${s.logins.failed} failed attempts` },
         { cls:'yellow', ic:'💳', lbl:'Deposits', val: fmtMoney(s.revenue.deposits), sub:`Payouts: ${fmtMoney(s.revenue.payouts)}` },
@@ -529,11 +580,12 @@
             <td><span class="sub-badge ${u.subscriptionTier}">${u.subscriptionTier}</span>
                 ${u.subscriptionActive ? ' <span class="pill green">Active</span>' : ''}</td>
             <td><strong>${fmtMoney(u.balance)}</strong></td>
+            <td style="color:#D4901A;font-weight:800;">${fmtMoney(u.pendingBalance || 0)}</td>
             <td style="color:var(--green);font-weight:800;">${fmtMoney(u.totalEarnings)}</td>
             <td title="${u.lastLoginIp || ''}">${u.lastLoginAt ? timeAgo(u.lastLoginAt) : '<span style="color:var(--gray-500);">never</span>'}</td>
             <td>${timeAgo(u.createdAt)}</td>
           </tr>`).join('')
-        : `<tr><td colspan="8"><div class="empty"><div class="empty-ic">👥</div>No users yet</div></td></tr>`;
+        : `<tr><td colspan="9"><div class="empty"><div class="empty-ic">👥</div>No users yet</div></td></tr>`;
       const totalPages = Math.ceil(data.total / size);
       $('usersPageInfo').textContent = `Page ${page} of ${totalPages || 1}`;
       document.querySelector('[data-page-prev="users"]').disabled = page <= 1;
@@ -591,6 +643,121 @@
     } catch (err) { console.error(err); }
   }
 
+  // ── PENDING REWARDS ──
+  async function loadPending() {
+    try {
+      const data = await api('/api/admin/pending-rewards');
+      $('pendingCount').textContent = `(${data.total})`;
+      $('pendingTotal').textContent = `KES ${data.totalAmount.toLocaleString()}`;
+      $('pendingBody').innerHTML = data.items.length
+        ? data.items.map(t => `
+          <tr>
+            <td><strong>${escapeHtml(t.user.username)}</strong><br>
+                <span class="mono" style="color:var(--gray-500);font-size:10px;">${escapeHtml(t.user.email)}</span></td>
+            <td class="truncate" title="${escapeHtml(t.taskTitle)}">${escapeHtml(t.taskTitle)}</td>
+            <td>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span>${t.owner?.avatar || '📋'}</span>
+                <span style="font-size:11px;">${escapeHtml(t.owner?.name || '—')}</span>
+              </div>
+            </td>
+            <td>${t.answersCount || '—'}</td>
+            <td><strong>${fmtMoney(t.amount)}</strong></td>
+            <td>${timeAgo(t.createdAt)}</td>
+            <td>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                <button class="pager-btn confirm-btn" data-id="${t.id}"
+                  style="background:var(--green);color:white;border-color:var(--green);">✓ Confirm</button>
+                <button class="pager-btn reject-btn" data-id="${t.id}"
+                  style="background:var(--red);color:white;border-color:var(--red);">✕ Reject</button>
+              </div>
+            </td>
+          </tr>`).join('')
+        : `<tr><td colspan="7"><div class="empty"><div class="empty-ic">⏳</div>No pending rewards</div></td></tr>`;
+
+      $('pendingBody').querySelectorAll('.confirm-btn').forEach(b => {
+        b.addEventListener('click', async () => {
+          b.disabled = true; b.textContent = '...';
+          try {
+            await api(`/api/admin/wallet/confirm/${b.dataset.id}`, { method:'POST' });
+            loadPending(); loadStats();
+          } catch (e) { alert(e.message); b.disabled = false; b.textContent = '✓ Confirm'; }
+        });
+      });
+      $('pendingBody').querySelectorAll('.reject-btn').forEach(b => {
+        b.addEventListener('click', async () => {
+          const reason = prompt('Reason for rejection?', 'Invalid answers') || 'Rejected by admin';
+          b.disabled = true; b.textContent = '...';
+          try {
+            await api(`/api/admin/wallet/reject/${b.dataset.id}`, {
+              method:'POST', body: JSON.stringify({ reason })
+            });
+            loadPending(); loadStats();
+          } catch (e) { alert(e.message); b.disabled = false; b.textContent = '✕ Reject'; }
+        });
+      });
+    } catch (err) { console.error(err); }
+  }
+
+  $('confirmAllBtn').addEventListener('click', async () => {
+    if (!confirm('Confirm ALL pending task rewards? This will release funds to users immediately.')) return;
+    try {
+      const res = await api('/api/admin/wallet/confirm-all', { method:'POST' });
+      alert(`✓ Confirmed ${res.count} reward(s)`);
+      loadPending(); loadStats();
+    } catch (err) { alert(err.message); }
+  });
+
+  // ── PENDING WITHDRAWALS ──
+  async function loadWithdrawals() {
+    try {
+      const data = await api('/api/admin/pending-withdrawals');
+      $('wdrCount').textContent = `(${data.total})`;
+      $('wdrTotal').textContent = `KES ${data.totalAmount.toLocaleString()}`;
+      $('wdrBody').innerHTML = data.items.length
+        ? data.items.map(t => `
+          <tr>
+            <td><strong>${escapeHtml(t.user.username)}</strong><br>
+                <span class="mono" style="color:var(--gray-500);font-size:10px;">${escapeHtml(t.user.email)}</span></td>
+            <td class="mono">${escapeHtml(t.phone || '—')}</td>
+            <td><strong>${fmtMoney(t.amount)}</strong></td>
+            <td>${timeAgo(t.createdAt)}</td>
+            <td>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                <button class="pager-btn wconf-btn" data-id="${t.id}"
+                  style="background:var(--green);color:white;border-color:var(--green);">✓ Mark Paid</button>
+                <button class="pager-btn wrej-btn" data-id="${t.id}"
+                  style="background:var(--red);color:white;border-color:var(--red);">✕ Refund</button>
+              </div>
+            </td>
+          </tr>`).join('')
+        : `<tr><td colspan="5"><div class="empty"><div class="empty-ic">💸</div>No pending withdrawals</div></td></tr>`;
+
+      $('wdrBody').querySelectorAll('.wconf-btn').forEach(b => {
+        b.addEventListener('click', async () => {
+          if (!confirm('Mark this withdrawal as PAID? This assumes you have sent the M‑Pesa manually.')) return;
+          b.disabled = true; b.textContent = '...';
+          try {
+            await api(`/api/admin/withdrawal/confirm/${b.dataset.id}`, { method:'POST' });
+            loadWithdrawals(); loadStats();
+          } catch (e) { alert(e.message); b.disabled = false; b.textContent = '✓ Mark Paid'; }
+        });
+      });
+      $('wdrBody').querySelectorAll('.wrej-btn').forEach(b => {
+        b.addEventListener('click', async () => {
+          const reason = prompt('Reason for refund?', 'Rejected by admin') || 'Rejected';
+          b.disabled = true; b.textContent = '...';
+          try {
+            await api(`/api/admin/withdrawal/reject/${b.dataset.id}`, {
+              method:'POST', body: JSON.stringify({ reason })
+            });
+            loadWithdrawals(); loadStats();
+          } catch (e) { alert(e.message); b.disabled = false; b.textContent = '✕ Refund'; }
+        });
+      });
+    } catch (err) { console.error(err); }
+  }
+
   // ── VISITS ──
   async function loadVisits() {
     try {
@@ -644,11 +811,20 @@
       document.querySelectorAll('.tab-pane').forEach(x => x.classList.remove('active'));
       t.classList.add('active');
       $('pane-' + t.dataset.tab).classList.add('active');
+      // Lazy reload each tab when opened
+      if (t.dataset.tab === 'users') loadUsers();
+      if (t.dataset.tab === 'subs') loadSubs();
+      if (t.dataset.tab === 'txns') loadTxns();
+      if (t.dataset.tab === 'pending') loadPending();
+      if (t.dataset.tab === 'withdrawals') loadWithdrawals();
+      if (t.dataset.tab === 'visits') loadVisits();
+      if (t.dataset.tab === 'logins') loadLogins();
     });
   });
 
   // ── PAGER ──
   document.querySelectorAll('.pager-btn').forEach(btn => {
+    if (!btn.dataset.pagePrev && !btn.dataset.pageNext) return;
     btn.addEventListener('click', () => {
       const prev = btn.dataset.pagePrev;
       const next = btn.dataset.pageNext;
@@ -664,18 +840,18 @@
   }
 
   // ── FILTERS ──
-  document.querySelectorAll('[data-txn-filter]').forEach(b => {
+  document.querySelectorAll('.txn-filter-btn').forEach(b => {
     b.addEventListener('click', () => {
-      document.querySelectorAll('[data-txn-filter]').forEach(x => x.style.background = '');
+      document.querySelectorAll('.txn-filter-btn').forEach(x => x.style.background = '');
       b.style.background = 'var(--green-light)';
       state.txns.status = b.dataset.txnFilter;
       state.txns.page = 1;
       loadTxns();
     });
   });
-  document.querySelectorAll('[data-login-filter]').forEach(b => {
+  document.querySelectorAll('.login-filter-btn').forEach(b => {
     b.addEventListener('click', () => {
-      document.querySelectorAll('[data-login-filter]').forEach(x => x.style.background = '');
+      document.querySelectorAll('.login-filter-btn').forEach(x => x.style.background = '');
       b.style.background = 'var(--green-light)';
       state.logins.success = b.dataset.loginFilter;
       state.logins.page = 1;
@@ -696,8 +872,20 @@
 
   // ── REFRESH ──
   $('refreshBtn').addEventListener('click', () => {
-    loadStats(); loadUsers(); loadSubs(); loadTxns(); loadVisits(); loadLogins();
+    loadStats();
+    loadUsers();
+    loadSubs();
+    loadTxns();
+    loadPending();
+    loadWithdrawals();
+    loadVisits();
+    loadLogins();
   });
+
+  // ── AUTO REFRESH STATS every 30s ──
+  setInterval(() => {
+    if (token) loadStats();
+  }, 30000);
 
   // ── INIT ──
   if (token) {
@@ -706,4 +894,4 @@
 })();
 </script>
 </body>
-  </html>
+        </html>
