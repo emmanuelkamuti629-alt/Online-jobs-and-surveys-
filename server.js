@@ -12,12 +12,23 @@ app.set('trust proxy', 1);
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 
+// ═══════════════════════════════════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════════════════════════════════
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
-const PAYHERO_API_URL = process.env.PAYHERO_API_URL || 'https://payherokenya.com/sps/portal/app/stk.php';
+
+// ── PayHero v2 API ────────────────────────────────────────────────────────
+const PAYHERO_BASIC_AUTH_TOKEN = process.env.PAYHERO_BASIC_AUTH_TOKEN?.trim();
+const PAYHERO_CHANNEL_ID = parseInt(process.env.PAYHERO_CHANNEL_ID, 10);
+const PAYHERO_BASE_URL = 'https://backend.payhero.co.ke/api/v2';
 const PAYHERO_CALLBACK_URL = process.env.PAYHERO_CALLBACK_URL || '';
+
+if (!PAYHERO_BASIC_AUTH_TOKEN) console.warn('⚠️  PAYHERO_BASIC_AUTH_TOKEN not set');
+if (!PAYHERO_CHANNEL_ID)       console.warn('⚠️  PAYHERO_CHANNEL_ID not set');
+if (!PAYHERO_CALLBACK_URL)     console.warn('⚠️  PAYHERO_CALLBACK_URL not set');
 
 const TIERS = {
   free:    { name:'Free',    dailyLimit:2,  price:0,   label:'2 free tasks / day' },
@@ -32,6 +43,9 @@ const MIN_WITHDRAWAL = 200;
 const PAYMENT_TIMEOUT_MS = 60 * 1000;
 const SEED_VERSION = 3;
 
+// ═══════════════════════════════════════════════════════════════════════════
+// MONGODB
+// ═══════════════════════════════════════════════════════════════════════════
 let db, usersCol, txnsCol, tasksCol, walletCol, historyCol, metaCol, visitsCol, loginAttemptsCol;
 
 async function connectDB() {
@@ -62,7 +76,9 @@ async function connectDB() {
   console.log('✅ MongoDB connected');
 }
 
-// ─── SEED ──────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// SEED
+// ═══════════════════════════════════════════════════════════════════════════
 const OWNER_NAMES = ['Sarah M.','James K.','Grace W.','David O.','Amina H.','Peter N.','Lucy A.','Brian C.','Faith M.','Kevin R.','Njeri K.','Otieno J.','Wanjiku S.','Hassan A.','Esther M.','Mercy W.','Kimani T.','Achieng O.','Mwangi D.','Zawadi L.'];
 const OWNER_AVATARS = ['👩‍💼','👨‍💼','🧑‍💻','👨‍🔬','👩‍🔬','🧑‍🎓','👨‍🏫','👩‍🏫','🧑‍🎨','👩‍💻','👨‍💻','🧑‍🔧','👨‍⚕️','👩‍⚕️','🧑‍🍳','🧑‍🌾','👩‍🎤','👨‍🎤','🧑‍🚀','👩‍✈️'];
 const OWNER_COUNTRIES = ['Kenya','Kenya','Kenya','Uganda','Tanzania','Rwanda','Kenya'];
@@ -151,7 +167,9 @@ async function seedTasks() {
   console.log(`✅ Seeded ${tasks.length} tasks`);
 }
 
-// ─── QUESTIONS ─────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// QUESTIONS
+// ═══════════════════════════════════════════════════════════════════════════
 const QT = [
   { q:'How often do you use {topic} products or services?', o:['Daily','Weekly','Monthly','Rarely or never'] },
   { q:'How would you rate your overall experience with {topic}?', o:['Very satisfied','Satisfied','Neutral','Dissatisfied'] },
@@ -186,12 +204,14 @@ function generateQuestions(task) {
   return out;
 }
 
-// ─── HELPERS ───────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════════════════════
 function normalizePhone(phone) {
   let p = String(phone || '').replace(/\D/g, '');
-  if (p.startsWith('0')) p = '254' + p.slice(1);
-  else if (p.startsWith('7') && p.length === 9) p = '254' + p;
-  else if (p.startsWith('1') && p.length === 9) p = '254' + p;
+  if (p.startsWith('254')) return p;
+  if (p.startsWith('0')) return '254' + p.slice(1);
+  if ((p.startsWith('7') || p.startsWith('1')) && p.length === 9) return '254' + p;
   return p;
 }
 function isValidEmail(e) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(e||'').trim()); }
@@ -257,7 +277,89 @@ function adminAuth(req, res, next) {
   } catch { return res.status(401).json({ error: 'Invalid admin token' }); }
 }
 
-// ── VISIT TRACKING ────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// PAYHERO PAYMENT MODULE — reusable for subscriptions & deposits
+// ═══════════════════════════════════════════════════════════════════════════
+function payheroAuthHeader() {
+  const t = PAYHERO_BASIC_AUTH_TOKEN || '';
+  return t.startsWith('Basic ') ? t : `Basic ${t}`;
+}
+
+/**
+ * Send an STK push via PayHero v2 API.
+ * @param {object} p
+ * @param {number} p.amount       - Whole KES amount
+ * @param {string} p.phone        - 2547xxxxxxxx
+ * @param {string} p.reference    - Your unique external_reference
+ * @returns {Promise<{ok:boolean, data:any, message:string}>}
+ */
+async function sendPayHeroStk({ amount, phone, reference }) {
+  if (!PAYHERO_BASIC_AUTH_TOKEN) return { ok: false, data: null, message: 'PayHero token not configured' };
+  if (!PAYHERO_CHANNEL_ID)       return { ok: false, data: null, message: 'PayHero channel not configured' };
+  if (!PAYHERO_CALLBACK_URL)     return { ok: false, data: null, message: 'PayHero callback URL not configured' };
+
+  const payload = {
+    amount: Number(amount),
+    phone_number: phone,
+    channel_id: PAYHERO_CHANNEL_ID,
+    provider: 'm-pesa',
+    external_reference: reference,
+    callback_url: PAYHERO_CALLBACK_URL
+  };
+
+  try {
+    const r = await axios.post(`${PAYHERO_BASE_URL}/payments`, payload, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': payheroAuthHeader()
+      },
+      timeout: 30000,
+      validateStatus: () => true
+    });
+
+    const ok = r.status >= 200 && r.status < 300 &&
+               (r.data?.success === true || r.data?.status === true);
+
+    if (!ok) {
+      console.error('❌ PayHero STK failed:', r.status, JSON.stringify(r.data));
+      return {
+        ok: false,
+        data: r.data,
+        message: r.data?.message || r.data?.error || `STK push rejected (HTTP ${r.status})`
+      };
+    }
+
+    console.log(`✅ PayHero STK sent → ${phone} • KES ${amount} • ref ${reference}`);
+    return { ok: true, data: r.data, message: 'STK push sent' };
+  } catch (err) {
+    const msg = err.response?.data?.message || err.message;
+    console.error('❌ PayHero STK error:', msg);
+    return { ok: false, data: err.response?.data || null, message: msg };
+  }
+}
+
+/**
+ * Map PayHero/M‑Pesa ResultCode → friendly user message.
+ */
+function mapPayHeroFailureReason(resultCode, resultDesc) {
+  const code = String(resultCode);
+  const map = {
+    '1':    'Insufficient funds in your M‑Pesa account',
+    '1001': 'You have another M‑Pesa transaction in progress. Please wait and try again',
+    '1019': 'Transaction expired — no PIN entered in time',
+    '1032': 'You cancelled the payment prompt on your phone',
+    '1037': 'No response from your phone. Keep your phone on and try again',
+    '1050': 'Not enough money in your M‑Pesa account',
+    '2001': 'You entered the wrong M‑Pesa PIN',
+    '2002': 'M‑Pesa PIN could not be verified. Please try again',
+    '9999': 'M‑Pesa service is temporarily unavailable. Please try again later'
+  };
+  return map[code] || resultDesc || `Transaction failed (code ${code})`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// VISIT TRACKING
+// ═══════════════════════════════════════════════════════════════════════════
 app.use((req, res, next) => {
   const isPage = req.method === 'GET' && !req.path.startsWith('/api/') && !req.path.startsWith('/socket.io')
     && !/\.(js|css|png|jpg|jpeg|svg|ico|webp|woff2?|ttf|map)$/i.test(req.path);
@@ -469,11 +571,14 @@ app.get('/api/history', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Server error' }); }
 });
 
-// ── SUBSCRIBE (accepts phone) ─────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// SUBSCRIBE
+// ═══════════════════════════════════════════════════════════════════════════
 app.post('/api/subscribe', auth, async (req, res) => {
   try {
     const { tier, phone: phoneInput } = req.body || {};
     if (!TIERS[tier] || tier === 'free') return res.status(400).json({ error: 'Invalid tier' });
+
     const user = await usersCol.findOne({ _id: new ObjectId(req.userId) });
     if (!user) return res.status(404).json({ error: 'User not found' });
 
@@ -490,18 +595,17 @@ app.post('/api/subscribe', auth, async (req, res) => {
       status: 'pending', kind: 'subscription', createdAt: new Date()
     });
 
-    const payload = {
-      api_key: process.env.PAYHERO_API_KEY,
-      username: process.env.PAYHERO_USERNAME,
-      amount, phone,
-      user_reference: reference,
-      callback_url: PAYHERO_CALLBACK_URL
-    };
-    console.log('📤 Subscribe STK to', phone);
-    const { data } = await axios.post(PAYHERO_API_URL, payload, {
-      headers: { 'Content-Type': 'application/json' }, timeout: 20000
-    });
-    await txnsCol.updateOne({ reference }, { $set: { payheroResponse: data } });
+    const stk = await sendPayHeroStk({ amount, phone, reference });
+
+    if (!stk.ok) {
+      await txnsCol.updateOne(
+        { reference },
+        { $set: { status: 'failed', reason: stk.message, payheroResponse: stk.data } }
+      );
+      return res.status(400).json({ error: stk.message });
+    }
+
+    await txnsCol.updateOne({ reference }, { $set: { payheroResponse: stk.data } });
 
     res.json({
       message: `STK push sent to ${phone}. Enter your M‑Pesa PIN to complete payment.`,
@@ -513,7 +617,9 @@ app.post('/api/subscribe', auth, async (req, res) => {
   }
 });
 
-// ── DEPOSIT ───────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// DEPOSIT
+// ═══════════════════════════════════════════════════════════════════════════
 app.post('/api/wallet/deposit', auth, async (req, res) => {
   try {
     const amount = Number(req.body?.amount) || 0;
@@ -532,18 +638,17 @@ app.post('/api/wallet/deposit', auth, async (req, res) => {
       status: 'pending', kind: 'deposit', createdAt: new Date()
     });
 
-    const payload = {
-      api_key: process.env.PAYHERO_API_KEY,
-      username: process.env.PAYHERO_USERNAME,
-      amount, phone,
-      user_reference: reference,
-      callback_url: PAYHERO_CALLBACK_URL
-    };
-    console.log('📤 Deposit STK to', phone);
-    const { data } = await axios.post(PAYHERO_API_URL, payload, {
-      headers: { 'Content-Type': 'application/json' }, timeout: 20000
-    });
-    await txnsCol.updateOne({ reference }, { $set: { payheroResponse: data } });
+    const stk = await sendPayHeroStk({ amount, phone, reference });
+
+    if (!stk.ok) {
+      await txnsCol.updateOne(
+        { reference },
+        { $set: { status: 'failed', reason: stk.message, payheroResponse: stk.data } }
+      );
+      return res.status(400).json({ error: stk.message });
+    }
+
+    await txnsCol.updateOne({ reference }, { $set: { payheroResponse: stk.data } });
 
     res.json({
       message: `STK push sent to ${phone}. Approve KES ${amount} on your phone.`,
@@ -555,6 +660,9 @@ app.post('/api/wallet/deposit', auth, async (req, res) => {
   }
 });
 
+// ═══════════════════════════════════════════════════════════════════════════
+// WITHDRAW
+// ═══════════════════════════════════════════════════════════════════════════
 app.post('/api/wallet/withdraw', auth, async (req, res) => {
   try {
     const amount = Number(req.body?.amount) || 0;
@@ -605,54 +713,103 @@ app.get('/api/wallet/history', auth, async (req, res) => {
   } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
 });
 
-// ── PAYHERO CALLBACK ──────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// PAYHERO CALLBACK (v2)
+// ═══════════════════════════════════════════════════════════════════════════
 app.post('/api/payhero/callback', async (req, res) => {
   try {
-    const body = req.body || {};
-    const resp = body.response || body;
-    const userRef = resp.User_Reference || resp.user_reference || resp.reference || body.reference;
-    const amountRaw = resp.Amount ?? resp.amount ?? body.amount ?? 0;
-    const mpesaRef = resp.MPESA_Reference || resp.mpesa_reference || resp.MpesaReceiptNumber || null;
-    if (!userRef) return res.status(400).json({ error: 'Missing User_Reference' });
-    const parts = String(userRef).split('_');
-    const prefix = parts[0];
-    const txn = await txnsCol.findOne({ reference: userRef });
-    if (!txn) return res.status(404).json({ error: 'Transaction not found' });
-    if (txn.status === 'completed') return res.json({ message: 'Already processed' });
-    const amountNum = Number(amountRaw) || 0;
+    console.log('📬 PayHero callback:', JSON.stringify(req.body, null, 2));
+
+    const d = req.body?.response || req.body || {};
+    const reference = d.external_reference || d.externalReference ||
+                      d.User_Reference || d.user_reference || d.reference;
+
+    const resultCode = d.ResultCode !== undefined ? d.ResultCode
+                     : d.result_code !== undefined ? d.result_code
+                     : d.status_code;
+
+    const resultDesc = d.ResultDesc || d.result_desc || d.status_description || null;
+    const statusRaw  = d.Status || d.status;
+    const mpesaRef   = d.MpesaReceiptNumber || d.mpesa_receipt || d.MPESA_Reference || null;
+
+    const isSuccess =
+      resultCode === 0 || resultCode === '0' ||
+      String(statusRaw).toLowerCase() === 'success' ||
+      String(statusRaw).toLowerCase() === 'completed';
+
+    if (!reference) {
+      console.warn('Callback missing external_reference');
+      return res.status(200).json({ status: 'received' });
+    }
+
+    const txn = await txnsCol.findOne({ reference });
+    if (!txn) {
+      console.warn('Callback txn not found:', reference);
+      return res.status(200).json({ status: 'received' });
+    }
+    if (txn.status === 'completed') {
+      return res.status(200).json({ status: 'already-processed' });
+    }
+
+    if (!isSuccess) {
+      const reason = mapPayHeroFailureReason(resultCode, resultDesc);
+      await txnsCol.updateOne(
+        { _id: txn._id },
+        { $set: { status: 'failed', reason, callback: req.body, completedAt: new Date() } }
+      );
+      console.log(`❌ Payment failed: ${reference} → ${reason}`);
+      return res.status(200).json({ status: 'received' });
+    }
+
+    const prefix = String(reference).split('_')[0];
     const userId = String(txn.userId);
 
     if (prefix === 'sub') {
-      const tier = parts[2];
-      if (!TIERS[tier] || tier === 'free') return res.status(400).json({ error: 'Invalid tier' });
-      if (amountNum && amountNum < TIERS[tier].price) {
-        await txnsCol.updateOne({ _id: txn._id }, { $set: { status:'failed', reason:'Amount mismatch' } });
-        return res.status(400).json({ error: 'Amount mismatch' });
+      const tier = txn.tier;
+      if (!TIERS[tier]) {
+        await txnsCol.updateOne({ _id: txn._id }, { $set: { status: 'failed', reason: 'Invalid tier on callback' } });
+        return res.status(200).json({ status: 'received' });
       }
       const user = await usersCol.findOne({ _id: new ObjectId(userId) });
-      if (!user) return res.status(404).json({ error: 'User not found' });
-      const base = isSubscriptionActive(user) && user.subscriptionTier === tier ? new Date(user.subscriptionExpiry) : new Date();
-      const expiry = new Date(base); expiry.setDate(expiry.getDate() + SUBSCRIPTION_DAYS);
-      await usersCol.updateOne({ _id: user._id }, { $set: {
-        subscriptionTier: tier, subscriptionExpiry: expiry,
-        tasksCompletedToday: 0, lastTaskDate: new Date().toISOString().slice(0,10)
-      }});
-    }
-    if (prefix === 'dep') {
-      if (amountNum && amountNum < MIN_DEPOSIT) {
-        await txnsCol.updateOne({ _id: txn._id }, { $set:{ status:'failed', reason:'Below minimum' } });
-        return res.status(400).json({ error: 'Below minimum' });
+      if (!user) {
+        await txnsCol.updateOne({ _id: txn._id }, { $set: { status: 'failed', reason: 'User not found' } });
+        return res.status(200).json({ status: 'received' });
       }
-      await usersCol.updateOne({ _id: new ObjectId(userId) }, { $inc: { balance: amountNum } });
+      const base = isSubscriptionActive(user) && user.subscriptionTier === tier
+        ? new Date(user.subscriptionExpiry) : new Date();
+      const expiry = new Date(base);
+      expiry.setDate(expiry.getDate() + SUBSCRIPTION_DAYS);
+
+      await usersCol.updateOne({ _id: user._id }, {
+        $set: {
+          subscriptionTier: tier,
+          subscriptionExpiry: expiry,
+          tasksCompletedToday: 0,
+          lastTaskDate: new Date().toISOString().slice(0, 10)
+        }
+      });
+      console.log(`✅ Subscription ${tier} activated for ${user.username}`);
+    } else if (prefix === 'dep') {
+      const amount = Number(txn.amount) || 0;
+      await usersCol.updateOne({ _id: new ObjectId(userId) }, { $inc: { balance: amount } });
       await walletCol.insertOne({
-        userId: new ObjectId(userId), type:'deposit', amount: amountNum,
-        phone: txn.phone, status:'completed', reference: userRef,
+        userId: new ObjectId(userId), type: 'deposit', amount,
+        phone: txn.phone, status: 'completed', reference,
         mpesaRef, createdAt: new Date(), confirmedAt: new Date()
       });
+      console.log(`💰 Deposit KES ${amount} credited to user ${userId}`);
     }
-    await txnsCol.updateOne({ _id: txn._id }, { $set: { status:'completed', mpesaRef, completedAt: new Date() } });
-    res.json({ message: 'Processed' });
-  } catch (err) { console.error('Callback error:', err); res.status(200).json({ message: 'Received' }); }
+
+    await txnsCol.updateOne(
+      { _id: txn._id },
+      { $set: { status: 'completed', mpesaRef, callback: req.body, completedAt: new Date() } }
+    );
+
+    res.status(200).json({ status: 'received' });
+  } catch (err) {
+    console.error('Callback error:', err);
+    res.status(200).json({ status: 'received' });
+  }
 });
 
 app.get('/api/tiers', (req, res) => {
@@ -984,9 +1141,16 @@ app.post('/api/admin/withdrawal/reject/:id', adminAuth, async (req, res) => {
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
+// ═══════════════════════════════════════════════════════════════════════════
+// START
+// ═══════════════════════════════════════════════════════════════════════════
 (async () => {
   try {
     await connectDB();
-    app.listen(PORT, () => console.log(`🚀 Server running on http://localhost:${PORT}\n   Admin: /admin`));
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on http://localhost:${PORT}`);
+      console.log(`   Admin: /admin`);
+      console.log(`   PayHero callback: ${PAYHERO_CALLBACK_URL || '(not set)'}`);
+    });
   } catch (err) { console.error('❌ Failed to start:', err); process.exit(1); }
 })();
