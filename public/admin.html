@@ -58,6 +58,7 @@
   .msg { padding:12px 14px; border-radius:10px; margin-bottom:14px; font-size:13px; font-weight:700; display:none; }
   .msg.show { display:block; }
   .msg.error { background:var(--red-light); color:var(--red); }
+  .msg.success { background:var(--green-light); color:var(--green-dark); }
   .layout { display:none; min-height:100vh; }
   .layout.show { display:block; }
   .topbar {
@@ -252,6 +253,7 @@
       <button class="tab" data-tab="withdrawals">💸 Pending Withdrawals</button>
       <button class="tab" data-tab="visits">👀 Site Visits</button>
       <button class="tab" data-tab="logins">🔐 Login Attempts</button>
+      <button class="tab" data-tab="settings">⚙️ Pricing</button>
     </div>
 
     <!-- ═══ USERS ═══ -->
@@ -425,6 +427,34 @@
       </div>
     </div>
 
+    <!-- ═══ SETTINGS: PRICING ═══ -->
+    <div class="tab-pane" id="pane-settings">
+      <div class="table-card">
+        <div class="table-head">
+          <div class="table-title">Subscription Prices</div>
+        </div>
+        <div style="padding:22px; max-width:520px;">
+          <div class="msg" id="priceMsg"></div>
+          <div class="field">
+            <label for="priceClassic">Classic — KES / week</label>
+            <input type="number" id="priceClassic" min="1" step="1" />
+          </div>
+          <div class="field">
+            <label for="pricePremium">Premium — KES / week</label>
+            <input type="number" id="pricePremium" min="1" step="1" />
+          </div>
+          <div class="field">
+            <label for="priceGolden">Golden — KES / week</label>
+            <input type="number" id="priceGolden" min="1" step="1" />
+          </div>
+          <button class="btn btn-primary" id="savePricesBtn" style="margin-top:6px;">Save Prices</button>
+          <div style="font-size:12px;color:var(--gray-500);margin-top:12px;line-height:1.5;font-weight:600;">
+            Changes take effect immediately. Users will see the new prices on the Upgrade page.
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -527,6 +557,7 @@
     loadWithdrawals();
     loadVisits();
     loadLogins();
+    loadPrices();
   }
 
   // ── STATS ──
@@ -644,7 +675,6 @@
           }).join('')
         : `<tr><td colspan="8"><div class="empty"><div class="empty-ic">💳</div>No transactions</div></td></tr>`;
 
-      // Attach Mark Paid handlers
       document.querySelectorAll('.mark-paid-btn').forEach(btn => {
         btn.addEventListener('click', async () => {
           if (!confirm('Mark this transaction as PAID? This will credit the user\'s account or activate their subscription.')) return;
@@ -831,6 +861,51 @@
     } catch (err) { console.error(err); }
   }
 
+  // ── PRICING SETTINGS ──
+  async function loadPrices() {
+    try {
+      const p = await api('/api/admin/settings/prices');
+      $('priceClassic').value = p.classic;
+      $('pricePremium').value = p.premium;
+      $('priceGolden').value  = p.golden;
+    } catch (err) { console.error(err); }
+  }
+
+  $('savePricesBtn').addEventListener('click', async () => {
+    const classic = Number($('priceClassic').value);
+    const premium = Number($('pricePremium').value);
+    const golden  = Number($('priceGolden').value);
+
+    if ([classic, premium, golden].some(v => !Number.isFinite(v) || v < 1)) {
+      const msg = $('priceMsg');
+      msg.textContent = 'Enter valid positive numbers';
+      msg.className = 'msg show error';
+      return;
+    }
+
+    const btn = $('savePricesBtn');
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+    try {
+      await api('/api/admin/settings/prices', {
+        method: 'PUT',
+        body: JSON.stringify({ classic, premium, golden })
+      });
+      const msg = $('priceMsg');
+      msg.textContent = '✓ Prices saved successfully!';
+      msg.className = 'msg show success';
+      setTimeout(() => msg.classList.remove('show'), 2500);
+      loadStats();
+    } catch (err) {
+      const msg = $('priceMsg');
+      msg.textContent = err.message;
+      msg.className = 'msg show error';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Save Prices';
+    }
+  });
+
   // ── TABS ──
   document.querySelectorAll('.tab').forEach(t => {
     t.addEventListener('click', () => {
@@ -845,6 +920,7 @@
       if (t.dataset.tab === 'withdrawals') loadWithdrawals();
       if (t.dataset.tab === 'visits') loadVisits();
       if (t.dataset.tab === 'logins') loadLogins();
+      if (t.dataset.tab === 'settings') loadPrices();
     });
   });
 
@@ -900,6 +976,7 @@
   $('refreshBtn').addEventListener('click', () => {
     loadStats(); loadUsers(); loadSubs(); loadTxns();
     loadPending(); loadWithdrawals(); loadVisits(); loadLogins();
+    loadPrices();
   });
 
   // ── AUTO REFRESH STATS every 30s ──
@@ -912,4 +989,4 @@
 })();
 </script>
 </body>
-                                                                                            </html>
+  </html>
