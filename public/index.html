@@ -52,6 +52,9 @@
   .pill.green{ background:var(--green-light); color:var(--green-dark); }
   .pill.gold{ background:#FFF8E1; color:#8D6E00; }
   .pill.blue{ background:#E3F2FD; color:#0D47A1; }
+  .pill.red{ background:var(--red-light); color:var(--red); }
+  .pill.yellow{ background:#FFF3CD; color:#8A6D3B; }
+  .pill.gray{ background:var(--gray-100); color:var(--gray-700); }
   .logout-btn {
     background:none; border:1.5px solid var(--gray-200);
     border-radius:8px; padding:6px 12px;
@@ -130,6 +133,7 @@
   .stat-label { font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:0.6px; color:var(--gray-500); margin-bottom:6px; }
   .stat-value { font-size:22px; font-weight:900; color:var(--ink); font-variant-numeric:tabular-nums; line-height:1.1; letter-spacing:-0.5px; }
   .stat-value.green { color:var(--green); }
+  .stat-value.yellow { color:var(--yellow); }
   .stat-sub { font-size:11px; color:var(--gray-500); margin-top:4px; font-weight:600; }
   /* TIER CARDS */
   .tier-grid { display:flex; flex-direction:column; gap:12px; margin-bottom:14px; }
@@ -171,7 +175,6 @@
     font-size:10px; font-weight:900; padding:4px 10px; border-radius:999px;
     letter-spacing:0.4px;
   }
-  /* Owner strip */
   .task-owner { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
   .owner-avatar {
     width:38px; height:38px; border-radius:50%;
@@ -188,8 +191,6 @@
   }
   .lock-badge.unlocked { background:var(--green-light); color:var(--green-dark); }
   .lock-badge.locked-badge { background:#FFF3CD; color:#8A6D3B; }
-  /* Task body */
-  .task-body {}
   .task-type-row { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
   .task-type {
     font-size:10px; font-weight:900; padding:3px 8px; border-radius:6px;
@@ -210,10 +211,7 @@
     border-top:1px dashed var(--gray-200);
   }
   .task-meta span { display:flex; align-items:center; gap:4px; }
-  /* Action */
-  .task-action {
-    margin-top:12px;
-  }
+  .task-action { margin-top:12px; }
   .task-action button {
     width:100%; padding:12px; border-radius:10px;
     font-size:13.5px; font-weight:800; font-family:inherit;
@@ -286,6 +284,16 @@
   .balance-value { font-size:34px; font-weight:900; letter-spacing:-1px; font-variant-numeric:tabular-nums; }
   .balance-value small { font-size:16px; font-weight:700; opacity:0.9; margin-right:4px; }
   .balance-sub { display:flex; gap:16px; margin-top:12px; font-size:12px; font-weight:700; opacity:0.9; padding-top:12px; border-top:1px solid rgba(255,255,255,0.25); }
+  .pending-card {
+    background:#FFF8E1; border:1.5px solid #FFE8A1;
+    border-radius:var(--radius); padding:18px; margin-bottom:14px;
+  }
+  .pending-label {
+    font-size:11px; font-weight:900; text-transform:uppercase;
+    letter-spacing:0.6px; color:#8A6D3B; margin-bottom:6px;
+  }
+  .pending-value { font-size:26px; font-weight:900; color:#8A6D3B; letter-spacing:-0.5px; }
+  .pending-sub { font-size:11px; color:#8A6D3B; font-weight:600; margin-top:4px; opacity:0.8; }
   .mpesa-logo {
     display:inline-flex; align-items:center; gap:6px;
     background:var(--mpesa); color:white;
@@ -298,6 +306,7 @@
     background:var(--white); border-radius:12px; padding:14px;
     border:1px solid var(--gray-200); box-shadow:var(--shadow);
     margin-bottom:10px; display:flex; gap:12px; align-items:center;
+    flex-wrap:wrap;
   }
   .hist-avatar {
     width:38px; height:38px; border-radius:50%;
@@ -427,10 +436,15 @@
     box-shadow:var(--shadow-green); margin-bottom:20px;
     animation:pop .4s ease-out;
   }
+  .success-icon.pending {
+    background:linear-gradient(135deg,#F5A623,#D4901A);
+    box-shadow:0 6px 20px rgba(245,166,35,0.40);
+  }
   @keyframes pop { 0%{transform:scale(0.6);opacity:0;} 100%{transform:scale(1);opacity:1;} }
   .success-title { font-size:22px; font-weight:900; margin-bottom:8px; }
   .success-amount { font-size:38px; font-weight:900; color:var(--green); letter-spacing:-1px; margin:12px 0; }
-  .success-sub { font-size:13px; color:var(--gray-500); font-weight:600; margin-bottom:24px; }
+  .success-amount.pending { color:#D4901A; }
+  .success-sub { font-size:13px; color:var(--gray-500); font-weight:600; margin-bottom:24px; line-height:1.6; }
   @media (min-width:500px) {
     .tier-grid { flex-direction:row; }
     .tier-card { flex:1; }
@@ -451,7 +465,7 @@
   </div>
 </header>
 
-<!-- AUTH -->
+<!-- ═══════════════ AUTH ═══════════════ -->
 <section class="screen active" id="screen-auth">
   <div class="card green-border">
     <div class="section-title">Welcome to JobPay</div>
@@ -494,18 +508,18 @@
   </div>
 </section>
 
-<!-- DASHBOARD -->
+<!-- ═══════════════ DASHBOARD ═══════════════ -->
 <section class="screen" id="screen-dashboard">
   <div class="stats">
     <div class="stat">
-      <div class="stat-label">Today</div>
-      <div class="stat-value green" id="dashDone">0</div>
-      <div class="stat-sub" id="dashLimit">of 0 unlocked</div>
-    </div>
-    <div class="stat">
-      <div class="stat-label">Balance</div>
+      <div class="stat-label">Available</div>
       <div class="stat-value green" id="dashBalance">KES 0</div>
       <div class="stat-sub" id="dashEarned">Earned: KES 0</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Pending</div>
+      <div class="stat-value yellow" id="dashPending">KES 0</div>
+      <div class="stat-sub" id="dashDone">0 of 0 today</div>
     </div>
   </div>
   <div class="card" id="subStatusCard">
@@ -524,7 +538,7 @@
   </div>
 </section>
 
-<!-- SUBSCRIBE -->
+<!-- ═══════════════ SUBSCRIBE ═══════════════ -->
 <section class="screen" id="screen-subscribe">
   <div class="msg" id="subMsg"></div>
   <div class="tier-grid">
@@ -558,7 +572,7 @@
   </div>
 </section>
 
-<!-- ACCOUNT -->
+<!-- ═══════════════ ACCOUNT ═══════════════ -->
 <section class="screen" id="screen-account">
   <div class="balance-card">
     <div class="balance-label">Available Balance</div>
@@ -567,6 +581,19 @@
       <span>💵 Total earned: <span id="acctTotal">KES 0</span></span>
     </div>
   </div>
+
+  <div class="pending-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <div class="pending-label">⏳ Pending Confirmation</div>
+        <div class="pending-value" id="acctPending">KES 0</div>
+        <div class="pending-sub">Task rewards awaiting admin approval</div>
+      </div>
+      <div style="width:46px;height:46px;border-radius:14px;background:#FFE8A1;color:#8A6D3B;
+                  display:grid;place-items:center;font-size:22px;">⏳</div>
+    </div>
+  </div>
+
   <div class="btn-row" style="margin-bottom:14px;">
     <button class="btn btn-mpesa" id="btnDeposit">
       <span class="mpesa-logo" style="background:transparent;padding:0;">
@@ -579,19 +606,20 @@
     </button>
     <button class="btn btn-primary" id="btnWithdraw">💸 Withdraw</button>
   </div>
+
   <div class="card">
-    <div class="section-title">Recent Transactions</div>
+    <div class="section-title">Transaction History</div>
     <div id="txList"></div>
   </div>
 </section>
 
-<!-- HISTORY -->
+<!-- ═══════════════ HISTORY ═══════════════ -->
 <section class="screen" id="screen-history">
   <div class="section-title">Completed Tasks</div>
   <div id="historyList"></div>
 </section>
 
-<!-- PROFILE -->
+<!-- ═══════════════ PROFILE ═══════════════ -->
 <section class="screen" id="screen-profile">
   <div class="card">
     <div class="section-title">Account Details</div>
@@ -599,7 +627,7 @@
   </div>
 </section>
 
-<!-- NAV -->
+<!-- ═══════════════ NAV ═══════════════ -->
 <nav class="bottom-nav" id="bottomNav" style="display:none;">
   <button class="nav-btn active" data-screen="dashboard"><span class="nav-icon">📊</span><span>Tasks</span></button>
   <button class="nav-btn" data-screen="subscribe"><span class="nav-icon">⭐</span><span>Upgrade</span></button>
@@ -608,7 +636,7 @@
   <button class="nav-btn" data-screen="profile"><span class="nav-icon">👤</span><span>Profile</span></button>
 </nav>
 
-<!-- UPGRADE PROMPT MODAL -->
+<!-- ═══════════════ UPGRADE PROMPT MODAL ═══════════════ -->
 <div class="modal-backdrop" id="upgradeModal">
   <div class="modal">
     <button class="modal-close" data-close="upgradeModal">✕</button>
@@ -625,7 +653,7 @@
   </div>
 </div>
 
-<!-- DEPOSIT MODAL -->
+<!-- ═══════════════ DEPOSIT MODAL ═══════════════ -->
 <div class="modal-backdrop" id="depositModal">
   <div class="modal">
     <button class="modal-close" data-close="depositModal">✕</button>
@@ -640,6 +668,10 @@
       </span>
       &nbsp;Minimum KES 50
     </div>
+    <div class="field">
+      <label for="depositPhone">M‑Pesa Number</label>
+      <input type="tel" id="depositPhone" class="no-icon" placeholder="0712 345 678" inputmode="tel" />
+    </div>
     <input type="number" class="amount-input" id="depositAmount" placeholder="0" inputmode="numeric" />
     <div class="quick-amounts">
       <button class="quick-amt" data-amt="50">50</button>
@@ -649,12 +681,12 @@
       <button class="quick-amt" data-amt="1000">1000</button>
       <button class="quick-amt" data-amt="2000">2000</button>
     </div>
-    <button class="btn btn-mpesa" id="confirmDeposit">Deposit via M‑Pesa</button>
-    <div class="modal-note">You'll receive an STK push on your phone. Enter your M‑Pesa PIN.</div>
+    <button class="btn btn-mpesa" id="confirmDeposit">Send STK to this number</button>
+    <div class="modal-note">You'll receive an STK push on your phone. Enter your M‑Pesa PIN to complete.</div>
   </div>
 </div>
 
-<!-- WITHDRAW MODAL -->
+<!-- ═══════════════ WITHDRAW MODAL ═══════════════ -->
 <div class="modal-backdrop" id="withdrawModal">
   <div class="modal">
     <button class="modal-close" data-close="withdrawModal">✕</button>
@@ -679,11 +711,11 @@
       <button class="quick-amt" data-amt="5000">5000</button>
     </div>
     <button class="btn btn-primary" id="confirmWithdraw">Withdraw to M‑Pesa</button>
-    <div class="modal-note" id="withdrawNote">Funds sent within 24 hours.</div>
+    <div class="modal-note" id="withdrawNote">Funds sent to your registered number after admin approval.</div>
   </div>
 </div>
 
-<!-- SURVEY FULL-SCREEN -->
+<!-- ═══════════════ SURVEY FULL-SCREEN ═══════════════ -->
 <div class="survey-backdrop" id="surveyModal">
   <div class="survey-panel">
     <div class="survey-topbar">
@@ -867,10 +899,10 @@
       localStorage.setItem('jobpay_user', JSON.stringify(me));
       updateHeaderPill();
 
-      $('dashDone').textContent = me.tasksCompletedToday || 0;
-      $('dashLimit').textContent = `of ${me.dailyLimit} unlocked`;
       $('dashBalance').textContent = `KES ${(me.balance||0).toLocaleString()}`;
+      $('dashPending').textContent = `KES ${(me.pendingBalance||0).toLocaleString()}`;
       $('dashEarned').textContent = `Earned: KES ${(me.totalEarnings||0).toLocaleString()}`;
+      $('dashDone').textContent = `${me.tasksCompletedToday||0} of ${me.dailyLimit||0} today`;
 
       const body = $('subStatusBody');
       if (me.subscriptionTier === 'free') {
@@ -914,11 +946,9 @@
         <div class="empty-title">No tasks</div>
         <div class="empty-text">Try a different filter.</div></div></div>`;
 
-      // Show/hide load more
       const loaded = (page - 1) * 50 + data.tasks.length;
       $('loadMoreBtn').style.display = loaded < totalTaskCount ? 'block' : 'none';
 
-      // Attach handlers
       list.querySelectorAll('.task-action button').forEach(btn => {
         if (btn.dataset.bound) return;
         btn.dataset.bound = '1';
@@ -997,6 +1027,7 @@
       $('surveyTitle').textContent = data.task.title;
       $('surveyOwner').textContent = `${data.task.owner.avatar}  ${data.task.owner.name} • ${data.task.owner.country}`;
       $('surveyRewardChip').textContent = `KES ${data.task.reward}`;
+      $('surveyFooter').style.display = 'flex';
       renderSurveyQuestion();
       openModal('surveyModal');
     } catch (err) {
@@ -1007,7 +1038,7 @@
   function renderSurveyQuestion() {
     const { questions, current, answers } = survey;
     const q = questions[current];
-    const pct = Math.round(((current) / questions.length) * 100);
+    const pct = Math.round((current / questions.length) * 100);
     $('surveyProgressBar').style.width = pct + '%';
     $('surveyProgressText').textContent = `Question ${current + 1} of ${questions.length}`;
     $('surveyProgressPct').textContent = pct + '%';
@@ -1031,7 +1062,7 @@
     });
 
     $('surveyPrev').style.visibility = current === 0 ? 'hidden' : 'visible';
-    $('surveyNext').textContent = current === questions.length - 1 ? 'Finish & Earn' : 'Next';
+    $('surveyNext').textContent = current === questions.length - 1 ? 'Finish & Submit' : 'Next';
   }
 
   $('surveyPrev').addEventListener('click', () => {
@@ -1046,7 +1077,6 @@
       survey.current++;
       return renderSurveyQuestion();
     }
-    // Submit
     const btn = $('surveyNext');
     btn.disabled = true; btn.innerHTML = '<span class="loader"></span>';
     try {
@@ -1057,21 +1087,24 @@
       showSurveySuccess(res.reward);
     } catch (err) {
       alert(err.message);
-      btn.disabled = false; btn.textContent = 'Finish & Earn';
+      btn.disabled = false; btn.textContent = 'Finish & Submit';
     }
   });
 
   function showSurveySuccess(reward) {
     $('surveyProgressBar').style.width = '100%';
     $('surveyProgressPct').textContent = '100%';
-    $('surveyProgressText').textContent = 'Completed';
+    $('surveyProgressText').textContent = 'Submitted';
     $('surveyFooter').style.display = 'none';
     $('surveyBody').innerHTML = `
       <div class="survey-success">
-        <div class="success-icon">✓</div>
-        <div class="success-title">Task Completed!</div>
-        <div class="success-amount">KES ${reward}</div>
-        <div class="success-sub">Added to your balance. View it in the Account tab.</div>
+        <div class="success-icon pending">⏳</div>
+        <div class="success-title">Task Submitted!</div>
+        <div class="success-amount pending">KES ${reward}</div>
+        <div class="success-sub">
+          Your reward is <strong>pending admin confirmation</strong>.<br>
+          It will be added to your Available Balance once approved.
+        </div>
         <button class="btn btn-primary" id="successDone" style="width:100%;">Back to Tasks</button>
       </div>`;
     $('successDone').addEventListener('click', () => {
@@ -1106,6 +1139,8 @@
       el.innerHTML = list.map(h => {
         const d = new Date(h.completedAt);
         const date = d.toLocaleDateString() + ' • ' + d.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+        const pillCls = { completed:'green', failed:'red', pending:'yellow' }[h.status] || 'gray';
+        const pillLabel = { completed:'✓ Confirmed', failed:'✕ Rejected', pending:'⏳ Pending' }[h.status] || h.status;
         return `
           <div class="hist-item">
             <div class="hist-avatar" style="background:${h.owner?.color || '#43B02A'}20;color:${h.owner?.color || '#43B02A'};">
@@ -1114,6 +1149,7 @@
             <div class="hist-body">
               <div class="hist-title">${h.taskTitle}</div>
               <div class="hist-meta">${date} • ${h.answersCount} answers</div>
+              <span class="pill ${pillCls}" style="font-size:9px;padding:2px 7px;margin-top:4px;display:inline-block;">${pillLabel}</span>
             </div>
             <div class="hist-reward">+KES ${h.reward}</div>
           </div>`;
@@ -1127,28 +1163,63 @@
       const me = await api('/api/me');
       user = me;
       $('acctBalance').innerHTML = `<small>KES</small>${(me.balance||0).toLocaleString()}.00`;
+      $('acctPending').textContent = `KES ${(me.pendingBalance||0).toLocaleString()}`;
       $('acctTotal').textContent = `KES ${(me.totalEarnings||0).toLocaleString()}`;
-      $('withdrawNote').innerHTML = `Funds sent to <strong>${me.phone}</strong> within 24 hours.`;
+      $('withdrawNote').innerHTML = `Funds sent to <strong>${me.phone}</strong> after admin approval.`;
 
-      const history = await api('/api/wallet/history');
+      const data = await api('/api/wallet/history');
+      const all = [
+        ...(data.walletTransactions || []).map(t => ({ ...t, _src:'wallet' })),
+        ...(data.paymentTransactions || []).map(t => ({ ...t, _src:'payment' }))
+      ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
       const list = $('txList');
-      if (!history.length) {
+      if (!all.length) {
         list.innerHTML = `<div class="empty" style="padding:20px 0;"><div class="empty-text">No transactions yet.</div></div>`;
         return;
       }
-      list.innerHTML = history.slice(0, 20).map(tx => {
+
+      list.innerHTML = all.slice(0, 40).map(tx => {
         const d = new Date(tx.createdAt);
         const date = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
-        const positive = tx.amount > 0;
-        const label = { 'deposit':'💳 Deposit', 'withdrawal':'💸 Withdrawal', 'task_reward':'✅ Task Reward' }[tx.type] || tx.type;
+        const ageMs = Date.now() - d.getTime();
+
+        let displayStatus = tx.status;
+        if (tx._src === 'payment' && tx.status === 'pending' && ageMs > 60000) displayStatus = 'failed';
+
+        let label, amountCls, amountTxt;
+        if (tx._src === 'payment') {
+          label = tx.kind === 'deposit' ? '💳 Deposit' : `⭐ ${(tx.tier||'Subscription').charAt(0).toUpperCase()+ (tx.tier||'').slice(1)}`;
+          amountCls = 'positive';
+          amountTxt = `+KES ${tx.amount.toLocaleString()}`;
+        } else {
+          if (tx.type === 'withdrawal') {
+            label = '💸 Withdrawal';
+            amountCls = 'negative';
+            amountTxt = `-KES ${Math.abs(tx.amount).toLocaleString()}`;
+          } else if (tx.type === 'deposit') {
+            label = '💳 Deposit';
+            amountCls = 'positive';
+            amountTxt = `+KES ${tx.amount.toLocaleString()}`;
+          } else {
+            label = '✅ Task Reward';
+            amountCls = 'positive';
+            amountTxt = `+KES ${tx.amount.toLocaleString()}`;
+          }
+        }
+
+        const pillCls = { completed:'green', failed:'red', pending:'yellow' }[displayStatus] || 'gray';
+        const pillLabel = { completed:'✓ Successful', failed:'✕ Failed', pending:'⏳ Pending' }[displayStatus] || displayStatus;
+
         return `
           <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--gray-100);gap:10px;">
-            <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;">
+            <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:0;">
               <div style="font-size:13px;font-weight:700;">${label}</div>
               <div style="font-size:11px;color:var(--gray-500);font-weight:600;">${date}</div>
+              <span class="pill ${pillCls}" style="align-self:flex-start;font-size:9px;padding:2px 7px;">${pillLabel}</span>
             </div>
-            <div style="font-size:15px;font-weight:900;color:${positive?'var(--green)':'var(--red)'};white-space:nowrap;">
-              ${positive?'+':''}KES ${tx.amount.toLocaleString()}
+            <div style="font-size:15px;font-weight:900;color:${amountCls==='positive'?'var(--green)':'var(--red)'};white-space:nowrap;">
+              ${amountTxt}
             </div>
           </div>`;
       }).join('');
@@ -1170,8 +1241,15 @@
     goTo('subscribe');
   });
 
-  $('btnDeposit').addEventListener('click', () => { $('depositAmount').value=''; openModal('depositModal'); });
-  $('btnWithdraw').addEventListener('click', () => { $('withdrawAmount').value=''; openModal('withdrawModal'); });
+  $('btnDeposit').addEventListener('click', () => {
+    $('depositAmount').value = '';
+    $('depositPhone').value = user?.phone || '';
+    openModal('depositModal');
+  });
+  $('btnWithdraw').addEventListener('click', () => {
+    $('withdrawAmount').value = '';
+    openModal('withdrawModal');
+  });
 
   document.querySelectorAll('.quick-amt').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -1182,24 +1260,33 @@
 
   $('confirmDeposit').addEventListener('click', async () => {
     const amount = Number($('depositAmount').value) || 0;
+    const phone  = $('depositPhone').value.trim();
+    if (!phone) return alert('Please enter your M‑Pesa number');
     if (amount < 50) return alert('Minimum deposit is KES 50');
     const btn = $('confirmDeposit'); btn.disabled = true; btn.innerHTML = '<span class="loader"></span>';
     try {
-      const res = await api('/api/wallet/deposit', { method:'POST', body: JSON.stringify({ amount }) });
+      const res = await api('/api/wallet/deposit', {
+        method:'POST', body: JSON.stringify({ amount, phone })
+      });
       closeModal('depositModal');
       alert(res.message);
-      const startBal = user.balance;
+      const startBal = user.balance || 0;
       let attempts = 0;
       const poll = setInterval(async () => {
         attempts++;
         try {
           const me = await api('/api/me');
-          if (me.balance > startBal) { clearInterval(poll); user = me; loadAccount(); }
+          if (me.balance > startBal) {
+            clearInterval(poll);
+            user = me;
+            loadAccount();
+            alert('✓ Deposit successful!');
+          }
         } catch {}
-        if (attempts > 20) clearInterval(poll);
+        if (attempts > 30) clearInterval(poll);
       }, 3000);
     } catch (err) { alert(err.message); }
-    finally { btn.disabled = false; btn.textContent = 'Deposit via M‑Pesa'; }
+    finally { btn.disabled = false; btn.textContent = 'Send STK to this number'; }
   });
 
   $('confirmWithdraw').addEventListener('click', async () => {
@@ -1270,9 +1357,13 @@
           <span style="color:var(--gray-500);font-weight:600;">Total earned</span>
           <span style="font-weight:800;color:var(--green);">KES ${(me.totalEarnings||0).toLocaleString()}</span>
         </div>
-        <div style="display:flex;justify-content:space-between;padding:10px 0;">
-          <span style="color:var(--gray-500);font-weight:600;">Balance</span>
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--gray-100);">
+          <span style="color:var(--gray-500);font-weight:600;">Available balance</span>
           <span style="font-weight:800;">KES ${(me.balance||0).toLocaleString()}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0;">
+          <span style="color:var(--gray-500);font-weight:600;">Pending balance</span>
+          <span style="font-weight:800;color:var(--yellow);">KES ${(me.pendingBalance||0).toLocaleString()}</span>
         </div>`;
     } catch (err) { console.error(err); }
   }
@@ -1281,4 +1372,4 @@
 })();
 </script>
 </body>
-                                                                              </html>
+        </html>
