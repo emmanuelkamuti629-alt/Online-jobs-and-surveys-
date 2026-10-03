@@ -273,16 +273,17 @@
     letter-spacing:1px; text-transform:uppercase;
     margin-bottom:12px; color:#B8FFA0;
   }
-  .featured-title { font-size:22px; font-weight:900; letter-spacing:-0.5px; margin-bottom:6px; max-width:70%; line-height:1.2; }
-  .featured-sub { font-size:13px; font-weight:600; opacity:0.85; margin-bottom:16px; max-width:70%; }
+  .featured-title { font-size:22px; font-weight:900; letter-spacing:-0.5px; margin-bottom:6px; max-width:60%; line-height:1.2; position:relative; z-index:2; }
+  .featured-sub { font-size:13px; font-weight:600; opacity:0.85; margin-bottom:16px; max-width:60%; position:relative; z-index:2; }
   .featured-btn {
     display:inline-flex; align-items:center; gap:6px;
     padding:11px 18px; background:var(--green); color:white;
     border:none; border-radius:10px;
     font-size:13px; font-weight:800; cursor:pointer; font-family:inherit;
     box-shadow:0 4px 12px rgba(67,176,42,0.40);
+    position:relative; z-index:2;
   }
-  .featured-features { position:absolute; right:18px; top:24px; display:flex; flex-direction:column; gap:12px; }
+  .featured-features { position:absolute; right:18px; top:24px; display:flex; flex-direction:column; gap:12px; z-index:3; }
   .featured-feature { display:flex; align-items:center; gap:8px; font-size:11.5px; font-weight:700; color:rgba(255,255,255,0.9); }
   .featured-feature-icon {
     width:24px; height:24px; border-radius:50%;
@@ -290,7 +291,18 @@
     display:grid; place-items:center; font-size:12px;
     border:1px solid rgba(122,201,67,0.4);
   }
-  .featured-dots { position:absolute; right:18px; bottom:18px; display:flex; gap:5px; }
+  .featured-human {
+    position:absolute; right:50px; bottom:0; height:85%; width:140px; z-index:1;
+    display:flex; align-items:flex-end; justify-content:center;
+    pointer-events:none;
+  }
+  .featured-human img {
+    width:100%; height:100%; object-fit:cover; object-position:top center;
+    mask-image: linear-gradient(to top, transparent 5%, black 80%);
+    -webkit-mask-image: linear-gradient(to top, transparent 5%, black 80%);
+    border-radius: 20px 20px 0 0;
+  }
+  .featured-dots { position:absolute; right:18px; bottom:18px; display:flex; gap:5px; z-index:3; }
   .featured-dot { width:6px; height:6px; border-radius:50%; background:rgba(255,255,255,0.3); }
   .featured-dot.active { background:var(--green); width:18px; border-radius:3px; }
 
@@ -854,6 +866,12 @@
       <div class="featured-title">Complete Surveys</div>
       <div class="featured-sub">Share your thoughts, earn money.</div>
       <button class="featured-btn" data-nav="find-jobs">View Available Surveys <span>›</span></button>
+      
+      <!-- Human with phone illustration -->
+      <div class="featured-human">
+        <img src="https://images.unsplash.com/photo-1531123897727-8f129e1bf98c?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&q=80" alt="Woman using phone" onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=\'font-size:80px;opacity:0.6;position:absolute;bottom:10px;right:10px;\'>👩🏾‍💻📱</div>';" />
+      </div>
+
       <div class="featured-features">
         <div class="featured-feature"><div class="featured-feature-icon">⚡</div> Easy &amp; Simple</div>
         <div class="featured-feature"><div class="featured-feature-icon">💵</div> Quick Payouts</div>
@@ -922,26 +940,42 @@
 <!-- WALLET -->
 <section class="screen" id="screen-wallet">
   <div class="container">
+    <!-- Available Balance -->
     <div class="balance-card">
-      <div class="balance-label">Available Balance</div>
+      <div class="balance-label">AVAILABLE BALANCE</div>
       <div class="balance-amount"><small>KES</small><span id="walletBalance">0</span></div>
       <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.25);font-size:12px;font-weight:700;">💵 Total earned: <span id="walletTotalEarned">KES 0</span></div>
     </div>
+    
+    <!-- Pending Balance -->
     <div class="card" style="background:#FFF8E1;border-color:#FFE8A1;">
       <div style="display:flex;justify-content:space-between;align-items:center;">
         <div>
-          <div style="font-size:11px;font-weight:900;text-transform:uppercase;color:#8A6D3B;margin-bottom:6px;">⏳ Pending</div>
+          <div style="font-size:11px;font-weight:900;text-transform:uppercase;color:#8A6D3B;margin-bottom:6px;">⏳ PENDING</div>
           <div style="font-size:26px;font-weight:900;color:#8A6D3B;" id="walletPending">KES 0</div>
           <div style="font-size:11px;color:#8A6D3B;font-weight:600;margin-top:4px;">Awaiting admin approval</div>
         </div>
         <div style="width:46px;height:46px;border-radius:14px;background:#FFE8A1;color:#8A6D3B;display:grid;place-items:center;font-size:22px;">⏳</div>
       </div>
     </div>
+
+    <!-- Action Buttons -->
     <div class="btn-row" style="margin-bottom:14px;">
-      <button class="btn btn-mpesa" id="btnDeposit">💰 Deposit</button>
-      <button class="btn btn-primary" id="btnWithdraw">💸 Withdraw</button>
+      <button class="btn btn-mpesa" id="btnDeposit" style="flex-direction:column; padding:12px 10px; gap:4px; font-size:13px;">
+        <span>💰 Deposit</span>
+        <span style="font-size:10px; opacity:0.9;">via M-Pesa</span>
+      </button>
+      <button class="btn btn-primary" id="btnWithdraw" style="flex-direction:column; padding:12px 10px; gap:4px; font-size:13px;">
+        <span>💸 Withdraw</span>
+        <span style="font-size:10px; opacity:0.9;">via M-Pesa</span>
+      </button>
     </div>
-    <div class="card"><div class="card-title">Recent Transactions</div><div id="txList"></div></div>
+
+    <!-- Recent Transactions -->
+    <div class="card">
+      <div class="card-title">Recent Transactions</div>
+      <div id="txList"></div>
+    </div>
   </div>
 </section>
 
