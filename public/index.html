@@ -910,7 +910,6 @@
       <div class="featured-dots"><div class="featured-dot active"></div><div class="featured-dot"></div><div class="featured-dot"></div></div>
     </div>
 
-    <!-- COUNTDOWN TIMER -->
     <div id="freeTrialTimer" class="card" style="display:none; text-align:center; border: 1.5px solid #F5A623; background: linear-gradient(135deg, #FFF8E1, #FFE8A1); margin-bottom: 16px;">
       <div style="font-size: 14px; font-weight: 800; color: #8A6D3B; margin-bottom: 6px;">⏳ Daily Free Tasks Completed</div>
       <div style="font-size: 28px; font-weight: 900; color: #D4901A; font-family: monospace;" id="timerDisplay">00:00:00</div>
@@ -1553,7 +1552,7 @@
   </div>
 </div>
 
-<!-- CUSTOM CONFIRM MODAL (Prevents default browser prompt) -->
+<!-- CUSTOM CONFIRM MODAL -->
 <div class="modal-backdrop" id="customConfirmModal">
   <div class="modal" style="max-width: 320px; margin: auto; border-radius: 16px;">
     <div class="modal-title" id="customConfirmTitle" style="text-align: center;">Confirm</div>
@@ -1637,11 +1636,27 @@
   function showMsg(el, text, type = 'success') { el.textContent = text; el.className = `msg show ${type}`; }
   function clearMsg(el) { el.className = 'msg'; el.textContent = ''; }
 
-  // CUSTOM CONFIRM MODAL LOGIC (Replaces browser confirm())
+  // CUSTOM TOAST (Replaces native alert())
+  function showToast(message, type = 'error') {
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+      position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+      background: ${type === 'error' ? '#E60000' : '#43B02A'};
+      color: white; padding: 12px 24px; border-radius: 12px;
+      font-size: 14px; font-weight: 700; z-index: 9999;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3); text-align: center;
+      animation: slideDown 0.3s ease-out; max-width: 90%;
+    `;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+  }
+
+  // CUSTOM CONFIRM MODAL (Replaces native confirm())
   function showCustomConfirm(title, message, onConfirm) {
     $('customConfirmTitle').textContent = title;
     $('customConfirmMsg').textContent = message;
-    $('customConfirmModal').classList.add('show');
+    const modal = $('customConfirmModal');
     
     // Clone buttons to remove old event listeners
     const okBtn = $('customConfirmOk');
@@ -1652,12 +1667,13 @@
     cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
     
     newOkBtn.addEventListener('click', () => {
-      $('customConfirmModal').classList.remove('show');
+      modal.classList.remove('show');
       if (onConfirm) onConfirm();
     });
     newCancelBtn.addEventListener('click', () => {
-      $('customConfirmModal').classList.remove('show');
+      modal.classList.remove('show');
     });
+    modal.classList.add('show');
   }
 
   function goTo(name, pushState = true) {
@@ -1698,7 +1714,6 @@
     }
   }
 
-  // BACK BUTTON HANDLING (Uses Custom Modal instead of browser confirm)
   window.history.replaceState({ screen: 'home' }, '', '#home');
   window.addEventListener('popstate', (event) => {
     if (event.state && event.state.screen) {
@@ -1773,7 +1788,6 @@
   });
   $('profileBtn').addEventListener('click', () => navigate('profile'));
 
-  // UPDATED LOGOUT WITH CUSTOM MODAL
   $('drawerLogout').addEventListener('click', () => {
     closeDrawer();
     showCustomConfirm('Logout', 'Are you sure you want to log out of JobPay?', () => {
@@ -1804,7 +1818,7 @@
       utterance.rate = 0.9;
       window.speechSynthesis.speak(utterance);
     } else {
-      alert("Audio guide is not supported on this device.");
+      showToast("Audio guide is not supported on this device.");
     }
   });
 
@@ -1954,8 +1968,8 @@
   $('profilePhotoInput').addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (!file.type.startsWith('image/')) { alert('Please select an image file'); e.target.value = ''; return; }
-    if (file.size > 5 * 1024 * 1024) { alert('Image must be under 5MB'); e.target.value = ''; return; }
+    if (!file.type.startsWith('image/')) { showToast('Please select an image file'); e.target.value = ''; return; }
+    if (file.size > 5 * 1024 * 1024) { showToast('Image must be under 5MB'); e.target.value = ''; return; }
     const reader = new FileReader();
     reader.onload = (ev) => {
       const img = new Image();
@@ -1982,7 +1996,6 @@
     e.target.value = '';
   });
   
-  // UPDATED REMOVE PHOTO WITH CUSTOM MODAL
   $('removePhotoBtn').addEventListener('click', async () => {
     if (!user?.photo) { showMsg($('acctSettingsMsg'), 'No photo to remove', 'error'); return; }
     showCustomConfirm('Remove Photo', 'Are you sure you want to remove your profile photo?', async () => {
@@ -2036,7 +2049,7 @@
     const btn = $('dangerConfirmBtn'); btn.disabled = true; btn.innerHTML = '<span class="loader"></span>';
     try {
       await api(url, { method: 'POST', body: JSON.stringify(body) });
-      alert(mode === 'delete' ? 'Account deleted.' : 'Account deactivated.');
+      showToast(mode === 'delete' ? 'Account deleted.' : 'Account deactivated.', 'success');
       token = null; user = null;
       localStorage.removeItem('jobpay_token'); localStorage.removeItem('jobpay_user');
       location.reload();
@@ -2181,7 +2194,7 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a'); a.href = url; a.download = `jobpay-data-${Date.now()}.json`; a.click();
       URL.revokeObjectURL(url);
-    } catch (err) { alert(err.message); }
+    } catch (err) { showToast(err.message); }
   });
 
   // HELP
@@ -2317,7 +2330,7 @@
     window.history.replaceState({ screen: 'home' }, '', '#home');
   }
 
-  // COUNTDOWN TIMER LOGIC (24 hours rolling)
+  // COUNTDOWN TIMER LOGIC (24 hours)
   function startCountdown() {
     if (timerInterval) clearInterval(timerInterval);
     
@@ -2408,7 +2421,6 @@
       totalTaskCount = data.totalCount;
       $('findJobsCount').textContent = totalTaskCount.toLocaleString();
       
-      // APPLY SORTING
       const sortedTasks = sortTasks(data.tasks);
       
       const list = $('findJobsList');
@@ -2431,10 +2443,7 @@
   async function loadRecommended() {
     try {
       const data = await api('/api/tasks?page=1&size=10');
-      
-      // APPLY SORTING
       const sortedTasks = sortTasks(data.tasks);
-      
       const list = $('recommendedList');
       const html = sortedTasks.map(t => renderTaskCard(t)).join('');
       list.innerHTML = html || `<div class="card"><div class="empty"><div class="empty-icon">✨</div><div class="empty-title">No recommendations</div></div></div>`;
@@ -2522,7 +2531,7 @@
       $('surveyFooter').style.display = 'flex';
       renderSurveyQuestion();
       $('surveyModal').classList.add('show');
-    } catch (err) { alert(err.message); }
+    } catch (err) { showToast(err.message); }
   }
   function renderSurveyQuestion() {
     const { questions, current, answers } = survey;
@@ -2552,13 +2561,13 @@
   }
   $('surveyPrev').addEventListener('click', () => { if (survey.current > 0) { survey.current--; renderSurveyQuestion(); } });
   $('surveyNext').addEventListener('click', async () => {
-    if (survey.answers[survey.current] == null) return alert('Please select an answer.');
+    if (survey.answers[survey.current] == null) return showToast('Please select an answer.');
     if (survey.current < survey.questions.length - 1) { survey.current++; return renderSurveyQuestion(); }
     const btn = $('surveyNext'); btn.disabled = true; btn.innerHTML = '<span class="loader"></span>';
     try {
       const res = await api(`/api/tasks/${survey.task.id}/complete`, { method: 'POST', body: JSON.stringify({ answers: survey.answers }) });
       showSurveySuccess(res.reward);
-    } catch (err) { alert(err.message); btn.disabled = false; btn.textContent = 'Finish & Submit'; }
+    } catch (err) { showToast(err.message); btn.disabled = false; btn.textContent = 'Finish & Submit'; }
   });
   function sprinkleFlowers() {
     const container = document.createElement('div'); container.className = 'flower-sprinkle';
@@ -2597,7 +2606,6 @@
     });
   }
   
-  // UPDATED SURVEY CLOSE WITH CUSTOM MODAL
   $('surveyClose').addEventListener('click', () => {
     if (survey.current > 0 || survey.answers.some(a => a !== null)) {
       showCustomConfirm('Quit Survey?', 'Are you sure you want to quit this survey? Your progress will be lost.', () => {
@@ -2843,7 +2851,7 @@
   }
   $('copyRefBtn').addEventListener('click', () => {
     const inp = $('referralLink'); inp.select(); document.execCommand('copy');
-    alert('✓ Referral link copied!');
+    showToast('✓ Referral link copied!', 'success');
   });
   $('shareRefBtn').addEventListener('click', async () => {
     const link = $('referralLink').value;
@@ -2956,7 +2964,7 @@
 
   $('btnWithdraw').addEventListener('click', () => {
     if (user?.activationFeePaid !== true) {
-      if ((user?.balance || 0) < 200) { alert('You need at least KES 200 to withdraw.'); return; }
+      if ((user?.balance || 0) < 200) { showToast('You need at least KES 200 to withdraw.'); return; }
       $('activationPhone').value = user?.phone || '';
       clearMsg($('activationModalMsg'));
       $('confirmActivation').disabled = false; $('confirmActivation').textContent = 'Pay KES 499 Activation Fee';
@@ -3052,4 +3060,4 @@
 })();
 </script>
 </body>
-                                                    </html>
+                                                                                                                                                                                      </html>
