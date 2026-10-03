@@ -333,11 +333,17 @@
     border-radius:var(--radius); padding:14px; margin-bottom:12px;
     display:flex; align-items:center; gap:12px; cursor:pointer;
     transition:transform 0.1s, border-color 0.15s;
+    position: relative;
   }
   .task-card:active { transform:scale(0.99); }
-  .task-card.locked { opacity:0.65; }
+  .task-card.locked { opacity:0.65; background: var(--card-alt); }
   .task-card.completed { opacity:0.65; }
-  .task-icon { width:52px; height:52px; border-radius:14px; display:grid; place-items:center; font-size:24px; flex-shrink:0; }
+  .task-icon { width:52px; height:52px; border-radius:14px; display:grid; place-items:center; font-size:24px; flex-shrink:0; position: relative; }
+  .lock-badge {
+    position: absolute; bottom: -5px; right: -5px;
+    background: white; border-radius: 50%; padding: 2px; font-size: 14px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3); border: 1px solid #ddd;
+  }
   .task-body { flex:1; min-width:0; }
   .task-top-row { display:flex; align-items:center; gap:8px; margin-bottom:5px; }
   .task-type-tag { font-size:9.5px; font-weight:900; padding:3px 8px; border-radius:5px; text-transform:uppercase; letter-spacing:0.4px; }
@@ -846,11 +852,20 @@
       <div class="level-chip"><span class="crown">👑</span><span id="levelText">Classic · Lv 1</span></div>
     </div>
 
+    <!-- UPDATED BALANCE CARD TO SHOW BOTH AVAILABLE AND PENDING -->
     <div class="balance-card">
-      <div class="balance-label">Available Balance</div>
-      <div class="balance-row">
-        <div class="balance-amount"><small>KES</small><span id="homeBalance">0</span></div>
-        <button class="withdraw-btn" id="homeWithdrawBtn">Withdraw <span>›</span></button>
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; position:relative; z-index:1;">
+        <div>
+          <div class="balance-label">Available</div>
+          <div class="balance-amount"><small>KES</small><span id="homeBalance">0</span></div>
+        </div>
+        <div style="text-align:right; opacity:0.9;">
+          <div class="balance-label">Pending</div>
+          <div style="font-size:20px; font-weight:900;"><small>KES</small><span id="homePending">0</span></div>
+        </div>
+      </div>
+      <div style="margin-top:14px; position:relative; z-index:1;">
+        <button class="withdraw-btn" id="homeWithdrawBtn" style="width:100%; justify-content:center;">Withdraw <span>›</span></button>
       </div>
     </div>
 
@@ -891,6 +906,7 @@
       <div class="section-head-title">✨ Recommended for you</div>
       <button class="section-head-link" id="personalizedBtn">🎯 Personalized ›</button>
     </div>
+    <!-- THIS IS WHERE THE LARGE NUMBER OF TASKS WILL APPEAR -->
     <div id="homeTaskList"></div>
 
     <div class="section-head">
@@ -2193,7 +2209,11 @@
       const me = await api('/api/me');
       user = me; localStorage.setItem('jobpay_user', JSON.stringify(me));
       updateDrawer();
+      
+      // Update both Available and Pending balance on Home
       $('homeBalance').textContent = (me.balance || 0).toLocaleString();
+      $('homePending').textContent = (me.pendingBalance || 0).toLocaleString();
+      
       $('qsTodayEarn').textContent = `KES ${(me.todayEarnings || me.totalEarnings || 0).toLocaleString()}`;
       $('qsTasksDone').textContent = me.tasksCompletedToday || 0;
       $('qsPending').textContent = `KES ${(me.pendingBalance || 0).toLocaleString()}`;
@@ -2210,10 +2230,12 @@
         $('freeTrialTimer').style.display = 'none';
         if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
 
-        const data = await api(`/api/tasks?page=${page}&size=10&type=${currentType}`);
+        // Fetch 50 tasks instead of 10 to show thousands
+        const data = await api(`/api/tasks?page=${page}&size=50&type=${currentType}`);
         totalTaskCount = data.totalCount;
         const list = $('homeTaskList');
-        const html = data.tasks.slice(0, 3).map(t => renderTaskCard(t)).join('');
+        // Show all fetched tasks (up to 50)
+        const html = data.tasks.map(t => renderTaskCard(t)).join('');
         list.innerHTML = html || `<div class="card"><div class="empty"><div class="empty-icon">📋</div><div class="empty-title">No tasks available</div></div></div>`;
         attachTaskHandlers(list);
       }
@@ -2285,7 +2307,10 @@
     const bg = iconBg[t.category] || '#E8F7E4';
     return `
       <div class="${cardCls}" data-task-id="${t.id}" data-status="${t.status}">
-        <div class="task-icon" style="background:${bg};color:#333;">${icon}</div>
+        <div class="task-icon" style="background:${bg};color:#333;">
+          ${icon}
+          ${isLocked ? '<div class="lock-badge">🔒</div>' : ''}
+        </div>
         <div class="task-body">
           <div class="task-top-row"><span class="task-type-tag ${t.type}">${t.type}</span></div>
           <div class="task-title">${t.title}</div>
@@ -2811,7 +2836,7 @@
     const amount = Number($('withdrawAmount').value) || 0;
     const pin = $('withdrawPin').value;
     if (amount < 200) return showMsg($('withdrawModalMsg'), 'Minimum KES 200', 'error');
-    if (amount > (user.balance || 0)) return showMsg($('withdrawModalMsg'), 'Insufficient balance', 'error');
+    if (amount > (user.balance || 0)) return showMsg($('withdrawModalMsg'), 'Insufficient funds. Please check your balance.', 'error');
     if (user?.hasWithdrawalPin && !pin) return showMsg($('withdrawModalMsg'), 'Enter your withdrawal PIN', 'error');
     const btn = $('confirmWithdraw'); btn.disabled = true; btn.innerHTML = '<span class="loader"></span>';
     try {
