@@ -5,6 +5,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const axios = require('axios');
 const cors = require('cors');
+const crypto = require('crypto');
 const path = require('path');
 
 const app = express();
@@ -20,7 +21,6 @@ const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
 
-// ── PayHero v2 API ────────────────────────────────────────────────────────
 const PAYHERO_BASIC_AUTH_TOKEN = process.env.PAYHERO_BASIC_AUTH_TOKEN?.trim();
 const PAYHERO_CHANNEL_ID = parseInt(process.env.PAYHERO_CHANNEL_ID, 10);
 const PAYHERO_BASE_URL = 'https://backend.payhero.co.ke/api/v2';
@@ -41,10 +41,9 @@ const FREE_TASK_REWARD = 21;
 const MIN_DEPOSIT = 50;
 const MIN_WITHDRAWAL = 200;
 const ACTIVATION_FEE = 499;
-const PAYMENT_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+const PAYMENT_TIMEOUT_MS = 5 * 60 * 1000;
 const SEED_VERSION = 3;
 
-// In-memory cache of tier prices (loaded on startup, updated by admin)
 let tierPrices = { classic: 200, premium: 350, golden: 450 };
 
 function getTierPrice(tier) {
@@ -55,7 +54,8 @@ function getTierPrice(tier) {
 // ═══════════════════════════════════════════════════════════════════════════
 // MONGODB
 // ═══════════════════════════════════════════════════════════════════════════
-let db, usersCol, txnsCol, tasksCol, walletCol, historyCol, metaCol, visitsCol, loginAttemptsCol, settingsCol;
+let db, usersCol, txnsCol, tasksCol, walletCol, historyCol, metaCol,
+    visitsCol, loginAttemptsCol, settingsCol, ticketsCol;
 
 async function connectDB() {
   if (!process.env.MONGODB_URI) throw new Error('MONGODB_URI is not set');
@@ -71,6 +71,7 @@ async function connectDB() {
   visitsCol        = db.collection('site_visits');
   loginAttemptsCol = db.collection('login_attempts');
   settingsCol      = db.collection('settings');
+  ticketsCol       = db.collection('support_tickets');
 
   await usersCol.createIndex({ email: 1 }, { unique: true });
   await usersCol.createIndex({ username: 1 }, { unique: true });
@@ -81,6 +82,7 @@ async function connectDB() {
   await tasksCol.createIndex({ id: 1 }, { unique: true });
   await visitsCol.createIndex({ createdAt: -1 });
   await loginAttemptsCol.createIndex({ createdAt: -1 });
+  await ticketsCol.createIndex({ userId: 1, createdAt: -1 });
 
   await seedTasks();
   await loadTierPrices();
@@ -266,11 +268,7 @@ function resetDailyTasks(u) {
 async function autoFailStalePayments() {
   const cutoff = new Date(Date.now() - PAYMENT_TIMEOUT_MS);
   await txnsCol.updateMany(
-    {
-      status: 'pending',
-      createdAt: { $lt: cutoff },
-      mpesaRef: { $in: [null, undefined, ''] }
-    },
+    { status: 'pending', createdAt: { $lt: cutoff }, mpesaRef: { $in: [null, undefined, ''] } },
     { $set: { status: 'failed', reason: 'No M‑Pesa response (timeout)' } }
   );
 }
@@ -292,7 +290,12 @@ function publicUser(u) {
     balance: u.balance || 0,
     pendingBalance: u.pendingBalance || 0,
     totalEarnings: u.totalEarnings || 0,
-    activationFeePaid: u.activationFeePaid === true
+    activationFeePaid: u.activationFeePaid === true,
+    accountStatus: u.accountStatus || 'active',
+    twoFactorEnabled: u.twoFactorEnabled === true,
+    hasWithdrawalPin: !!u.withdrawalPin,
+    country: u.country || 'Kenya',
+    county: u.county || null
   };
 }
 function auth(req, res, next) {
@@ -312,18 +315,16 @@ function adminAuth(req, res, next) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// PAYHERO PAYMENT MODULE
+// PAYHERO
 // ═══════════════════════════════════════════════════════════════════════════
 function payheroAuthHeader() {
   const t = PAYHERO_BASIC_AUTH_TOKEN || '';
   return t.startsWith('Basic ') ? t : `Basic ${t}`;
 }
-
 async function sendPayHeroStk({ amount, phone, reference }) {
   if (!PAYHERO_BASIC_AUTH_TOKEN) return { ok: false, data: null, message: 'PayHero token not configured' };
   if (!PAYHERO_CHANNEL_ID)       return { ok: false, data: null, message: 'PayHero channel not configured' };
   if (!PAYHERO_CALLBACK_URL)     return { ok: false, data: null, message: 'PayHero callback URL not configured' };
-
   const payload = {
     amount: Number(amount),
     phone_number: phone,
@@ -332,29 +333,16 @@ async function sendPayHeroStk({ amount, phone, reference }) {
     external_reference: reference,
     callback_url: PAYHERO_CALLBACK_URL
   };
-
   try {
     const r = await axios.post(`${PAYHERO_BASE_URL}/payments`, payload, {
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': payheroAuthHeader()
-      },
-      timeout: 30000,
-      validateStatus: () => true
+      headers: { 'Content-Type': 'application/json', 'Authorization': payheroAuthHeader() },
+      timeout: 30000, validateStatus: () => true
     });
-
-    const ok = r.status >= 200 && r.status < 300 &&
-               (r.data?.success === true || r.data?.status === true);
-
+    const ok = r.status >= 200 && r.status < 300 && (r.data?.success === true || r.data?.status === true);
     if (!ok) {
       console.error('❌ PayHero STK failed:', r.status, JSON.stringify(r.data));
-      return {
-        ok: false,
-        data: r.data,
-        message: r.data?.message || r.data?.error || `STK push rejected (HTTP ${r.status})`
-      };
+      return { ok: false, data: r.data, message: r.data?.message || r.data?.error || `STK push rejected (HTTP ${r.status})` };
     }
-
     console.log(`✅ PayHero STK sent → ${phone} • KES ${amount} • ref ${reference}`);
     return { ok: true, data: r.data, message: 'STK push sent' };
   } catch (err) {
@@ -363,19 +351,18 @@ async function sendPayHeroStk({ amount, phone, reference }) {
     return { ok: false, data: err.response?.data || null, message: msg };
   }
 }
-
 function mapPayHeroFailureReason(resultCode, resultDesc) {
   const code = String(resultCode);
   const map = {
-    '1':    'Insufficient funds in your M‑Pesa account',
-    '1001': 'You have another M‑Pesa transaction in progress. Please wait and try again',
-    '1019': 'Transaction expired — no PIN entered in time',
-    '1032': 'You cancelled the payment prompt on your phone',
-    '1037': 'No response from your phone. Keep your phone on and try again',
-    '1050': 'Not enough money in your M‑Pesa account',
-    '2001': 'You entered the wrong M‑Pesa PIN',
-    '2002': 'M‑Pesa PIN could not be verified. Please try again',
-    '9999': 'M‑Pesa service is temporarily unavailable. Please try again later'
+    '1':'Insufficient funds in your M‑Pesa account',
+    '1001':'You have another M‑Pesa transaction in progress. Please wait and try again',
+    '1019':'Transaction expired — no PIN entered in time',
+    '1032':'You cancelled the payment prompt on your phone',
+    '1037':'No response from your phone. Keep your phone on and try again',
+    '1050':'Not enough money in your M‑Pesa account',
+    '2001':'You entered the wrong M‑Pesa PIN',
+    '2002':'M‑Pesa PIN could not be verified. Please try again',
+    '9999':'M‑Pesa service is temporarily unavailable. Please try again later'
   };
   return map[code] || resultDesc || `Transaction failed (code ${code})`;
 }
@@ -390,8 +377,7 @@ app.use((req, res, next) => {
   const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.ip || 'unknown';
   const ua = req.headers['user-agent'] || '';
   const ref = req.headers['referer'] || req.headers['referrer'] || '';
-  visitsCol.insertOne({
-    ip, path: req.path, ua, referrer: ref,
+  visitsCol.insertOne({ ip, path: req.path, ua, referrer: ref,
     country: req.headers['cf-ipcountry'] || req.headers['x-vercel-ip-country'] || null,
     method: req.method, createdAt: new Date()
   }).catch(() => {});
@@ -405,10 +391,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 // ═══════════════════════════════════════════════════════════════════════════
 app.get('/healthz', (req, res) => res.json({ ok: true, uptime: process.uptime() }));
 
-// Public prices endpoint for the frontend
-app.get('/api/prices', (req, res) => {
-  res.json(tierPrices);
-});
+app.get('/api/prices', (req, res) => res.json(tierPrices));
 
 app.post('/api/register', async (req, res) => {
   try {
@@ -419,12 +402,10 @@ app.post('/api/register', async (req, res) => {
     if (!isValidEmail(email)) return res.status(400).json({ error: 'Invalid email address' });
     const normalizedPhone = normalizePhone(phone);
     if (!isValidKenyanPhone(normalizedPhone)) return res.status(400).json({ error: 'Enter a valid Kenyan M‑Pesa number' });
-
     const cleanUsername = String(username).trim();
     const cleanEmail = String(email).trim().toLowerCase();
     const existing = await usersCol.findOne({ $or: [{ email: cleanEmail }, { username: cleanUsername }] });
     if (existing) return res.status(409).json({ error: 'Email or username already taken' });
-
     const hashed = await bcrypt.hash(password, 10);
     const today = new Date().toISOString().slice(0, 10);
     const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.ip;
@@ -434,6 +415,13 @@ app.post('/api/register', async (req, res) => {
       tasksCompletedToday: 0, lastTaskDate: today,
       balance: 0, pendingBalance: 0, totalEarnings: 0,
       activationFeePaid: false,
+      withdrawalPin: null,
+      accountStatus: 'active',
+      statusReason: null,
+      twoFactorEnabled: false,
+      country: 'Kenya',
+      county: null,
+      language: 'en',
       signupIp: ip, signupUa: req.headers['user-agent'] || '', createdAt: new Date()
     };
     const result = await usersCol.insertOne(user);
@@ -461,7 +449,6 @@ app.post('/api/login', async (req, res) => {
     }
     await loginAttemptsCol.insertOne({ email: user.email, userId: user._id, ip, ua, success: true, createdAt: new Date() });
     await usersCol.updateOne({ _id: user._id }, { $set: { lastLoginAt: new Date(), lastLoginIp: ip } });
-
     if (resetDailyTasks(user)) await usersCol.updateOne({ _id: user._id }, { $set: { tasksCompletedToday: 0, lastTaskDate: user.lastTaskDate } });
     const token = jwt.sign({ userId: String(user._id) }, JWT_SECRET, { expiresIn: '7d' });
     res.json({ token, user: publicUser(user) });
@@ -477,23 +464,185 @@ app.get('/api/me', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Server error' }); }
 });
 
+// ═══════════════════════════════════════════════════════════════════════════
+// USER SETTINGS ENDPOINTS
+// ═══════════════════════════════════════════════════════════════════════════
+app.put('/api/user/profile', auth, async (req, res) => {
+  try {
+    const user = await usersCol.findOne({ _id: new ObjectId(req.userId) });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    const { username, email, phone } = req.body || {};
+    const updates = {};
+    if (username && username !== user.username) {
+      const clean = String(username).trim();
+      if (clean.length < 3) return res.status(400).json({ error: 'Username must be 3+ characters' });
+      const exists = await usersCol.findOne({ username: clean, _id: { $ne: user._id } });
+      if (exists) return res.status(409).json({ error: 'Username already taken' });
+      updates.username = clean;
+    }
+    if (email && email !== user.email) {
+      if (!isValidEmail(email)) return res.status(400).json({ error: 'Invalid email' });
+      const clean = String(email).trim().toLowerCase();
+      const exists = await usersCol.findOne({ email: clean, _id: { $ne: user._id } });
+      if (exists) return res.status(409).json({ error: 'Email already in use' });
+      updates.email = clean;
+    }
+    if (phone) {
+      const normalized = normalizePhone(phone);
+      if (!isValidKenyanPhone(normalized)) return res.status(400).json({ error: 'Invalid M‑Pesa number' });
+      if (normalized !== user.phone) {
+        const exists = await usersCol.findOne({ phone: normalized, _id: { $ne: user._id } });
+        if (exists) return res.status(409).json({ error: 'Phone already in use' });
+        updates.phone = normalized;
+      }
+    }
+    if (Object.keys(updates).length === 0) return res.json({ ok: true, user: publicUser(user) });
+    updates.profileUpdatedAt = new Date();
+    await usersCol.updateOne({ _id: user._id }, { $set: updates });
+    const updated = await usersCol.findOne({ _id: user._id });
+    res.json({ ok: true, user: publicUser(updated) });
+  } catch (err) { console.error('Profile update error:', err); res.status(500).json({ error: 'Server error' }); }
+});
+
+app.post('/api/user/change-password', auth, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body || {};
+    if (!currentPassword || !newPassword) return res.status(400).json({ error: 'Both passwords required' });
+    if (!isStrongPassword(newPassword)) return res.status(400).json({ error: 'New password must be 8+ chars with uppercase, lowercase, and a number' });
+    const user = await usersCol.findOne({ _id: new ObjectId(req.userId) });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    const ok = await bcrypt.compare(currentPassword, user.password);
+    if (!ok) return res.status(401).json({ error: 'Current password is incorrect' });
+    const hashed = await bcrypt.hash(newPassword, 10);
+    await usersCol.updateOne({ _id: user._id }, { $set: { password: hashed, passwordChangedAt: new Date() } });
+    res.json({ ok: true, message: 'Password changed successfully' });
+  } catch (err) { console.error('Change password error:', err); res.status(500).json({ error: 'Server error' }); }
+});
+
+app.post('/api/user/withdrawal-pin', auth, async (req, res) => {
+  try {
+    const { pin, password } = req.body || {};
+    if (!pin || !/^\d{4,6}$/.test(String(pin))) return res.status(400).json({ error: 'PIN must be 4 to 6 digits' });
+    if (!password) return res.status(400).json({ error: 'Account password required' });
+    const user = await usersCol.findOne({ _id: new ObjectId(req.userId) });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    const ok = await bcrypt.compare(password, user.password);
+    if (!ok) return res.status(401).json({ error: 'Wrong password' });
+    const pinHash = await bcrypt.hash(String(pin), 10);
+    await usersCol.updateOne({ _id: user._id }, { $set: { withdrawalPin: pinHash, pinSetAt: new Date() } });
+    res.json({ ok: true, message: 'Withdrawal PIN set' });
+  } catch (err) { console.error('Withdrawal PIN error:', err); res.status(500).json({ error: 'Server error' }); }
+});
+
+app.post('/api/user/2fa', auth, async (req, res) => {
+  try {
+    const { enabled } = req.body || {};
+    const user = await usersCol.findOne({ _id: new ObjectId(req.userId) });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    await usersCol.updateOne({ _id: user._id }, { $set: { twoFactorEnabled: !!enabled } });
+    res.json({ ok: true, twoFactorEnabled: !!enabled });
+  } catch (err) { res.status(500).json({ error: 'Server error' }); }
+});
+
+app.post('/api/user/deactivate', auth, async (req, res) => {
+  try {
+    const { password } = req.body || {};
+    if (!password) return res.status(400).json({ error: 'Password required' });
+    const user = await usersCol.findOne({ _id: new ObjectId(req.userId) });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    const ok = await bcrypt.compare(password, user.password);
+    if (!ok) return res.status(401).json({ error: 'Wrong password' });
+    await usersCol.updateOne({ _id: user._id }, { $set: { accountStatus: 'deactivated', deactivatedAt: new Date() } });
+    res.json({ ok: true, message: 'Account deactivated' });
+  } catch (err) { res.status(500).json({ error: 'Server error' }); }
+});
+
+app.post('/api/user/delete', auth, async (req, res) => {
+  try {
+    const { password, confirm } = req.body || {};
+    if (!password) return res.status(400).json({ error: 'Password required' });
+    if (confirm !== 'DELETE') return res.status(400).json({ error: 'Type DELETE to confirm' });
+    const user = await usersCol.findOne({ _id: new ObjectId(req.userId) });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    const ok = await bcrypt.compare(password, user.password);
+    if (!ok) return res.status(401).json({ error: 'Wrong password' });
+    await usersCol.updateOne({ _id: user._id }, {
+      $set: {
+        username: `deleted_${user._id}`,
+        email: `deleted_${user._id}@deleted.local`,
+        phone: null,
+        password: await bcrypt.hash(crypto.randomBytes(32).toString('hex'), 10),
+        accountStatus: 'deleted',
+        deletedAt: new Date(),
+        balance: 0,
+        pendingBalance: 0
+      }
+    });
+    res.json({ ok: true, message: 'Account deleted' });
+  } catch (err) { res.status(500).json({ error: 'Server error' }); }
+});
+
+app.get('/api/user/login-history', auth, async (req, res) => {
+  try {
+    const user = await usersCol.findOne({ _id: new ObjectId(req.userId) });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    const attempts = await loginAttemptsCol
+      .find({ userId: user._id })
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .toArray();
+    res.json(attempts.map(a => ({ ip: a.ip, ua: a.ua, success: a.success, at: a.createdAt })));
+  } catch (err) { res.status(500).json({ error: 'Server error' }); }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SUPPORT TICKETS
+// ═══════════════════════════════════════════════════════════════════════════
+app.post('/api/support/ticket', auth, async (req, res) => {
+  try {
+    const { category, subject, message } = req.body || {};
+    if (!subject || !message) return res.status(400).json({ error: 'Subject and message required' });
+    const user = await usersCol.findOne({ _id: new ObjectId(req.userId) });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    const ticketNumber = `JP-${Date.now().toString().slice(-6)}`;
+    const doc = {
+      ticketNumber, userId: user._id, username: user.username,
+      category: category || 'general', subject, message,
+      status: 'open', replies: [], createdAt: new Date()
+    };
+    const r = await ticketsCol.insertOne(doc);
+    res.status(201).json({ ok: true, ticket: { ...doc, _id: r.insertedId } });
+  } catch (err) { res.status(500).json({ error: 'Server error' }); }
+});
+
+app.get('/api/support/tickets', auth, async (req, res) => {
+  try {
+    const items = await ticketsCol
+      .find({ userId: new ObjectId(req.userId) })
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .toArray();
+    res.json(items);
+  } catch (err) { res.status(500).json({ error: 'Server error' }); }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TASKS
+// ═══════════════════════════════════════════════════════════════════════════
 app.get('/api/tasks', auth, async (req, res) => {
   try {
     const user = await usersCol.findOne({ _id: new ObjectId(req.userId) });
     if (!user) return res.status(404).json({ error: 'User not found' });
     if (resetDailyTasks(user)) await usersCol.updateOne({ _id: user._id }, { $set: { tasksCompletedToday: 0, lastTaskDate: user.lastTaskDate } });
-
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const size = Math.min(100, parseInt(req.query.size) || 50);
     const type = req.query.type;
     const filter = {};
     if (type === 'survey' || type === 'task') filter.type = type;
-
     const totalCount = await tasksCol.countDocuments(filter);
     const tasks = await tasksCol.find(filter).sort({ id: 1 }).skip((page-1)*size).limit(size).toArray();
     const todayHistory = await historyCol.find({ userId: user._id, completedAt: { $gte: startOfToday() } }).project({ taskId: 1 }).toArray();
     const completedIds = new Set(todayHistory.map(h => h.taskId));
-
     const limit = dailyLimit(user);
     const done = user.tasksCompletedToday || 0;
     const remaining = Math.max(0, limit - done);
@@ -546,56 +695,32 @@ app.post('/api/tasks/:id/complete', auth, async (req, res) => {
     const task = await tasksCol.findOne({ id: Number(req.params.id) });
     if (!task) return res.status(404).json({ error: 'Task not found' });
     const reward = user.subscriptionTier === 'free' ? FREE_TASK_REWARD : task.reward;
-
     const wTxn = {
-      userId: user._id,
-      type: 'task_reward',
-      amount: reward,
-      status: 'pending',
-      reference: `task_${task.id}_${Date.now()}`,
-      taskId: task.id,
-      taskTitle: task.title,
-      taskType: task.type,
-      taskCategory: task.category,
-      owner: task.owner,
-      answersCount: answers.length,
-      createdAt: new Date()
+      userId: user._id, type: 'task_reward', amount: reward, status: 'pending',
+      reference: `task_${task.id}_${Date.now()}`, taskId: task.id, taskTitle: task.title,
+      taskType: task.type, taskCategory: task.category, owner: task.owner,
+      answersCount: answers.length, createdAt: new Date()
     };
     const wRes = await walletCol.insertOne(wTxn);
-
-    await usersCol.updateOne({ _id: user._id }, {
-      $inc: { tasksCompletedToday: 1, pendingBalance: reward, totalEarnings: reward }
-    });
-
+    await usersCol.updateOne({ _id: user._id }, { $inc: { tasksCompletedToday: 1, pendingBalance: reward, totalEarnings: reward } });
     await historyCol.insertOne({
       userId: user._id, taskId: task.id, taskTitle: task.title,
       taskType: task.type, taskCategory: task.category, owner: task.owner,
       reward, answersCount: answers.length, answers,
-      walletTxnId: wRes.insertedId, status: 'pending',
-      completedAt: new Date()
+      walletTxnId: wRes.insertedId, status: 'pending', completedAt: new Date()
     });
-
-    res.json({
-      message: `Task complete! KES ${reward} is pending admin confirmation.`,
-      reward,
-      status: 'pending',
-      tasksCompletedToday: done + 1,
-      tasksRemaining: Math.max(0, limit - (done + 1))
-    });
+    res.json({ message: `Task complete! KES ${reward} is pending admin confirmation.`, reward, status: 'pending', tasksCompletedToday: done + 1, tasksRemaining: Math.max(0, limit - (done + 1)) });
   } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
 });
 
 app.get('/api/history', auth, async (req, res) => {
   try {
-    const entries = await historyCol.find({ userId: new ObjectId(req.userId) })
-      .sort({ completedAt: -1 }).limit(100).toArray();
+    const entries = await historyCol.find({ userId: new ObjectId(req.userId) }).sort({ completedAt: -1 }).limit(100).toArray();
     res.json(entries.map(e => ({
       id: e._id, taskId: e.taskId, taskTitle: e.taskTitle,
-      taskType: e.taskType, taskCategory: e.taskCategory,
-      owner: e.owner, reward: e.reward, answersCount: e.answersCount,
-      status: e.status || 'completed',
-      reason: e.reason || null,
-      completedAt: e.completedAt
+      taskType: e.taskType, taskCategory: e.taskCategory, owner: e.owner,
+      reward: e.reward, answersCount: e.answersCount,
+      status: e.status || 'completed', reason: e.reason || null, completedAt: e.completedAt
     })));
   } catch (err) { res.status(500).json({ error: 'Server error' }); }
 });
@@ -607,165 +732,90 @@ app.post('/api/subscribe', auth, async (req, res) => {
   try {
     const { tier, phone: phoneInput } = req.body || {};
     if (!TIERS[tier] || tier === 'free') return res.status(400).json({ error: 'Invalid tier' });
-
     const user = await usersCol.findOne({ _id: new ObjectId(req.userId) });
     if (!user) return res.status(404).json({ error: 'User not found' });
-
     const phone = normalizePhone(phoneInput || user.phone);
-    if (!isValidKenyanPhone(phone)) {
-      return res.status(400).json({ error: 'Enter a valid M‑Pesa number (e.g. 0712345678)' });
-    }
-
+    if (!isValidKenyanPhone(phone)) return res.status(400).json({ error: 'Enter a valid M‑Pesa number (e.g. 0712345678)' });
     const amount = getTierPrice(tier);
     const reference = `sub_${user._id}_${tier}_${Date.now()}`;
-
-    await txnsCol.insertOne({
-      userId: user._id, tier, amount, reference, phone,
-      status: 'pending', kind: 'subscription', createdAt: new Date()
-    });
-
+    await txnsCol.insertOne({ userId: user._id, tier, amount, reference, phone, status: 'pending', kind: 'subscription', createdAt: new Date() });
     const stk = await sendPayHeroStk({ amount, phone, reference });
-
     if (!stk.ok) {
-      await txnsCol.updateOne(
-        { reference },
-        { $set: { status: 'failed', reason: stk.message, payheroResponse: stk.data } }
-      );
+      await txnsCol.updateOne({ reference }, { $set: { status: 'failed', reason: stk.message, payheroResponse: stk.data } });
       return res.status(400).json({ error: stk.message });
     }
-
     await txnsCol.updateOne({ reference }, { $set: { payheroResponse: stk.data } });
-
-    res.json({
-      message: `STK push sent to ${phone}. Enter your M‑Pesa PIN to complete payment.`,
-      reference, amount, tier, phone
-    });
-  } catch (err) {
-    console.error('Subscribe error:', err.response?.data || err.message);
-    res.status(500).json({ error: 'Payment initiation failed' });
-  }
+    res.json({ message: `STK push sent to ${phone}. Enter your M‑Pesa PIN to complete payment.`, reference, amount, tier, phone });
+  } catch (err) { console.error('Subscribe error:', err.response?.data || err.message); res.status(500).json({ error: 'Payment initiation failed' }); }
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// DEPOSIT
+// DEPOSIT / ACTIVATION / WITHDRAW
 // ═══════════════════════════════════════════════════════════════════════════
 app.post('/api/wallet/deposit', auth, async (req, res) => {
   try {
     const amount = Number(req.body?.amount) || 0;
     const phoneInput = req.body?.phone;
     if (amount < MIN_DEPOSIT) return res.status(400).json({ error: `Minimum deposit is KES ${MIN_DEPOSIT}` });
-
     const user = await usersCol.findOne({ _id: new ObjectId(req.userId) });
     if (!user) return res.status(404).json({ error: 'User not found' });
-
     const phone = normalizePhone(phoneInput || user.phone);
     if (!isValidKenyanPhone(phone)) return res.status(400).json({ error: 'Enter a valid M‑Pesa number' });
-
     const reference = `dep_${user._id}_${Date.now()}`;
-    await txnsCol.insertOne({
-      userId: user._id, amount, reference, phone,
-      status: 'pending', kind: 'deposit', createdAt: new Date()
-    });
-
+    await txnsCol.insertOne({ userId: user._id, amount, reference, phone, status: 'pending', kind: 'deposit', createdAt: new Date() });
     const stk = await sendPayHeroStk({ amount, phone, reference });
-
     if (!stk.ok) {
-      await txnsCol.updateOne(
-        { reference },
-        { $set: { status: 'failed', reason: stk.message, payheroResponse: stk.data } }
-      );
+      await txnsCol.updateOne({ reference }, { $set: { status: 'failed', reason: stk.message, payheroResponse: stk.data } });
       return res.status(400).json({ error: stk.message });
     }
-
     await txnsCol.updateOne({ reference }, { $set: { payheroResponse: stk.data } });
-
-    res.json({
-      message: `STK push sent to ${phone}. Approve KES ${amount} on your phone.`,
-      reference, amount, phone
-    });
-  } catch (err) {
-    console.error('Deposit error:', err.response?.data || err.message);
-    res.status(500).json({ error: 'Deposit initiation failed' });
-  }
+    res.json({ message: `STK push sent to ${phone}. Approve KES ${amount} on your phone.`, reference, amount, phone });
+  } catch (err) { console.error('Deposit error:', err.response?.data || err.message); res.status(500).json({ error: 'Deposit initiation failed' }); }
 });
 
-// ═══════════════════════════════════════════════════════════════════════════
-// ACTIVATION FEE
-// ═══════════════════════════════════════════════════════════════════════════
 app.post('/api/wallet/pay-activation', auth, async (req, res) => {
   try {
     const phoneInput = req.body?.phone;
     const user = await usersCol.findOne({ _id: new ObjectId(req.userId) });
     if (!user) return res.status(404).json({ error: 'User not found' });
-
-    if (user.activationFeePaid === true) {
-      return res.status(400).json({ error: 'Activation fee already paid' });
-    }
-
+    if (user.activationFeePaid === true) return res.status(400).json({ error: 'Activation fee already paid' });
     const phone = normalizePhone(phoneInput || user.phone);
-    if (!isValidKenyanPhone(phone)) {
-      return res.status(400).json({ error: 'Enter a valid M‑Pesa number' });
-    }
-
+    if (!isValidKenyanPhone(phone)) return res.status(400).json({ error: 'Enter a valid M‑Pesa number' });
     const amount = ACTIVATION_FEE;
     const reference = `act_${user._id}_${Date.now()}`;
-
-    await txnsCol.insertOne({
-      userId: user._id, amount, reference, phone,
-      status: 'pending', kind: 'activation', createdAt: new Date()
-    });
-
+    await txnsCol.insertOne({ userId: user._id, amount, reference, phone, status: 'pending', kind: 'activation', createdAt: new Date() });
     const stk = await sendPayHeroStk({ amount, phone, reference });
-
     if (!stk.ok) {
-      await txnsCol.updateOne(
-        { reference },
-        { $set: { status: 'failed', reason: stk.message, payheroResponse: stk.data } }
-      );
+      await txnsCol.updateOne({ reference }, { $set: { status: 'failed', reason: stk.message, payheroResponse: stk.data } });
       return res.status(400).json({ error: stk.message });
     }
-
     await txnsCol.updateOne({ reference }, { $set: { payheroResponse: stk.data } });
-
-    res.json({
-      message: `STK push sent to ${phone}. Pay KES ${amount} to activate your account.`,
-      reference, amount, phone
-    });
-  } catch (err) {
-    console.error('Activation error:', err.response?.data || err.message);
-    res.status(500).json({ error: 'Activation initiation failed' });
-  }
+    res.json({ message: `STK push sent to ${phone}. Pay KES ${amount} to activate your account.`, reference, amount, phone });
+  } catch (err) { console.error('Activation error:', err.response?.data || err.message); res.status(500).json({ error: 'Activation initiation failed' }); }
 });
 
-// ═══════════════════════════════════════════════════════════════════════════
-// WITHDRAW
-// ═══════════════════════════════════════════════════════════════════════════
 app.post('/api/wallet/withdraw', auth, async (req, res) => {
   try {
     const amount = Number(req.body?.amount) || 0;
+    const pin = req.body?.pin;
     if (amount < MIN_WITHDRAWAL) return res.status(400).json({ error: `Minimum withdrawal is KES ${MIN_WITHDRAWAL}` });
-
     const user = await usersCol.findOne({ _id: new ObjectId(req.userId) });
     if (!user) return res.status(404).json({ error: 'User not found' });
-
     if (user.activationFeePaid !== true) {
-      return res.status(403).json({
-        error: 'ACTIVATION_REQUIRED',
-        message: `Pay a one-time KES ${ACTIVATION_FEE} activation fee before your first withdrawal.`,
-        amount: ACTIVATION_FEE
-      });
+      return res.status(403).json({ error: 'ACTIVATION_REQUIRED', message: `Pay a one-time KES ${ACTIVATION_FEE} activation fee before your first withdrawal.`, amount: ACTIVATION_FEE });
     }
-
+    if (user.withdrawalPin) {
+      if (!pin) return res.status(400).json({ error: 'Withdrawal PIN required' });
+      const pinOk = await bcrypt.compare(String(pin), user.withdrawalPin);
+      if (!pinOk) return res.status(401).json({ error: 'Incorrect withdrawal PIN' });
+    }
     if ((user.balance || 0) < amount) return res.status(400).json({ error: 'Insufficient balance' });
-
     const upd = await usersCol.updateOne({ _id: user._id, balance: { $gte: amount } }, { $inc: { balance: -amount } });
     if (upd.modifiedCount === 0) return res.status(400).json({ error: 'Insufficient balance' });
-
     await walletCol.insertOne({
       userId: user._id, type: 'withdrawal', amount: -amount,
       phone: user.phone, status: 'pending',
-      reference: `wd_${user._id}_${Date.now()}`,
-      createdAt: new Date()
+      reference: `wd_${user._id}_${Date.now()}`, createdAt: new Date()
     });
     res.json({ message: `Withdrawal of KES ${amount} requested. Admin will process it.`, amount, phone: user.phone });
   } catch (err) { res.status(500).json({ error: 'Withdrawal failed' }); }
@@ -775,13 +825,8 @@ app.get('/api/wallet/history', auth, async (req, res) => {
   try {
     await autoFailStalePayments();
     const userId = new ObjectId(req.userId);
-
-    const walletTransactions = await walletCol
-      .find({ userId }).sort({ createdAt: -1 }).limit(50).toArray();
-
-    const paymentTransactions = await txnsCol
-      .find({ userId }).sort({ createdAt: -1 }).limit(50).toArray();
-
+    const walletTransactions = await walletCol.find({ userId }).sort({ createdAt: -1 }).limit(50).toArray();
+    const paymentTransactions = await txnsCol.find({ userId }).sort({ createdAt: -1 }).limit(50).toArray();
     res.json({
       walletTransactions: walletTransactions.map(w => ({
         id: w._id, type: w.type, amount: w.amount, status: w.status,
@@ -801,15 +846,13 @@ app.get('/api/wallet/history', auth, async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// PAYHERO CALLBACK (robust parser)
+// PAYHERO CALLBACK
 // ═══════════════════════════════════════════════════════════════════════════
 app.post('/api/payhero/callback', async (req, res) => {
   try {
     console.log('📬 PayHero callback (raw):', JSON.stringify(req.body, null, 2));
-
     const body = req.body || {};
     const resp = body.response || body || {};
-
     const reference =
       body.external_reference || body.externalReference ||
       resp.external_reference || resp.externalReference ||
@@ -818,7 +861,6 @@ app.post('/api/payhero/callback', async (req, res) => {
       body.reference || resp.reference ||
       body.ExternalReference || resp.ExternalReference ||
       body.account_reference || resp.account_reference;
-
     const mpesaRef =
       body.MpesaReceiptNumber || resp.MpesaReceiptNumber ||
       body.mpesa_receipt || resp.mpesa_receipt ||
@@ -826,68 +868,36 @@ app.post('/api/payhero/callback', async (req, res) => {
       body.MPESA_Reference || resp.MPESA_Reference ||
       body.receipt || resp.receipt ||
       body.TransactionReceipt || resp.TransactionReceipt;
-
     const resultCodeRaw =
       body.ResultCode ?? body.result_code ?? body.response_code ?? body.ResponseCode ??
       resp.ResultCode ?? resp.result_code ?? resp.response_code ?? resp.ResponseCode;
     const resultDesc =
       body.ResultDesc || body.result_desc || body.ResponseDescription ||
       resp.ResultDesc || resp.result_desc || resp.ResponseDescription || null;
-    const statusRaw =
-      body.Status || body.status ||
-      resp.Status || resp.status;
-
+    const statusRaw = body.Status || body.status || resp.Status || resp.status;
     const hasReceipt = !!(mpesaRef && String(mpesaRef).trim().length > 3);
     const resultCodeOk = resultCodeRaw === 0 || resultCodeRaw === '0';
     const statusOk = /^(success|completed|complete|paid)$/i.test(String(statusRaw || '').trim());
     const boolOk = body.success === true || resp.success === true || body.paid === true || resp.paid === true;
     const isSuccess = hasReceipt || resultCodeOk || statusOk || boolOk;
-
     const statusFail = /^(fail|failed|error|cancelled|canceled|rejected|timeout)$/i.test(String(statusRaw || '').trim());
     const isExplicitFailure = !isSuccess && (statusFail || (resultCodeRaw !== undefined && !resultCodeOk));
-
-    console.log('🔎 Parsed →', {
-      reference, mpesaRef, resultCodeRaw, resultDesc, statusRaw,
-      hasReceipt, resultCodeOk, statusOk, boolOk, isSuccess, isExplicitFailure
-    });
-
-    if (!reference) {
-      console.warn('⚠️ Callback missing reference — ignoring');
-      return res.status(200).json({ status: 'received' });
-    }
-
+    console.log('🔎 Parsed →', { reference, mpesaRef, resultCodeRaw, resultDesc, statusRaw, hasReceipt, resultCodeOk, statusOk, boolOk, isSuccess, isExplicitFailure });
+    if (!reference) return res.status(200).json({ status: 'received' });
     const txn = await txnsCol.findOne({ reference });
-    if (!txn) {
-      console.warn('⚠️ Callback txn not found:', reference);
-      return res.status(200).json({ status: 'received' });
-    }
-    if (txn.status === 'completed') {
-      console.log('↩️ Already completed:', reference);
-      return res.status(200).json({ status: 'already-processed' });
-    }
-
+    if (!txn) return res.status(200).json({ status: 'received' });
+    if (txn.status === 'completed') return res.status(200).json({ status: 'already-processed' });
     if (isExplicitFailure && !isSuccess) {
       const reason = mapPayHeroFailureReason(resultCodeRaw, resultDesc);
-      await txnsCol.updateOne(
-        { _id: txn._id },
-        { $set: { status: 'failed', reason, callback: body, completedAt: new Date() } }
-      );
-      console.log(`❌ Payment failed: ${reference} → ${reason}`);
+      await txnsCol.updateOne({ _id: txn._id }, { $set: { status: 'failed', reason, callback: body, completedAt: new Date() } });
       return res.status(200).json({ status: 'received' });
     }
-
     if (!isSuccess) {
-      console.warn('❓ Callback received with no clear status — leaving pending:', reference);
-      await txnsCol.updateOne(
-        { _id: txn._id },
-        { $set: { lastCallback: body, lastCallbackAt: new Date() } }
-      );
+      await txnsCol.updateOne({ _id: txn._id }, { $set: { lastCallback: body, lastCallbackAt: new Date() } });
       return res.status(200).json({ status: 'received' });
     }
-
     const prefix = String(reference).split('_')[0];
     const userId = String(txn.userId);
-
     if (prefix === 'sub') {
       const tier = txn.tier;
       if (!TIERS[tier]) {
@@ -899,64 +909,26 @@ app.post('/api/payhero/callback', async (req, res) => {
         await txnsCol.updateOne({ _id: txn._id }, { $set: { status: 'failed', reason: 'User not found' } });
         return res.status(200).json({ status: 'received' });
       }
-      const base = isSubscriptionActive(user) && user.subscriptionTier === tier
-        ? new Date(user.subscriptionExpiry) : new Date();
-      const expiry = new Date(base);
-      expiry.setDate(expiry.getDate() + SUBSCRIPTION_DAYS);
-
-      await usersCol.updateOne({ _id: user._id }, {
-        $set: {
-          subscriptionTier: tier,
-          subscriptionExpiry: expiry,
-          tasksCompletedToday: 0,
-          lastTaskDate: new Date().toISOString().slice(0, 10)
-        }
-      });
-      console.log(`✅ Subscription ${tier} activated for ${user.username}`);
+      const base = isSubscriptionActive(user) && user.subscriptionTier === tier ? new Date(user.subscriptionExpiry) : new Date();
+      const expiry = new Date(base); expiry.setDate(expiry.getDate() + SUBSCRIPTION_DAYS);
+      await usersCol.updateOne({ _id: user._id }, { $set: { subscriptionTier: tier, subscriptionExpiry: expiry, tasksCompletedToday: 0, lastTaskDate: new Date().toISOString().slice(0, 10) } });
     } else if (prefix === 'dep') {
       const amount = Number(txn.amount) || 0;
       await usersCol.updateOne({ _id: new ObjectId(userId) }, { $inc: { balance: amount } });
-      await walletCol.insertOne({
-        userId: new ObjectId(userId), type: 'deposit', amount,
-        phone: txn.phone, status: 'completed', reference,
-        mpesaRef, createdAt: new Date(), confirmedAt: new Date()
-      });
-      console.log(`💰 Deposit KES ${amount} credited to user ${userId}`);
+      await walletCol.insertOne({ userId: new ObjectId(userId), type: 'deposit', amount, phone: txn.phone, status: 'completed', reference, mpesaRef, createdAt: new Date(), confirmedAt: new Date() });
     } else if (prefix === 'act') {
-      await usersCol.updateOne(
-        { _id: new ObjectId(userId) },
-        { $set: { activationFeePaid: true, activationPaidAt: new Date() } }
-      );
-      await walletCol.insertOne({
-        userId: new ObjectId(userId), type: 'activation_fee', amount: -ACTIVATION_FEE,
-        phone: txn.phone, status: 'completed', reference,
-        mpesaRef, createdAt: new Date(), confirmedAt: new Date()
-      });
-      console.log(`✅ Activation fee paid by user ${userId} — withdrawals unlocked`);
+      await usersCol.updateOne({ _id: new ObjectId(userId) }, { $set: { activationFeePaid: true, activationPaidAt: new Date() } });
+      await walletCol.insertOne({ userId: new ObjectId(userId), type: 'activation_fee', amount: -ACTIVATION_FEE, phone: txn.phone, status: 'completed', reference, mpesaRef, createdAt: new Date(), confirmedAt: new Date() });
     }
-
-    await txnsCol.updateOne(
-      { _id: txn._id },
-      { $set: { status: 'completed', mpesaRef, callback: body, completedAt: new Date() } }
-    );
-
+    await txnsCol.updateOne({ _id: txn._id }, { $set: { status: 'completed', mpesaRef, callback: body, completedAt: new Date() } });
     res.status(200).json({ status: 'received' });
-  } catch (err) {
-    console.error('Callback error:', err);
-    res.status(200).json({ status: 'received' });
-  }
+  } catch (err) { console.error('Callback error:', err); res.status(200).json({ status: 'received' }); }
 });
 
 app.get('/api/tiers', (req, res) => {
   const out = {};
   for (const [k, v] of Object.entries(TIERS)) {
-    out[k] = {
-      name: v.name,
-      price: getTierPrice(k),
-      dailyLimit: v.dailyLimit,
-      label: v.label,
-      days: SUBSCRIPTION_DAYS
-    };
+    out[k] = { name: v.name, price: getTierPrice(k), dailyLimit: v.dailyLimit, label: v.label, days: SUBSCRIPTION_DAYS };
   }
   res.json(out);
 });
@@ -983,16 +955,13 @@ app.get('/api/admin/stats', adminAuth, async (req, res) => {
     const now = new Date();
     const todayStart = startOfToday();
     const weekAgo = new Date(Date.now() - 7 * 86400000);
-
     const [
       totalUsers, newUsersToday, newUsersWeek,
       activeSubs, classicCount, premiumCount, goldenCount,
       totalVisits, visitsToday, uniqueVisitorsToday,
       loginSuccess, loginFail,
       txnsAll, txnsCompleted, txnsFailed, txnsPending,
-      tasksCompletedAll,
-      pendingRewardsCount, pendingWithdrawalsCount,
-      activationsCount
+      tasksCompletedAll, pendingRewardsCount, pendingWithdrawalsCount, activationsCount
     ] = await Promise.all([
       usersCol.countDocuments({}),
       usersCol.countDocuments({ createdAt: { $gte: todayStart } }),
@@ -1015,52 +984,28 @@ app.get('/api/admin/stats', adminAuth, async (req, res) => {
       walletCol.countDocuments({ type:'withdrawal', status:'pending' }),
       txnsCol.countDocuments({ kind: 'activation', status: 'completed' })
     ]);
-
-    const revAgg = await txnsCol.aggregate([
-      { $match: { status:'completed', kind:'subscription' } },
-      { $group: { _id: null, total: { $sum:'$amount' } } }
-    ]).toArray();
-    const totalRevenue = revAgg[0]?.total || 0;
-
-    const revTodayAgg = await txnsCol.aggregate([
-      { $match: { status:'completed', kind:'subscription', completedAt: { $gte: todayStart } } },
-      { $group: { _id: null, total: { $sum:'$amount' } } }
-    ]).toArray();
-    const revenueToday = revTodayAgg[0]?.total || 0;
-
-    const depAgg = await txnsCol.aggregate([
-      { $match: { status:'completed', kind:'deposit' } },
-      { $group: { _id: null, total: { $sum:'$amount' } } }
-    ]).toArray();
-    const totalDeposits = depAgg[0]?.total || 0;
-
-    const actAgg = await txnsCol.aggregate([
-      { $match: { status:'completed', kind:'activation' } },
-      { $group: { _id: null, total: { $sum:'$amount' } } }
-    ]).toArray();
-    const totalActivation = actAgg[0]?.total || 0;
-
-    const payoutsAgg = await walletCol.aggregate([
-      { $match: { type:'task_reward', status:'completed' } },
-      { $group: { _id: null, total: { $sum:'$amount' } } }
-    ]).toArray();
-    const totalPayouts = payoutsAgg[0]?.total || 0;
-
-    const pendingRewardsAgg = await walletCol.aggregate([
-      { $match: { type:'task_reward', status:'pending' } },
-      { $group: { _id: null, total: { $sum:'$amount' } } }
-    ]).toArray();
-    const pendingRewardsAmount = pendingRewardsAgg[0]?.total || 0;
-
+    const revAgg = await txnsCol.aggregate([{ $match: { status:'completed', kind:'subscription' } }, { $group: { _id: null, total: { $sum:'$amount' } } }]).toArray();
+    const revTodayAgg = await txnsCol.aggregate([{ $match: { status:'completed', kind:'subscription', completedAt: { $gte: todayStart } } }, { $group: { _id: null, total: { $sum:'$amount' } } }]).toArray();
+    const depAgg = await txnsCol.aggregate([{ $match: { status:'completed', kind:'deposit' } }, { $group: { _id: null, total: { $sum:'$amount' } } }]).toArray();
+    const actAgg = await txnsCol.aggregate([{ $match: { status:'completed', kind:'activation' } }, { $group: { _id: null, total: { $sum:'$amount' } } }]).toArray();
+    const payoutsAgg = await walletCol.aggregate([{ $match: { type:'task_reward', status:'completed' } }, { $group: { _id: null, total: { $sum:'$amount' } } }]).toArray();
+    const pendingRewardsAgg = await walletCol.aggregate([{ $match: { type:'task_reward', status:'pending' } }, { $group: { _id: null, total: { $sum:'$amount' } } }]).toArray();
     res.json({
       users: { total: totalUsers, today: newUsersToday, week: newUsersWeek },
       subscriptions: { active: activeSubs, classic: classicCount, premium: premiumCount, golden: goldenCount },
       visits: { total: totalVisits, today: visitsToday, uniqueToday: uniqueVisitorsToday },
       logins: { success: loginSuccess, failed: loginFail },
       transactions: { total: txnsAll, completed: txnsCompleted, failed: txnsFailed, pending: txnsPending },
-      revenue: { total: totalRevenue, today: revenueToday, deposits: totalDeposits, payouts: totalPayouts, activations: totalActivation },
+      revenue: {
+        total: revAgg[0]?.total || 0, today: revTodayAgg[0]?.total || 0,
+        deposits: depAgg[0]?.total || 0, activations: actAgg[0]?.total || 0,
+        payouts: payoutsAgg[0]?.total || 0
+      },
       tasksCompleted: tasksCompletedAll,
-      pending: { rewards: pendingRewardsCount, rewardsAmount: pendingRewardsAmount, withdrawals: pendingWithdrawalsCount, activations: activationsCount }
+      pending: {
+        rewards: pendingRewardsCount, rewardsAmount: pendingRewardsAgg[0]?.total || 0,
+        withdrawals: pendingWithdrawalsCount, activations: activationsCount
+      }
     });
   } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
 });
@@ -1077,8 +1022,7 @@ app.get('/api/admin/users', adminAuth, async (req, res) => {
       { phone: { $regex: q, $options: 'i' } }
     ];
     const total = await usersCol.countDocuments(filter);
-    const users = await usersCol.find(filter, { projection: { password: 0 } })
-      .sort({ createdAt: -1 }).skip((page-1)*size).limit(size).toArray();
+    const users = await usersCol.find(filter, { projection: { password: 0 } }).sort({ createdAt: -1 }).skip((page-1)*size).limit(size).toArray();
     const now = new Date();
     res.json({
       total, page, size,
@@ -1087,11 +1031,8 @@ app.get('/api/admin/users', adminAuth, async (req, res) => {
         return {
           id: u._id, username: u.username, email: u.email, phone: u.phone,
           subscriptionTier: u.subscriptionTier || 'free',
-          subscriptionActive: !!active,
-          subscriptionExpiry: u.subscriptionExpiry,
-          balance: u.balance || 0,
-          pendingBalance: u.pendingBalance || 0,
-          totalEarnings: u.totalEarnings || 0,
+          subscriptionActive: !!active, subscriptionExpiry: u.subscriptionExpiry,
+          balance: u.balance || 0, pendingBalance: u.pendingBalance || 0, totalEarnings: u.totalEarnings || 0,
           activationFeePaid: u.activationFeePaid === true,
           tasksCompletedToday: u.tasksCompletedToday || 0,
           lastLoginAt: u.lastLoginAt, lastLoginIp: u.lastLoginIp,
@@ -1133,58 +1074,27 @@ app.post('/api/admin/transactions/:id/mark-paid', adminAuth, async (req, res) =>
     const txn = await txnsCol.findOne({ _id: new ObjectId(req.params.id) });
     if (!txn) return res.status(404).json({ error: 'Transaction not found' });
     if (txn.status === 'completed') return res.status(400).json({ error: 'Already completed' });
-
     const userId = String(txn.userId);
     const prefix = String(txn.reference).split('_')[0];
-
     if (prefix === 'sub') {
       const user = await usersCol.findOne({ _id: new ObjectId(userId) });
       if (!user) return res.status(404).json({ error: 'User not found' });
       const tier = txn.tier;
       if (!TIERS[tier]) return res.status(400).json({ error: 'Invalid tier' });
-      const base = isSubscriptionActive(user) && user.subscriptionTier === tier
-        ? new Date(user.subscriptionExpiry) : new Date();
-      const expiry = new Date(base);
-      expiry.setDate(expiry.getDate() + SUBSCRIPTION_DAYS);
-      await usersCol.updateOne({ _id: user._id }, {
-        $set: {
-          subscriptionTier: tier,
-          subscriptionExpiry: expiry,
-          tasksCompletedToday: 0,
-          lastTaskDate: new Date().toISOString().slice(0, 10)
-        }
-      });
+      const base = isSubscriptionActive(user) && user.subscriptionTier === tier ? new Date(user.subscriptionExpiry) : new Date();
+      const expiry = new Date(base); expiry.setDate(expiry.getDate() + SUBSCRIPTION_DAYS);
+      await usersCol.updateOne({ _id: user._id }, { $set: { subscriptionTier: tier, subscriptionExpiry: expiry, tasksCompletedToday: 0, lastTaskDate: new Date().toISOString().slice(0, 10) } });
     } else if (prefix === 'dep') {
       const amount = Number(txn.amount) || 0;
       await usersCol.updateOne({ _id: new ObjectId(userId) }, { $inc: { balance: amount } });
-      await walletCol.insertOne({
-        userId: new ObjectId(userId), type: 'deposit', amount,
-        phone: txn.phone, status: 'completed', reference: txn.reference,
-        mpesaRef: txn.mpesaRef || null, createdAt: new Date(), confirmedAt: new Date()
-      });
+      await walletCol.insertOne({ userId: new ObjectId(userId), type: 'deposit', amount, phone: txn.phone, status: 'completed', reference: txn.reference, mpesaRef: txn.mpesaRef || null, createdAt: new Date(), confirmedAt: new Date() });
     } else if (prefix === 'act') {
-      await usersCol.updateOne(
-        { _id: new ObjectId(userId) },
-        { $set: { activationFeePaid: true, activationPaidAt: new Date() } }
-      );
-      await walletCol.insertOne({
-        userId: new ObjectId(userId), type: 'activation_fee', amount: -ACTIVATION_FEE,
-        phone: txn.phone, status: 'completed', reference: txn.reference,
-        mpesaRef: txn.mpesaRef || null, createdAt: new Date(), confirmedAt: new Date()
-      });
+      await usersCol.updateOne({ _id: new ObjectId(userId) }, { $set: { activationFeePaid: true, activationPaidAt: new Date() } });
+      await walletCol.insertOne({ userId: new ObjectId(userId), type: 'activation_fee', amount: -ACTIVATION_FEE, phone: txn.phone, status: 'completed', reference: txn.reference, mpesaRef: txn.mpesaRef || null, createdAt: new Date(), confirmedAt: new Date() });
     }
-
-    await txnsCol.updateOne(
-      { _id: txn._id },
-      { $set: { status: 'completed', reason: 'Manually marked as paid by admin', manualOverrideAt: new Date(), manualOverrideBy: 'admin' } }
-    );
-
-    console.log(`✅ Admin marked txn ${txn.reference} as paid`);
+    await txnsCol.updateOne({ _id: txn._id }, { $set: { status: 'completed', reason: 'Manually marked as paid by admin', manualOverrideAt: new Date(), manualOverrideBy: 'admin' } });
     res.json({ ok: true });
-  } catch (err) {
-    console.error('Mark-paid error:', err);
-    res.status(500).json({ error: 'Server error' });
-  }
+  } catch (err) { console.error('Mark-paid error:', err); res.status(500).json({ error: 'Server error' }); }
 });
 
 app.get('/api/admin/visits', adminAuth, async (req, res) => {
@@ -1213,9 +1123,7 @@ app.get('/api/admin/login-attempts', adminAuth, async (req, res) => {
 app.get('/api/admin/subscriptions', adminAuth, async (req, res) => {
   try {
     const now = new Date();
-    const subs = await usersCol
-      .find({ subscriptionTier: { $ne:'free' }, subscriptionExpiry: { $gt: now } }, { projection: { password:0 } })
-      .sort({ subscriptionExpiry: 1 }).toArray();
+    const subs = await usersCol.find({ subscriptionTier: { $ne:'free' }, subscriptionExpiry: { $gt: now } }, { projection: { password:0 } }).sort({ subscriptionExpiry: 1 }).toArray();
     res.json(subs.map(u => ({
       id: u._id, username: u.username, email: u.email, phone: u.phone,
       tier: u.subscriptionTier, expiry: u.subscriptionExpiry,
@@ -1226,8 +1134,7 @@ app.get('/api/admin/subscriptions', adminAuth, async (req, res) => {
 
 app.get('/api/admin/pending-rewards', adminAuth, async (req, res) => {
   try {
-    const items = await walletCol.find({ type:'task_reward', status:'pending' })
-      .sort({ createdAt: -1 }).limit(300).toArray();
+    const items = await walletCol.find({ type:'task_reward', status:'pending' }).sort({ createdAt: -1 }).limit(300).toArray();
     const userIds = [...new Set(items.map(t => String(t.userId)))].map(id => new ObjectId(id));
     const users = await usersCol.find({ _id: { $in: userIds } }, { projection: { username:1, email:1, phone:1 } }).toArray();
     const userMap = Object.fromEntries(users.map(u => [String(u._id), u]));
@@ -1249,16 +1156,9 @@ app.post('/api/admin/wallet/confirm/:id', adminAuth, async (req, res) => {
     const txn = await walletCol.findOne({ _id: new ObjectId(req.params.id) });
     if (!txn) return res.status(404).json({ error: 'Transaction not found' });
     if (txn.status !== 'pending') return res.status(400).json({ error: 'Not pending' });
-
-    await usersCol.updateOne({ _id: txn.userId }, {
-      $inc: { pendingBalance: -txn.amount, balance: txn.amount }
-    });
-    await walletCol.updateOne({ _id: txn._id }, {
-      $set: { status:'completed', confirmedAt: new Date() }
-    });
-    await historyCol.updateOne({ walletTxnId: txn._id }, {
-      $set: { status:'completed', confirmedAt: new Date() }
-    });
+    await usersCol.updateOne({ _id: txn.userId }, { $inc: { pendingBalance: -txn.amount, balance: txn.amount } });
+    await walletCol.updateOne({ _id: txn._id }, { $set: { status:'completed', confirmedAt: new Date() } });
+    await historyCol.updateOne({ walletTxnId: txn._id }, { $set: { status:'completed', confirmedAt: new Date() } });
     res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: 'Server error' }); }
 });
@@ -1269,16 +1169,9 @@ app.post('/api/admin/wallet/reject/:id', adminAuth, async (req, res) => {
     if (!txn) return res.status(404).json({ error: 'Transaction not found' });
     if (txn.status !== 'pending') return res.status(400).json({ error: 'Not pending' });
     const reason = req.body?.reason || 'Rejected by admin';
-
-    await usersCol.updateOne({ _id: txn.userId }, {
-      $inc: { pendingBalance: -txn.amount, totalEarnings: -txn.amount }
-    });
-    await walletCol.updateOne({ _id: txn._id }, {
-      $set: { status:'failed', reason, rejectedAt: new Date() }
-    });
-    await historyCol.updateOne({ walletTxnId: txn._id }, {
-      $set: { status:'failed', reason, rejectedAt: new Date() }
-    });
+    await usersCol.updateOne({ _id: txn.userId }, { $inc: { pendingBalance: -txn.amount, totalEarnings: -txn.amount } });
+    await walletCol.updateOne({ _id: txn._id }, { $set: { status:'failed', reason, rejectedAt: new Date() } });
+    await historyCol.updateOne({ walletTxnId: txn._id }, { $set: { status:'failed', reason, rejectedAt: new Date() } });
     res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: 'Server error' }); }
 });
@@ -1294,9 +1187,7 @@ app.post('/api/admin/wallet/confirm-all', adminAuth, async (req, res) => {
       byUser[k].ids.push(t._id);
     }
     for (const [userId, data] of Object.entries(byUser)) {
-      await usersCol.updateOne({ _id: new ObjectId(userId) }, {
-        $inc: { pendingBalance: -data.total, balance: data.total }
-      });
+      await usersCol.updateOne({ _id: new ObjectId(userId) }, { $inc: { pendingBalance: -data.total, balance: data.total } });
       await walletCol.updateMany({ _id: { $in: data.ids } }, { $set: { status:'completed', confirmedAt: new Date() } });
       await historyCol.updateMany({ walletTxnId: { $in: data.ids } }, { $set: { status:'completed', confirmedAt: new Date() } });
     }
@@ -1306,8 +1197,7 @@ app.post('/api/admin/wallet/confirm-all', adminAuth, async (req, res) => {
 
 app.get('/api/admin/pending-withdrawals', adminAuth, async (req, res) => {
   try {
-    const items = await walletCol.find({ type:'withdrawal', status:'pending' })
-      .sort({ createdAt: -1 }).limit(300).toArray();
+    const items = await walletCol.find({ type:'withdrawal', status:'pending' }).sort({ createdAt: -1 }).limit(300).toArray();
     const userIds = [...new Set(items.map(t => String(t.userId)))].map(id => new ObjectId(id));
     const users = await usersCol.find({ _id: { $in: userIds } }, { projection: { username:1, email:1, phone:1 } }).toArray();
     const userMap = Object.fromEntries(users.map(u => [String(u._id), u]));
@@ -1328,9 +1218,7 @@ app.post('/api/admin/withdrawal/confirm/:id', adminAuth, async (req, res) => {
     const txn = await walletCol.findOne({ _id: new ObjectId(req.params.id), type:'withdrawal' });
     if (!txn) return res.status(404).json({ error: 'Not found' });
     if (txn.status !== 'pending') return res.status(400).json({ error: 'Not pending' });
-    await walletCol.updateOne({ _id: txn._id }, {
-      $set: { status:'completed', confirmedAt: new Date() }
-    });
+    await walletCol.updateOne({ _id: txn._id }, { $set: { status:'completed', confirmedAt: new Date() } });
     res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: 'Server error' }); }
 });
@@ -1342,43 +1230,54 @@ app.post('/api/admin/withdrawal/reject/:id', adminAuth, async (req, res) => {
     if (txn.status !== 'pending') return res.status(400).json({ error: 'Not pending' });
     const reason = req.body?.reason || 'Rejected by admin';
     await usersCol.updateOne({ _id: txn.userId }, { $inc: { balance: Math.abs(txn.amount) } });
-    await walletCol.updateOne({ _id: txn._id }, {
-      $set: { status:'failed', reason, rejectedAt: new Date() }
-    });
+    await walletCol.updateOne({ _id: txn._id }, { $set: { status:'failed', reason, rejectedAt: new Date() } });
     res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: 'Server error' }); }
 });
 
-// ═══════════════════════════════════════════════════════════════════════════
-// ADMIN: PRICE SETTINGS
-// ═══════════════════════════════════════════════════════════════════════════
-app.get('/api/admin/settings/prices', adminAuth, (req, res) => {
-  res.json(tierPrices);
-});
+app.get('/api/admin/settings/prices', adminAuth, (req, res) => res.json(tierPrices));
 
 app.put('/api/admin/settings/prices', adminAuth, async (req, res) => {
   try {
     const { classic, premium, golden } = req.body || {};
     const c = Number(classic), p = Number(premium), g = Number(golden);
-
     if ([c, p, g].some(v => !Number.isFinite(v) || v < 1 || v > 1000000)) {
       return res.status(400).json({ error: 'Prices must be numbers between 1 and 1,000,000' });
     }
-
     tierPrices = { classic: c, premium: p, golden: g };
-
-    await settingsCol.updateOne(
-      { key: 'tier_prices' },
-      { $set: { ...tierPrices, updatedAt: new Date() } },
-      { upsert: true }
-    );
-
+    await settingsCol.updateOne({ key: 'tier_prices' }, { $set: { ...tierPrices, updatedAt: new Date() } }, { upsert: true });
     console.log('💵 Tier prices updated by admin:', tierPrices);
     res.json({ ok: true, prices: tierPrices });
-  } catch (err) {
-    console.error('Update prices error:', err);
-    res.status(500).json({ error: 'Server error' });
-  }
+  } catch (err) { console.error('Update prices error:', err); res.status(500).json({ error: 'Server error' }); }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ADMIN: TICKETS
+// ═══════════════════════════════════════════════════════════════════════════
+app.get('/api/admin/tickets', adminAuth, async (req, res) => {
+  try {
+    const items = await ticketsCol.find({}).sort({ createdAt: -1 }).limit(200).toArray();
+    res.json(items);
+  } catch (err) { res.status(500).json({ error: 'Server error' }); }
+});
+
+app.post('/api/admin/tickets/:id/reply', adminAuth, async (req, res) => {
+  try {
+    const { message } = req.body || {};
+    if (!message) return res.status(400).json({ error: 'Message required' });
+    await ticketsCol.updateOne(
+      { _id: new ObjectId(req.params.id) },
+      { $push: { replies: { by: 'admin', message, at: new Date() } }, $set: { status: 'open', lastReplyAt: new Date() } }
+    );
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: 'Server error' }); }
+});
+
+app.post('/api/admin/tickets/:id/close', adminAuth, async (req, res) => {
+  try {
+    await ticketsCol.updateOne({ _id: new ObjectId(req.params.id) }, { $set: { status: 'resolved', closedAt: new Date() } });
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: 'Server error' }); }
 });
 
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
