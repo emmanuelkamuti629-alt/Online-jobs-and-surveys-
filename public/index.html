@@ -880,19 +880,11 @@
       <div class="featured-dots"><div class="featured-dot active"></div><div class="featured-dot"></div><div class="featured-dot"></div></div>
     </div>
 
-    <div class="section-head">
-      <div class="section-head-title">Browse by Category</div>
-      <button class="section-head-link" data-nav="find-jobs">View All ›</button>
-    </div>
-    <div class="categories">
-      <div class="category" data-nav="find-jobs"><div class="category-icon" style="background:#E3F2FD;color:#0D47A1;">📋</div><div class="category-label">Surveys</div></div>
-      <div class="category" data-nav="find-jobs"><div class="category-icon" style="background:#E8F5E9;color:#1B5E20;">📊</div><div class="category-label">Data Entry</div></div>
-      <div class="category" data-nav="find-jobs"><div class="category-icon" style="background:#F3E5F5;color:#6A1B9A;">✍️</div><div class="category-label">Writing</div></div>
-      <div class="category" data-nav="find-jobs"><div class="category-icon" style="background:#FCE4EC;color:#880E4F;">🤖</div><div class="category-label">AI Tasks</div></div>
-      <div class="category" data-nav="find-jobs"><div class="category-icon" style="background:#FFF3E0;color:#E65100;">📱</div><div class="category-label">App Testing</div></div>
-      <div class="category" data-nav="find-jobs"><div class="category-icon" style="background:#E0F7FA;color:#006064;">🎧</div><div class="category-label">Transcription</div></div>
-      <div class="category" data-nav="find-jobs"><div class="category-icon" style="background:#EDE7F6;color:#4527A0;">🔍</div><div class="category-label">Research</div></div>
-      <div class="category" data-nav="find-jobs"><div class="category-icon" style="background:#E8F7E4;color:#2E7D1E;">💼</div><div class="category-label">More</div></div>
+    <!-- COUNTDOWN TIMER FOR FREE TRIAL -->
+    <div id="freeTrialTimer" class="card" style="display:none; text-align:center; border: 1.5px solid #F5A623; background: linear-gradient(135deg, #FFF8E1, #FFE8A1); margin-bottom: 16px;">
+      <div style="font-size: 14px; font-weight: 800; color: #8A6D3B; margin-bottom: 6px;">⏳ Daily Free Tasks Completed</div>
+      <div style="font-size: 28px; font-weight: 900; color: #D4901A; font-family: monospace;" id="timerDisplay">00:00:00</div>
+      <div style="font-size: 12px; color: #8A6D3B; font-weight: 600; margin-top: 6px;">New free tasks unlock at midnight.</div>
     </div>
 
     <div class="section-head">
@@ -1506,6 +1498,7 @@
   let publicPrices = { classic: 200, premium: 350, golden: 450 };
   let notifUnread = 0;
   let notifItems = [];
+  let timerInterval = null; // For the countdown timer
 
   const prefsKey = 'jobpay_prefs';
   let prefs = JSON.parse(localStorage.getItem(prefsKey) || '{}');
@@ -1562,6 +1555,11 @@
   }
 
   function navigate(name) {
+    // Clear timer when navigating away from home to prevent multiple intervals
+    if (name !== 'home' && timerInterval) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+    }
     switch (name) {
       case 'home':          loadDashboard(); goTo('home'); break;
       case 'find-jobs':     loadFindJobs(); goTo('find-jobs'); break;
@@ -1647,6 +1645,7 @@
     $('headerRight').style.display = 'none';
     $('bottomNav').style.display = 'none';
     $('notifPanel').classList.remove('show');
+    if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     $('screen-auth').classList.add('active');
     setAuthTab('register');
@@ -2156,6 +2155,37 @@
     goTo('home');
   }
 
+  // COUNTDOWN TIMER LOGIC
+  function startCountdown() {
+    if (timerInterval) clearInterval(timerInterval);
+    
+    const updateTimer = () => {
+      const now = new Date();
+      const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0);
+      const diff = midnight - now;
+
+      if (diff <= 0) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+        $('timerDisplay').textContent = "00:00:00";
+        $('freeTrialTimer').innerHTML = `
+          <div style="font-size: 16px; font-weight: 800; color: #2E7D1E;">🎉 Free tasks are available now!</div>
+          <div style="font-size: 12px; color: #43B02A; font-weight: 600; margin-top: 4px;">Refreshing...</div>
+        `;
+        setTimeout(() => { loadDashboard(); }, 3000); // Reload dashboard after 3 sec
+        return;
+      }
+
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      $('timerDisplay').textContent = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    };
+
+    updateTimer();
+    timerInterval = setInterval(updateTimer, 1000);
+  }
+
   // DASHBOARD
   async function loadDashboard(page = 1, append = false) {
     try {
@@ -2169,12 +2199,24 @@
       $('qsPending').textContent = `KES ${(me.pendingBalance || 0).toLocaleString()}`;
       $('qsSuccess').textContent = '96%';
 
-      const data = await api(`/api/tasks?page=${page}&size=10&type=${currentType}`);
-      totalTaskCount = data.totalCount;
-      const list = $('homeTaskList');
-      const html = data.tasks.slice(0, 3).map(t => renderTaskCard(t)).join('');
-      list.innerHTML = html || `<div class="card"><div class="empty"><div class="empty-icon">📋</div><div class="empty-title">No tasks available</div></div></div>`;
-      attachTaskHandlers(list);
+      const isFree = me.subscriptionTier === 'free';
+      const limitReached = isFree && (me.tasksCompletedToday >= me.dailyLimit);
+
+      if (limitReached) {
+        $('freeTrialTimer').style.display = 'block';
+        $('homeTaskList').innerHTML = `<div class="card"><div class="empty"><div class="empty-icon">⏳</div><div class="empty-title">No more free tasks today</div><div class="empty-text">Upgrade to unlock more tasks or wait for the timer to reset.</div></div></div>`;
+        startCountdown();
+      } else {
+        $('freeTrialTimer').style.display = 'none';
+        if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+
+        const data = await api(`/api/tasks?page=${page}&size=10&type=${currentType}`);
+        totalTaskCount = data.totalCount;
+        const list = $('homeTaskList');
+        const html = data.tasks.slice(0, 3).map(t => renderTaskCard(t)).join('');
+        list.innerHTML = html || `<div class="card"><div class="empty"><div class="empty-icon">📋</div><div class="empty-title">No tasks available</div></div></div>`;
+        attachTaskHandlers(list);
+      }
     } catch (err) { console.error('Dashboard error:', err); }
   }
 
@@ -2821,4 +2863,4 @@
 })();
 </script>
 </body>
-          </html>
+        </html>
