@@ -337,12 +337,18 @@
   }
   .task-card:active { transform:scale(0.99); }
   .task-card.locked { opacity:0.65; background: var(--card-alt); }
-  .task-card.completed { opacity:0.65; }
+  .task-card.completed { opacity:0.65; border-color: var(--green); background: var(--green-light); }
+  body.theme-dark .task-card.completed { background: rgba(67,176,42,0.10); }
   .task-icon { width:52px; height:52px; border-radius:14px; display:grid; place-items:center; font-size:24px; flex-shrink:0; position: relative; }
   .lock-badge {
     position: absolute; bottom: -5px; right: -5px;
     background: white; border-radius: 50%; padding: 2px; font-size: 14px;
     box-shadow: 0 2px 6px rgba(0,0,0,0.3); border: 1px solid #ddd;
+  }
+  .completed-badge {
+    position: absolute; top: -5px; right: -5px;
+    background: var(--green); color: white; border-radius: 50%; padding: 3px; font-size: 12px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3); border: 2px solid white;
   }
   .task-body { flex:1; min-width:0; }
   .task-top-row { display:flex; align-items:center; gap:8px; margin-bottom:5px; }
@@ -362,6 +368,7 @@
   .task-rating .star { color:var(--yellow); }
   .task-spots { font-size:10px; font-weight:800; color:var(--text-muted); background:var(--stat-icon-bg); padding:3px 8px; border-radius:6px; white-space:nowrap; }
   .task-chevron { color:var(--text-muted); font-size:18px; flex-shrink:0; }
+  .task-card.completed .task-chevron { display: none; }
 
   /* Quick stats */
   .quick-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:20px; }
@@ -709,6 +716,13 @@
     <div class="brand-name">Job<span>Pay</span></div>
   </div>
   <div class="header-right" id="headerRight" style="display:none;">
+    <button class="icon-btn" id="refreshBtn" aria-label="Refresh" onclick="location.reload()">
+      <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M23 4v6h-6"></path>
+        <path d="M1 20v-6h6"></path>
+        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+      </svg>
+    </button>
     <button class="icon-btn" id="notifBtn" aria-label="Notifications">
       <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
         <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
@@ -744,6 +758,10 @@
       <span class="drawer-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#2196F3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></span>
       <span class="drawer-item-label">Find Jobs</span><span class="drawer-item-chevron">›</span>
     </button>
+    <button class="drawer-item" data-nav="guide">
+      <span class="drawer-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#2196F3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg></span>
+      <span class="drawer-item-label">Guide</span><span class="drawer-item-chevron">›</span>
+    </button>
     <button class="drawer-item" data-nav="recommended">
       <span class="drawer-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#E60000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2" fill="#E60000"></circle></svg></span>
       <span class="drawer-item-label">Recommended</span><span class="drawer-item-chevron">›</span>
@@ -756,7 +774,6 @@
       <span class="drawer-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#2196F3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg></span>
       <span class="drawer-item-label">My Tasks</span><span class="drawer-item-chevron">›</span>
     </button>
-    <!-- HISTORY replaces Rewards -->
     <button class="drawer-item" data-nav="history">
       <span class="drawer-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#F5A623" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3"></path><circle cx="12" cy="12" r="10"></circle></svg></span>
       <span class="drawer-item-label">History</span><span class="drawer-item-chevron">›</span>
@@ -852,7 +869,6 @@
       <div class="level-chip"><span class="crown">👑</span><span id="levelText">Classic · Lv 1</span></div>
     </div>
 
-    <!-- UPDATED BALANCE CARD TO SHOW BOTH AVAILABLE AND PENDING -->
     <div class="balance-card">
       <div style="display:flex; justify-content:space-between; align-items:flex-start; position:relative; z-index:1;">
         <div>
@@ -882,7 +898,6 @@
       <div class="featured-sub">Share your thoughts, earn money.</div>
       <button class="featured-btn" data-nav="find-jobs">View Available Surveys <span>›</span></button>
       
-      <!-- Human with phone illustration -->
       <div class="featured-human">
         <img src="https://images.unsplash.com/photo-1531123897727-8f129e1bf98c?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&q=80" alt="Woman using phone" onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=\'font-size:80px;opacity:0.6;position:absolute;bottom:10px;right:10px;\'>👩🏾‍💻📱</div>';" />
       </div>
@@ -895,18 +910,17 @@
       <div class="featured-dots"><div class="featured-dot active"></div><div class="featured-dot"></div><div class="featured-dot"></div></div>
     </div>
 
-    <!-- COUNTDOWN TIMER FOR FREE TRIAL -->
+    <!-- COUNTDOWN TIMER -->
     <div id="freeTrialTimer" class="card" style="display:none; text-align:center; border: 1.5px solid #F5A623; background: linear-gradient(135deg, #FFF8E1, #FFE8A1); margin-bottom: 16px;">
       <div style="font-size: 14px; font-weight: 800; color: #8A6D3B; margin-bottom: 6px;">⏳ Daily Free Tasks Completed</div>
       <div style="font-size: 28px; font-weight: 900; color: #D4901A; font-family: monospace;" id="timerDisplay">00:00:00</div>
-      <div style="font-size: 12px; color: #8A6D3B; font-weight: 600; margin-top: 6px;">New free tasks unlock at midnight.</div>
+      <div style="font-size: 12px; color: #8A6D3B; font-weight: 600; margin-top: 6px;">New free tasks unlock after 24 hours.</div>
     </div>
 
     <div class="section-head">
       <div class="section-head-title">✨ Recommended for you</div>
       <button class="section-head-link" id="personalizedBtn">🎯 Personalized ›</button>
     </div>
-    <!-- THIS IS WHERE THE LARGE NUMBER OF TASKS WILL APPEAR -->
     <div id="homeTaskList"></div>
 
     <div class="section-head">
@@ -918,6 +932,58 @@
       <div class="quick-stat"><div class="quick-stat-icon" style="background:linear-gradient(135deg,#2196F3,#1976D2);color:white;">📋</div><div class="quick-stat-label">Tasks Done</div><div class="quick-stat-value" id="qsTasksDone">0</div></div>
       <div class="quick-stat"><div class="quick-stat-icon" style="background:linear-gradient(135deg,#F5A623,#D4901A);color:white;">⏳</div><div class="quick-stat-label">Pending</div><div class="quick-stat-value" id="qsPending">KES 0</div></div>
       <div class="quick-stat"><div class="quick-stat-icon" style="background:linear-gradient(135deg,#9C27B0,#6A1B9A);color:white;">⭐</div><div class="quick-stat-label">Success</div><div class="quick-stat-value" id="qsSuccess">96%</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- GUIDE SCREEN -->
+<section class="screen" id="screen-guide">
+  <div class="container">
+    <div class="section-head">
+      <div class="section-head-title">📖 How JobPay Works</div>
+      <button class="section-head-link" id="playAudioGuide">🔊 Play Audio</button>
+    </div>
+    <div class="card">
+      <div style="font-size:15px; font-weight:700; margin-bottom:10px;">Welcome to JobPay!</div>
+      <p style="font-size:13px; color:var(--text-muted); margin-bottom:16px;">Follow these simple steps to start earning:</p>
+      
+      <div style="display:flex; gap:12px; margin-bottom:16px;">
+        <div style="font-size:24px;">1️⃣</div>
+        <div>
+          <div style="font-weight:800; font-size:14px;">Take Tasks</div>
+          <div style="font-size:12px; color:var(--text-muted);">Go to the Home or Find Jobs tab. Complete the surveys and micro-tasks. Free users get 2 tasks daily. Tasks unlock again 24 hours after you complete them.</div>
+        </div>
+      </div>
+      <div style="display:flex; gap:12px; margin-bottom:16px;">
+        <div style="font-size:24px;">2️⃣</div>
+        <div>
+          <div style="font-weight:800; font-size:14px;">Upgrade (Optional)</div>
+          <div style="font-size:12px; color:var(--text-muted);">Upgrade to Classic, Premium, or Golden to unlock more tasks every day.</div>
+        </div>
+      </div>
+      <div style="display:flex; gap:12px; margin-bottom:16px;">
+        <div style="font-size:24px;">3️⃣</div>
+        <div>
+          <div style="font-weight:800; font-size:14px;">Deposit (If needed)</div>
+          <div style="font-size:12px; color:var(--text-muted);">You can deposit funds via M-Pesa to your wallet.</div>
+        </div>
+      </div>
+      <div style="display:flex; gap:12px; margin-bottom:16px;">
+        <div style="font-size:24px;">4️⃣</div>
+        <div>
+          <div style="font-weight:800; font-size:14px;">Withdraw</div>
+          <div style="font-size:12px; color:var(--text-muted);">Once you have KES 200, you can withdraw to your M-Pesa. A one-time activation fee of KES 499 is required.</div>
+        </div>
+      </div>
+      
+      <div style="background:var(--red-light); border:1px solid var(--red); border-radius:12px; padding:12px; margin-top:16px;">
+        <div style="font-weight:800; color:var(--red); font-size:13px; display:flex; align-items:center; gap:6px;">
+          <span>⚠️</span> Having Trouble?
+        </div>
+        <div style="font-size:12px; color:var(--red); margin-top:4px;">
+          If you experience any inconvenience, please try refreshing the page by tapping the refresh icon in the header.
+        </div>
+      </div>
     </div>
   </div>
 </section>
@@ -948,14 +1014,12 @@
 <!-- WALLET -->
 <section class="screen" id="screen-wallet">
   <div class="container">
-    <!-- Available Balance -->
     <div class="balance-card">
       <div class="balance-label">AVAILABLE BALANCE</div>
       <div class="balance-amount"><small>KES</small><span id="walletBalance">0</span></div>
       <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.25);font-size:12px;font-weight:700;">💵 Total earned: <span id="walletTotalEarned">KES 0</span></div>
     </div>
     
-    <!-- Pending Balance -->
     <div class="card" style="background:#FFF8E1;border-color:#FFE8A1;">
       <div style="display:flex;justify-content:space-between;align-items:center;">
         <div>
@@ -967,7 +1031,6 @@
       </div>
     </div>
 
-    <!-- Action Buttons -->
     <div class="btn-row" style="margin-bottom:14px;">
       <button class="btn btn-mpesa" id="btnDeposit" style="flex-direction:column; padding:12px 10px; gap:4px; font-size:13px;">
         <span>💰 Deposit</span>
@@ -979,7 +1042,6 @@
       </button>
     </div>
 
-    <!-- Recent Transactions -->
     <div class="card">
       <div class="card-title">Recent Transactions</div>
       <div id="txList"></div>
@@ -995,7 +1057,7 @@
   </div>
 </section>
 
-<!-- ═══════════════════ HISTORY (replaces Rewards) ═══════════════════ -->
+<!-- HISTORY -->
 <section class="screen" id="screen-history">
   <div class="container">
     <div class="section-head"><div class="section-head-title">Transaction History</div></div>
@@ -1348,7 +1410,7 @@
   </div>
 </section>
 
-<!-- SUBSCRIBE MODAL (with M-Pesa logo) -->
+<!-- SUBSCRIBE MODAL -->
 <div class="modal-backdrop" id="subscribeModal">
   <div class="modal">
     <button class="modal-close" data-close="subscribeModal">✕</button>
@@ -1378,7 +1440,7 @@
   </div>
 </div>
 
-<!-- ACTIVATION MODAL (with M-Pesa logo) -->
+<!-- ACTIVATION MODAL -->
 <div class="modal-backdrop" id="activationModal">
   <div class="modal">
     <button class="modal-close" data-close="activationModal">✕</button>
@@ -1410,7 +1472,7 @@
   </div>
 </div>
 
-<!-- DEPOSIT MODAL (with M-Pesa logo) -->
+<!-- DEPOSIT MODAL -->
 <div class="modal-backdrop" id="depositModal">
   <div class="modal">
     <button class="modal-close" data-close="depositModal">✕</button>
@@ -1439,7 +1501,7 @@
   </div>
 </div>
 
-<!-- WITHDRAW MODAL (with M-Pesa logo) -->
+<!-- WITHDRAW MODAL -->
 <div class="modal-backdrop" id="withdrawModal">
   <div class="modal">
     <button class="modal-close" data-close="withdrawModal">✕</button>
@@ -1491,12 +1553,24 @@
   </div>
 </div>
 
-<!-- BOTTOM NAV (Rewards → History) -->
+<!-- CUSTOM CONFIRM MODAL (Prevents default browser prompt) -->
+<div class="modal-backdrop" id="customConfirmModal">
+  <div class="modal" style="max-width: 320px; margin: auto; border-radius: 16px;">
+    <div class="modal-title" id="customConfirmTitle" style="text-align: center;">Confirm</div>
+    <div style="text-align: center; margin-bottom: 20px; color:var(--text-secondary);" id="customConfirmMsg">Are you sure?</div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" id="customConfirmCancel" style="border-color: var(--border-strong); color: var(--text);">Cancel</button>
+      <button class="btn btn-primary" id="customConfirmOk">OK</button>
+    </div>
+  </div>
+</div>
+
+<!-- BOTTOM NAV -->
 <nav class="bottom-nav" id="bottomNav" style="display:none;">
   <button class="nav-btn active" data-nav="home"><span class="nav-icon">🏠</span><span>Home</span></button>
   <button class="nav-btn" data-nav="subscribe"><span class="nav-icon">🚀</span><span>Upgrade</span></button>
+  <button class="nav-btn" data-nav="guide"><span class="nav-icon">📖</span><span>Guide</span></button>
   <button class="nav-btn" data-nav="wallet"><span class="nav-icon">💰</span><span>Wallet</span></button>
-  <button class="nav-btn" data-nav="history"><span class="nav-icon">📜</span><span>History</span></button>
   <button class="nav-btn" data-nav="settings-hub"><span class="nav-icon">⋯</span><span>More</span></button>
 </nav>
 
@@ -1514,7 +1588,8 @@
   let publicPrices = { classic: 200, premium: 350, golden: 450 };
   let notifUnread = 0;
   let notifItems = [];
-  let timerInterval = null; // For the countdown timer
+  let timerInterval = null;
+  let currentScreen = 'home';
 
   const prefsKey = 'jobpay_prefs';
   let prefs = JSON.parse(localStorage.getItem(prefsKey) || '{}');
@@ -1562,22 +1637,50 @@
   function showMsg(el, text, type = 'success') { el.textContent = text; el.className = `msg show ${type}`; }
   function clearMsg(el) { el.className = 'msg'; el.textContent = ''; }
 
-  function goTo(name) {
+  // CUSTOM CONFIRM MODAL LOGIC (Replaces browser confirm())
+  function showCustomConfirm(title, message, onConfirm) {
+    $('customConfirmTitle').textContent = title;
+    $('customConfirmMsg').textContent = message;
+    $('customConfirmModal').classList.add('show');
+    
+    // Clone buttons to remove old event listeners
+    const okBtn = $('customConfirmOk');
+    const cancelBtn = $('customConfirmCancel');
+    const newOkBtn = okBtn.cloneNode(true);
+    const newCancelBtn = cancelBtn.cloneNode(true);
+    okBtn.parentNode.replaceChild(newOkBtn, okBtn);
+    cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+    
+    newOkBtn.addEventListener('click', () => {
+      $('customConfirmModal').classList.remove('show');
+      if (onConfirm) onConfirm();
+    });
+    newCancelBtn.addEventListener('click', () => {
+      $('customConfirmModal').classList.remove('show');
+    });
+  }
+
+  function goTo(name, pushState = true) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     const target = $('screen-' + name);
     if (target) target.classList.add('active');
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.nav === name));
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    currentScreen = name;
+    if (pushState) {
+      window.history.pushState({ screen: name }, '', '#' + name);
+    }
   }
 
   function navigate(name) {
-    // Clear timer when navigating away from home to prevent multiple intervals
     if (name !== 'home' && timerInterval) {
       clearInterval(timerInterval);
       timerInterval = null;
     }
     switch (name) {
       case 'home':          loadDashboard(); goTo('home'); break;
+      case 'guide':         goTo('guide'); break;
       case 'find-jobs':     loadFindJobs(); goTo('find-jobs'); break;
       case 'recommended':   loadRecommended(); goTo('recommended'); break;
       case 'wallet':        loadAccount(); goTo('wallet'); break;
@@ -1594,6 +1697,23 @@
       default: break;
     }
   }
+
+  // BACK BUTTON HANDLING (Uses Custom Modal instead of browser confirm)
+  window.history.replaceState({ screen: 'home' }, '', '#home');
+  window.addEventListener('popstate', (event) => {
+    if (event.state && event.state.screen) {
+      goTo(event.state.screen, false);
+    } else {
+      if (currentScreen === 'home') {
+        showCustomConfirm('Leave JobPay?', 'Are you sure you want to leave JobPay?', () => {
+          window.history.back();
+        });
+      } else {
+        goTo('home', false);
+        window.history.replaceState({ screen: 'home' }, '', '#home');
+      }
+    }
+  });
 
   // DRAWER
   function openDrawer() { $('drawer').classList.add('show'); $('drawerBackdrop').classList.add('show'); updateDrawer(); }
@@ -1653,18 +1773,39 @@
   });
   $('profileBtn').addEventListener('click', () => navigate('profile'));
 
+  // UPDATED LOGOUT WITH CUSTOM MODAL
   $('drawerLogout').addEventListener('click', () => {
     closeDrawer();
-    if (!confirm('Logout?')) return;
-    token = null; user = null;
-    localStorage.removeItem('jobpay_token'); localStorage.removeItem('jobpay_user');
-    $('headerRight').style.display = 'none';
-    $('bottomNav').style.display = 'none';
-    $('notifPanel').classList.remove('show');
-    if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    $('screen-auth').classList.add('active');
-    setAuthTab('register');
+    showCustomConfirm('Logout', 'Are you sure you want to log out of JobPay?', () => {
+      token = null; user = null;
+      localStorage.removeItem('jobpay_token'); localStorage.removeItem('jobpay_user');
+      $('headerRight').style.display = 'none';
+      $('bottomNav').style.display = 'none';
+      $('notifPanel').classList.remove('show');
+      if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      $('screen-auth').classList.add('active');
+      setAuthTab('register');
+      window.history.replaceState({ screen: 'home' }, '', '#home');
+    });
+  });
+
+  // GUIDE AUDIO
+  $('playAudioGuide').addEventListener('click', () => {
+    if ('speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance(
+        "Welcome to JobPay! Here is how the app works. " +
+        "Step 1: Take Tasks. Go to the Home or Find Jobs tab. Complete the surveys and micro-tasks. Free users get 2 tasks daily. Tasks unlock again 24 hours after you complete them. " +
+        "Step 2: Upgrade. Upgrade to Classic, Premium, or Golden to unlock more tasks every day. " +
+        "Step 3: Deposit. You can deposit funds via M-Pesa to your wallet. " +
+        "Step 4: Withdraw. Once you have KES 200, you can withdraw to your M-Pesa. A one-time activation fee of KES 499 is required. " +
+        "Having trouble? If you experience any inconvenience, please try refreshing the page by tapping the refresh icon in the header."
+      );
+      utterance.rate = 0.9;
+      window.speechSynthesis.speak(utterance);
+    } else {
+      alert("Audio guide is not supported on this device.");
+    }
   });
 
   // NOTIFICATIONS
@@ -1840,16 +1981,20 @@
     reader.readAsDataURL(file);
     e.target.value = '';
   });
+  
+  // UPDATED REMOVE PHOTO WITH CUSTOM MODAL
   $('removePhotoBtn').addEventListener('click', async () => {
     if (!user?.photo) { showMsg($('acctSettingsMsg'), 'No photo to remove', 'error'); return; }
-    if (!confirm('Remove your profile photo?')) return;
-    try {
-      await api('/api/user/photo', { method: 'DELETE' });
-      delete user.photo; localStorage.setItem('jobpay_user', JSON.stringify(user));
-      setProfilePhotoUI(null); updateDrawer();
-      showMsg($('acctSettingsMsg'), '✓ Photo removed', 'success');
-    } catch (err) { showMsg($('acctSettingsMsg'), err.message, 'error'); }
+    showCustomConfirm('Remove Photo', 'Are you sure you want to remove your profile photo?', async () => {
+      try {
+        await api('/api/user/photo', { method: 'DELETE' });
+        delete user.photo; localStorage.setItem('jobpay_user', JSON.stringify(user));
+        setProfilePhotoUI(null); updateDrawer();
+        showMsg($('acctSettingsMsg'), '✓ Photo removed', 'success');
+      } catch (err) { showMsg($('acctSettingsMsg'), err.message, 'error'); }
+    });
   });
+  
   $('saveProfileBtn').addEventListener('click', async () => {
     const btn = $('saveProfileBtn'); btn.disabled = true; btn.innerHTML = '<span class="loader"></span>';
     try {
@@ -2169,16 +2314,19 @@
     loadDashboard();
     loadNotifications(true);
     goTo('home');
+    window.history.replaceState({ screen: 'home' }, '', '#home');
   }
 
-  // COUNTDOWN TIMER LOGIC
+  // COUNTDOWN TIMER LOGIC (24 hours rolling)
   function startCountdown() {
     if (timerInterval) clearInterval(timerInterval);
     
     const updateTimer = () => {
-      const now = new Date();
-      const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0);
-      const diff = midnight - now;
+      const now = Date.now();
+      const lastTask = user?.lastTaskDate ? new Date(user.lastTaskDate).getTime() : now;
+      const cooldown = 24 * 60 * 60 * 1000;
+      const unlockTime = lastTask + cooldown;
+      const diff = unlockTime - now;
 
       if (diff <= 0) {
         clearInterval(timerInterval);
@@ -2188,7 +2336,7 @@
           <div style="font-size: 16px; font-weight: 800; color: #2E7D1E;">🎉 Free tasks are available now!</div>
           <div style="font-size: 12px; color: #43B02A; font-weight: 600; margin-top: 4px;">Refreshing...</div>
         `;
-        setTimeout(() => { loadDashboard(); }, 3000); // Reload dashboard after 3 sec
+        setTimeout(() => { loadDashboard(); }, 3000);
         return;
       }
 
@@ -2202,6 +2350,16 @@
     timerInterval = setInterval(updateTimer, 1000);
   }
 
+  // TASK SORTING LOGIC (Unlocked -> Locked -> Completed)
+  function sortTasks(tasks) {
+    const order = { 'unlocked': 0, 'locked': 1, 'completed': 2 };
+    return tasks.sort((a, b) => {
+      const orderA = order[a.status] ?? 3;
+      const orderB = order[b.status] ?? 3;
+      return orderA - orderB;
+    });
+  }
+
   // DASHBOARD
   async function loadDashboard(page = 1, append = false) {
     try {
@@ -2210,7 +2368,6 @@
       user = me; localStorage.setItem('jobpay_user', JSON.stringify(me));
       updateDrawer();
       
-      // Update both Available and Pending balance on Home
       $('homeBalance').textContent = (me.balance || 0).toLocaleString();
       $('homePending').textContent = (me.pendingBalance || 0).toLocaleString();
       
@@ -2230,12 +2387,14 @@
         $('freeTrialTimer').style.display = 'none';
         if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
 
-        // Fetch 50 tasks instead of 10 to show thousands
         const data = await api(`/api/tasks?page=${page}&size=50&type=${currentType}`);
         totalTaskCount = data.totalCount;
+        
+        // APPLY SORTING
+        const sortedTasks = sortTasks(data.tasks);
+        
         const list = $('homeTaskList');
-        // Show all fetched tasks (up to 50)
-        const html = data.tasks.map(t => renderTaskCard(t)).join('');
+        const html = sortedTasks.map(t => renderTaskCard(t)).join('');
         list.innerHTML = html || `<div class="card"><div class="empty"><div class="empty-icon">📋</div><div class="empty-title">No tasks available</div></div></div>`;
         attachTaskHandlers(list);
       }
@@ -2248,11 +2407,15 @@
       const data = await api(`/api/tasks?page=${page}&size=50&type=${currentType}`);
       totalTaskCount = data.totalCount;
       $('findJobsCount').textContent = totalTaskCount.toLocaleString();
+      
+      // APPLY SORTING
+      const sortedTasks = sortTasks(data.tasks);
+      
       const list = $('findJobsList');
-      const html = data.tasks.map(t => renderTaskCard(t)).join('');
+      const html = sortedTasks.map(t => renderTaskCard(t)).join('');
       if (append) list.insertAdjacentHTML('beforeend', html);
       else list.innerHTML = html || `<div class="card"><div class="empty"><div class="empty-icon">📋</div><div class="empty-title">No tasks</div></div></div>`;
-      const loaded = (page - 1) * 50 + data.tasks.length;
+      const loaded = (page - 1) * 50 + sortedTasks.length;
       $('loadMoreBtn').style.display = loaded < totalTaskCount ? 'block' : 'none';
       attachTaskHandlers(list);
     } catch (err) { console.error(err); }
@@ -2268,15 +2431,19 @@
   async function loadRecommended() {
     try {
       const data = await api('/api/tasks?page=1&size=10');
+      
+      // APPLY SORTING
+      const sortedTasks = sortTasks(data.tasks);
+      
       const list = $('recommendedList');
-      const html = data.tasks.map(t => renderTaskCard(t)).join('');
+      const html = sortedTasks.map(t => renderTaskCard(t)).join('');
       list.innerHTML = html || `<div class="card"><div class="empty"><div class="empty-icon">✨</div><div class="empty-title">No recommendations</div></div></div>`;
       attachTaskHandlers(list);
     } catch (err) { console.error(err); }
   }
   $('personalizedBtn').addEventListener('click', () => navigate('recommended'));
 
-  // TASK CARD
+  // TASK CARD RENDERER
   function renderTaskCard(t) {
     const isLocked = t.status === 'locked';
     const isCompleted = t.status === 'completed';
@@ -2310,6 +2477,7 @@
         <div class="task-icon" style="background:${bg};color:#333;">
           ${icon}
           ${isLocked ? '<div class="lock-badge">🔒</div>' : ''}
+          ${isCompleted ? '<div class="completed-badge">✓</div>' : ''}
         </div>
         <div class="task-body">
           <div class="task-top-row"><span class="task-type-tag ${t.type}">${t.type}</span></div>
@@ -2325,7 +2493,7 @@
           <div class="task-rating"><span class="star">★</span> 4.8 (1.2k)</div>
           <div class="task-spots">87 spots left</div>
         </div>
-        <div class="task-chevron">›</div>
+        ${!isCompleted ? '<div class="task-chevron">›</div>' : ''}
       </div>
     `;
   }
@@ -2428,9 +2596,16 @@
       loadDashboard(); loadNotifications(true); goTo('home');
     });
   }
+  
+  // UPDATED SURVEY CLOSE WITH CUSTOM MODAL
   $('surveyClose').addEventListener('click', () => {
-    if (survey.current > 0 || survey.answers.some(a => a !== null)) { if (!confirm('Quit this survey?')) return; }
-    $('surveyModal').classList.remove('show'); $('surveyFooter').style.display = 'flex';
+    if (survey.current > 0 || survey.answers.some(a => a !== null)) {
+      showCustomConfirm('Quit Survey?', 'Are you sure you want to quit this survey? Your progress will be lost.', () => {
+        $('surveyModal').classList.remove('show'); $('surveyFooter').style.display = 'flex';
+      });
+    } else {
+      $('surveyModal').classList.remove('show'); $('surveyFooter').style.display = 'flex';
+    }
   });
 
   // WALLET
@@ -2499,13 +2674,12 @@
     } catch (err) { console.error(err); }
   }
 
-  // ══════ HISTORY (shows everything with real failure reasons) ══════
+  // HISTORY
   async function loadHistory() {
     try {
       const [taskList, walletData] = await Promise.all([api('/api/history'), api('/api/wallet/history')]);
       const entries = [];
 
-      // Tasks
       (taskList || []).forEach(h => {
         entries.push({
           kind: 'task',
@@ -2520,11 +2694,9 @@
         });
       });
 
-      // Payment transactions (subscriptions + deposits)
       (walletData.paymentTransactions || []).forEach(t => {
         const ageMs = Date.now() - new Date(t.createdAt).getTime();
         let status = t.status;
-        // Auto-fail after 5 min if still pending
         if (status === 'pending' && ageMs > 5 * 60 * 1000) status = 'failed';
         const kind = t.kind === 'subscription' ? 'subscription' : t.kind === 'deposit' ? 'deposit' : 'other';
         let title, amount;
@@ -2551,9 +2723,8 @@
         });
       });
 
-      // Wallet transactions (withdrawals + task rewards)
       (walletData.walletTransactions || []).forEach(w => {
-        if (w.type === 'deposit') return; // Already handled above
+        if (w.type === 'deposit') return;
         let title, amount;
         if (w.type === 'withdrawal') {
           title = 'Withdrawal';
@@ -2581,7 +2752,6 @@
         });
       });
 
-      // Filter
       let filtered = entries;
       if (historyFilter === 'tasks') filtered = entries.filter(e => e.kind === 'task' || e.kind === 'task_reward');
       else if (historyFilter === 'subscriptions') filtered = entries.filter(e => e.kind === 'subscription');
@@ -2600,14 +2770,12 @@
         const d = e.at;
         const date = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-        // Icon + classes
         let icon = '📋', iconCls = 'pending', cardCls = '';
         if (e.kind === 'task' || e.kind === 'task_reward') { icon = '📋'; }
         else if (e.kind === 'subscription') { icon = '⭐'; iconCls = 'gold'; cardCls = 'upgrade'; }
         else if (e.kind === 'deposit') { icon = '💳'; }
         else if (e.kind === 'withdrawal') { icon = '💸'; iconCls = 'purple'; cardCls = 'withdrawal'; }
 
-        // Status classes
         const statusLower = (e.status || '').toLowerCase();
         if (statusLower === 'completed' || statusLower === 'success' || statusLower === 'approved') {
           iconCls = 'success'; cardCls = e.kind === 'subscription' ? 'upgrade' : e.kind === 'withdrawal' ? 'withdrawal' : '';
@@ -2617,7 +2785,6 @@
           iconCls = 'pending'; cardCls = 'pending';
         }
 
-        // Status label + class for pill
         let stCls = 'pending', stLbl = '⏳ Pending';
         if (statusLower === 'completed' || statusLower === 'success' || statusLower === 'approved') {
           stCls = 'success'; stLbl = '✓ Successful';
@@ -2625,12 +2792,10 @@
           stCls = 'failed'; stLbl = '✕ Failed';
         }
 
-        // Amount display
         const amountNum = Number(e.amount) || 0;
         const isPositive = amountNum >= 0;
         const amountTxt = (isPositive ? '+' : '-') + 'KES ' + Math.abs(amountNum).toLocaleString();
 
-        // Special: subscription shows negative (money paid)
         const finalAmount = e.kind === 'subscription' ? `-KES ${Math.abs(amountNum).toLocaleString()}`
                           : e.kind === 'withdrawal' ? `-KES ${Math.abs(amountNum).toLocaleString()}`
                           : `+KES ${Math.abs(amountNum).toLocaleString()}`;
@@ -2705,7 +2870,7 @@
     } catch (err) { console.error(err); }
   }
 
-  // SUBSCRIBE — activation ONLY on callback
+  // SUBSCRIBE
   document.querySelectorAll('.tier-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       currentSubscribeTier = btn.dataset.tier;
@@ -2731,7 +2896,6 @@
       btn.textContent = 'Waiting for payment confirmation…';
       let attempts = 0;
       const tier = currentSubscribeTier;
-      // Polling for callback-triggered activation
       const poll = setInterval(async () => {
         attempts++;
         try {
@@ -2888,4 +3052,4 @@
 })();
 </script>
 </body>
-        </html>
+                                                    </html>
