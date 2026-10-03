@@ -14,11 +14,26 @@
     --radius:14px; --shadow:0 4px 20px rgba(0,0,0,0.07);
     --shadow-green:0 6px 20px rgba(67,176,42,0.30);
     --nav-h:64px; --header-h:56px;
+    --page-bg:var(--gray-50); --card-bg:var(--white);
   }
+  body.theme-dark {
+    --gray-50:#0F1419; --gray-100:#1A1F24; --gray-200:#2A2F35; --gray-500:#8A8F95;
+    --gray-700:#C8CCD1; --white:#151A1F; --ink:#F0F2F5;
+    --page-bg:#0F1419; --card-bg:#151A1F;
+  }
+  body.high-contrast { --gray-200:#000; --ink:#000; --gray-500:#000; --gray-700:#000; }
+  body.reduce-anim *, body.reduce-anim *::before, body.reduce-anim *::after {
+    animation-duration:0.001s !important; transition-duration:0.05s !important;
+  }
+  body.font-small  { font-size:12.5px; }
+  body.font-normal { font-size:14px; }
+  body.font-large  { font-size:16px; }
+  body.font-xlarge { font-size:18px; }
+
   * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
   body {
     font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
-    background:var(--gray-50); color:var(--ink); font-size:14px; line-height:1.5;
+    background:var(--page-bg); color:var(--ink); line-height:1.5;
     -webkit-font-smoothing:antialiased;
     padding-top:calc(var(--header-h) + env(safe-area-inset-top,0px));
     padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom,0px));
@@ -28,10 +43,16 @@
     position:fixed; top:0; left:0; right:0;
     height:calc(var(--header-h) + env(safe-area-inset-top,0px));
     padding-top:env(safe-area-inset-top,0px);
-    background:var(--white); border-bottom:1px solid var(--gray-200);
+    background:var(--card-bg); border-bottom:1px solid var(--gray-200);
     z-index:100; display:flex; align-items:center; justify-content:space-between;
-    padding-left:16px; padding-right:16px;
+    padding-left:12px; padding-right:16px;
   }
+  .header-left { display:flex; align-items:center; gap:10px; }
+  .menu-btn {
+    width:36px; height:36px; border-radius:10px; background:transparent; border:none; cursor:pointer;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; padding:0;
+  }
+  .menu-btn span { display:block; width:20px; height:2px; border-radius:2px; background:var(--ink); }
   .brand { display:flex; align-items:center; gap:10px; }
   .brand-mark {
     width:34px; height:34px; border-radius:10px;
@@ -39,14 +60,12 @@
     display:grid; place-items:center; color:white; font-weight:900; font-size:16px;
     box-shadow:var(--shadow-green);
   }
-  .brand-name { font-size:16px; font-weight:800; letter-spacing:-0.3px; }
+  .brand-name { font-size:16px; font-weight:800; letter-spacing:-0.3px; color:var(--ink); }
   .brand-name span { color:var(--green); }
   .header-right { display:flex; align-items:center; gap:8px; }
   .pill {
-    display:inline-flex; align-items:center; gap:5px;
-    padding:5px 10px; border-radius:999px;
-    font-size:11px; font-weight:700;
-    background:var(--gray-100); color:var(--gray-700);
+    display:inline-flex; align-items:center; gap:5px; padding:5px 10px; border-radius:999px;
+    font-size:11px; font-weight:700; background:var(--gray-100); color:var(--gray-700);
   }
   .pill.green{ background:var(--green-light); color:var(--green-dark); }
   .pill.gold{ background:#FFF8E1; color:#8D6E00; }
@@ -54,17 +73,11 @@
   .pill.red{ background:var(--red-light); color:var(--red); }
   .pill.yellow{ background:#FFF3CD; color:#8A6D3B; }
   .pill.gray{ background:var(--gray-100); color:var(--gray-700); }
-  .logout-btn {
-    background:none; border:1.5px solid var(--gray-200);
-    border-radius:8px; padding:6px 12px;
-    font-size:11px; font-weight:700; color:var(--gray-700);
-    cursor:pointer; font-family:inherit;
-  }
   .screen { display:none; padding:16px; padding-bottom:32px; animation:fade .2s ease-out; }
   .screen.active { display:block; }
   @keyframes fade { from{opacity:0;transform:translateY(6px);} to{opacity:1;transform:translateY(0);} }
   .card {
-    background:var(--white); border-radius:var(--radius);
+    background:var(--card-bg); border-radius:var(--radius);
     box-shadow:var(--shadow); padding:18px; margin-bottom:14px;
     border:1px solid var(--gray-200);
   }
@@ -77,98 +90,67 @@
   .section-title::before { content:''; width:3px; height:14px; background:var(--green); border-radius:2px; }
   .field { margin-bottom:14px; position:relative; }
   .field:last-child { margin-bottom:0; }
-  .field label {
-    display:block; font-size:12px; font-weight:700;
-    color:var(--gray-700); margin-bottom:6px;
-  }
-  .field input {
-    width:100%; padding:13px 44px 13px 14px;
-    font-size:15px; font-family:inherit; font-weight:600;
-    color:var(--ink); background:var(--gray-50);
-    border:1.5px solid var(--gray-200); border-radius:12px;
-    transition:border-color .15s, background .15s;
+  .field label { display:block; font-size:12px; font-weight:700; color:var(--gray-700); margin-bottom:6px; }
+  .field input, .field select, .field textarea {
+    width:100%; padding:13px 14px; font-size:15px; font-family:inherit; font-weight:600;
+    color:var(--ink); background:var(--gray-50); border:1.5px solid var(--gray-200); border-radius:12px;
     -webkit-appearance:none;
   }
-  .field input.no-icon { padding-right:14px; }
-  .field input:focus {
-    outline:none; border-color:var(--green); background:var(--white);
+  .field input:focus, .field select:focus, .field textarea:focus {
+    outline:none; border-color:var(--green); background:var(--card-bg);
     box-shadow:0 0 0 3px rgba(67,176,42,0.15);
   }
-  .field input.error { border-color:var(--red); }
-  .field input.valid { border-color:var(--green); }
+  .field textarea { min-height:100px; resize:vertical; font-weight:500; }
   .pw-toggle {
-    position:absolute; right:12px; bottom:10px;
-    width:32px; height:32px; background:none; border:none; cursor:pointer;
-    font-size:16px; display:grid; place-items:center;
-    color:var(--gray-500); border-radius:8px;
+    position:absolute; right:12px; bottom:10px; width:32px; height:32px;
+    background:none; border:none; cursor:pointer; font-size:16px;
+    display:grid; place-items:center; color:var(--gray-500); border-radius:8px;
   }
-  .pw-toggle:hover { background:var(--gray-100); }
   .pw-hint { font-size:11px; margin-top:6px; display:flex; gap:10px; flex-wrap:wrap; font-weight:600; }
   .pw-hint span { display:flex; align-items:center; gap:4px; color:var(--gray-500); }
   .pw-hint span.ok { color:var(--green); }
 
-  /* ══════ AUTH TABS ══════ */
   .auth-tabs {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 6px;
-    background: var(--gray-100);
-    border-radius: 12px;
-    padding: 4px;
-    margin-bottom: 18px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+    background: var(--gray-100); border-radius: 12px; padding: 4px; margin-bottom: 18px;
   }
   .auth-tab {
-    padding: 11px 12px;
-    border: none;
-    background: transparent;
-    font-family: inherit;
-    font-size: 13.5px;
-    font-weight: 800;
-    color: var(--gray-500);
-    border-radius: 9px;
-    cursor: pointer;
-    transition: background .15s, color .15s, box-shadow .15s;
-    letter-spacing: 0.2px;
+    padding: 11px 12px; border: none; background: transparent;
+    font-family: inherit; font-size: 13.5px; font-weight: 800;
+    color: var(--gray-500); border-radius: 9px; cursor: pointer;
   }
   .auth-tab.active {
     background: linear-gradient(135deg, var(--green), var(--green-dark));
-    color: var(--white);
-    box-shadow: 0 4px 14px rgba(67,176,42,0.30);
+    color: var(--white); box-shadow: 0 4px 14px rgba(67,176,42,0.30);
   }
-
   .btn {
     display:flex; align-items:center; justify-content:center; gap:8px;
     width:100%; padding:15px 20px;
     font-size:15px; font-weight:800; font-family:inherit;
     border:none; border-radius:12px; cursor:pointer;
     transition:transform .1s, box-shadow .15s, opacity .15s;
-    letter-spacing:0.3px;
   }
   .btn:active:not(:disabled) { transform:scale(0.98); }
   .btn:disabled { opacity:0.4; cursor:not-allowed; }
   .btn-primary { background:linear-gradient(135deg,var(--green),var(--green-dark)); color:var(--white); box-shadow:var(--shadow-green); }
   .btn-danger { background:var(--red); color:var(--white); box-shadow:0 4px 16px rgba(230,0,0,0.25); }
-  .btn-ghost { background:var(--white); color:var(--green-dark); border:1.5px solid var(--green); }
+  .btn-ghost { background:var(--card-bg); color:var(--green-dark); border:1.5px solid var(--green); }
   .btn-mpesa { background:linear-gradient(135deg,#43B02A,#2E7D1E); color:var(--white); box-shadow:0 4px 16px rgba(67,176,42,0.35); }
   .btn-sm { padding:10px 14px; font-size:13px; border-radius:10px; }
   .btn-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   .stats { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:14px; }
-  .stat { background:var(--white); border-radius:12px; padding:14px; border:1px solid var(--gray-200); box-shadow:var(--shadow); }
+  .stat { background:var(--card-bg); border-radius:12px; padding:14px; border:1px solid var(--gray-200); box-shadow:var(--shadow); }
   .stat-label { font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:0.6px; color:var(--gray-500); margin-bottom:6px; }
   .stat-value { font-size:22px; font-weight:900; color:var(--ink); font-variant-numeric:tabular-nums; line-height:1.1; letter-spacing:-0.5px; }
   .stat-value.green { color:var(--green); }
   .stat-value.yellow { color:var(--yellow); }
   .stat-sub { font-size:11px; color:var(--gray-500); margin-top:4px; font-weight:600; }
   .tier-grid { display:flex; flex-direction:column; gap:12px; margin-bottom:14px; }
-  .tier-card { background:var(--white); border-radius:var(--radius); border:1.5px solid var(--gray-200); box-shadow:var(--shadow); padding:18px; position:relative; }
+  .tier-card { background:var(--card-bg); border-radius:var(--radius); border:1.5px solid var(--gray-200); box-shadow:var(--shadow); padding:18px; position:relative; }
   .tier-card.classic{ border-color:var(--green); }
   .tier-card.premium{ border-color:var(--blue); }
   .tier-card.golden{ border-color:var(--gold); }
-  .tier-badge {
-    position:absolute; top:14px; right:14px;
-    font-size:10px; font-weight:800; padding:4px 10px; border-radius:999px;
-    text-transform:uppercase; letter-spacing:0.5px;
-  }
+  .tier-badge { position:absolute; top:14px; right:14px; font-size:10px; font-weight:800; padding:4px 10px; border-radius:999px; text-transform:uppercase; letter-spacing:0.5px; }
   .tier-badge.classic{ background:var(--green-light); color:var(--green-dark); }
   .tier-badge.premium{ background:#E3F2FD; color:#0D47A1; }
   .tier-badge.golden{ background:#FFF8E1; color:#8D6E00; }
@@ -177,88 +159,49 @@
   .tier-price span { font-size:13px; font-weight:600; color:var(--gray-500); }
   .tier-limit { font-size:13px; color:var(--gray-700); font-weight:600; margin:6px 0 14px; }
   .tier-btn { width:100%; padding:13px; border-radius:10px; font-size:14px; font-weight:800; font-family:inherit; border:none; cursor:pointer; }
-  .tier-btn:active { transform:scale(0.98); }
   .tier-btn.classic{ background:var(--green); color:white; }
   .tier-btn.premium{ background:var(--blue); color:white; }
   .tier-btn.golden{ background:var(--gold); color:#1A1A1A; }
   .task {
-    background:var(--white); border-radius:14px;
+    background:var(--card-bg); border-radius:14px;
     border:1px solid var(--gray-200); box-shadow:var(--shadow);
     padding:14px; margin-bottom:12px; position:relative;
-    transition:transform .12s;
   }
-  .task:active { transform:scale(0.995); }
   .task.locked { opacity:0.72; }
-  .task.locked .task-body { filter:blur(0.2px); }
   .task.completed { opacity:0.75; }
   .task.completed::after {
     content:'✓ Completed'; position:absolute; top:12px; right:12px;
     background:var(--green-light); color:var(--green-dark);
     font-size:10px; font-weight:900; padding:4px 10px; border-radius:999px;
-    letter-spacing:0.4px;
   }
   .task-owner { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
-  .owner-avatar {
-    width:38px; height:38px; border-radius:50%;
-    display:grid; place-items:center; font-size:20px;
-    box-shadow:0 2px 6px rgba(0,0,0,0.10); flex-shrink:0;
-  }
+  .owner-avatar { width:38px; height:38px; border-radius:50%; display:grid; place-items:center; font-size:20px; flex-shrink:0; }
   .owner-info { flex:1; min-width:0; }
   .owner-name { font-size:13px; font-weight:800; }
   .owner-meta { font-size:11px; color:var(--gray-500); font-weight:600; display:flex; gap:8px; }
-  .lock-badge {
-    width:32px; height:32px; border-radius:10px;
-    background:var(--gray-100); color:var(--gray-500);
-    display:grid; place-items:center; font-size:16px; flex-shrink:0;
-  }
+  .lock-badge { width:32px; height:32px; border-radius:10px; background:var(--gray-100); color:var(--gray-500); display:grid; place-items:center; font-size:16px; flex-shrink:0; }
   .lock-badge.unlocked { background:var(--green-light); color:var(--green-dark); }
   .lock-badge.locked-badge { background:#FFF3CD; color:#8A6D3B; }
   .task-type-row { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
-  .task-type {
-    font-size:10px; font-weight:900; padding:3px 8px; border-radius:6px;
-    text-transform:uppercase; letter-spacing:0.5px;
-  }
+  .task-type { font-size:10px; font-weight:900; padding:3px 8px; border-radius:6px; text-transform:uppercase; letter-spacing:0.5px; }
   .task-type.survey{ background:#E3F2FD; color:#0D47A1; }
   .task-type.task{ background:var(--green-light); color:var(--green-dark); }
-  .task-reward {
-    margin-left:auto; font-size:14px; font-weight:900;
-    color:var(--green); background:var(--green-light);
-    padding:4px 10px; border-radius:8px;
-  }
+  .task-reward { margin-left:auto; font-size:14px; font-weight:900; color:var(--green); background:var(--green-light); padding:4px 10px; border-radius:8px; }
   .task-title { font-size:15px; font-weight:800; line-height:1.35; margin-bottom:6px; }
   .task-desc { font-size:12.5px; color:var(--gray-500); line-height:1.5; font-weight:500; margin-bottom:10px; }
-  .task-meta {
-    display:flex; gap:12px; font-size:11.5px; color:var(--gray-500);
-    font-weight:700; flex-wrap:wrap; padding-top:10px;
-    border-top:1px dashed var(--gray-200);
-  }
+  .task-meta { display:flex; gap:12px; font-size:11.5px; color:var(--gray-500); font-weight:700; flex-wrap:wrap; padding-top:10px; border-top:1px dashed var(--gray-200); }
   .task-meta span { display:flex; align-items:center; gap:4px; }
   .task-action { margin-top:12px; }
-  .task-action button {
-    width:100%; padding:12px; border-radius:10px;
-    font-size:13.5px; font-weight:800; font-family:inherit;
-    border:none; cursor:pointer;
-    display:flex; align-items:center; justify-content:center; gap:6px;
-  }
+  .task-action button { width:100%; padding:12px; border-radius:10px; font-size:13.5px; font-weight:800; font-family:inherit; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; }
   .task-action .btn-start { background:var(--green); color:white; }
-  .task-action .btn-start:active { transform:scale(0.98); }
   .task-action .btn-locked { background:#FFF3CD; color:#8A6D3B; border:1px solid #FFE8A1; }
   .task-action .btn-done { background:var(--gray-100); color:var(--gray-500); cursor:not-allowed; }
   .filter-row { display:flex; gap:8px; margin-bottom:12px; overflow-x:auto; padding-bottom:4px; }
   .filter-row::-webkit-scrollbar { display:none; }
-  .filter-chip {
-    padding:8px 14px; border-radius:999px;
-    background:var(--white); border:1.5px solid var(--gray-200);
-    font-size:12px; font-weight:700; color:var(--gray-700);
-    cursor:pointer; font-family:inherit; white-space:nowrap;
-  }
+  .filter-chip { padding:8px 14px; border-radius:999px; background:var(--card-bg); border:1.5px solid var(--gray-200); font-size:12px; font-weight:700; color:var(--gray-700); cursor:pointer; font-family:inherit; white-space:nowrap; }
   .filter-chip.active { background:var(--green); color:white; border-color:var(--green); }
   .empty { text-align:center; padding:40px 20px; }
-  .empty-icon {
-    width:64px; height:64px; border-radius:20px;
-    background:var(--green-light); color:var(--green);
-    display:grid; place-items:center; margin:0 auto 14px; font-size:28px;
-  }
+  .empty-icon { width:64px; height:64px; border-radius:20px; background:var(--green-light); color:var(--green); display:grid; place-items:center; margin:0 auto 14px; font-size:28px; }
   .empty-title { font-size:16px; font-weight:800; margin-bottom:6px; }
   .empty-text { font-size:13px; color:var(--gray-500); line-height:1.5; max-width:280px; margin:0 auto; }
   .msg { padding:12px 14px; border-radius:10px; margin-bottom:14px; font-size:13px; font-weight:700; display:none; }
@@ -266,221 +209,81 @@
   .msg.success { background:var(--green-light); color:var(--green-dark); border:1px solid rgba(67,176,42,0.3); }
   .msg.error { background:var(--red-light); color:var(--red); border:1px solid rgba(230,0,0,0.2); }
   .bottom-nav {
-    position:fixed; bottom:0; left:0; right:0;
-    height:var(--nav-h);
+    position:fixed; bottom:0; left:0; right:0; height:var(--nav-h);
     padding-bottom:env(safe-area-inset-bottom,0px);
-    background:var(--white); border-top:1px solid var(--gray-200);
+    background:var(--card-bg); border-top:1px solid var(--gray-200);
     display:flex; z-index:100; box-shadow:0 -2px 12px rgba(0,0,0,0.04);
   }
-  .nav-btn {
-    flex:1; background:none; border:none; font-family:inherit; cursor:pointer;
-    display:flex; flex-direction:column; align-items:center; justify-content:center;
-    gap:3px; color:var(--gray-500); font-size:10px; font-weight:700;
-    padding:8px 4px; position:relative;
-  }
+  .nav-btn { flex:1; background:none; border:none; font-family:inherit; cursor:pointer; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; color:var(--gray-500); font-size:10px; font-weight:700; padding:8px 4px; position:relative; }
   .nav-btn .nav-icon { font-size:20px; line-height:1; }
   .nav-btn.active { color:var(--green); }
-  .nav-btn.active::before {
-    content:''; position:absolute; top:0; left:50%; transform:translateX(-50%);
-    width:32px; height:3px; background:var(--green); border-radius:0 0 3px 3px;
-  }
-  .loader {
-    display:inline-block; width:18px; height:18px;
-    border:2.5px solid rgba(255,255,255,0.3);
-    border-top-color:white; border-radius:50%;
-    animation:spin .6s linear infinite;
-  }
+  .nav-btn.active::before { content:''; position:absolute; top:0; left:50%; transform:translateX(-50%); width:32px; height:3px; background:var(--green); border-radius:0 0 3px 3px; }
+  .loader { display:inline-block; width:18px; height:18px; border:2.5px solid rgba(255,255,255,0.3); border-top-color:white; border-radius:50%; animation:spin .6s linear infinite; }
   @keyframes spin { to{transform:rotate(360deg);} }
-  .balance-card {
-    background:linear-gradient(135deg,var(--green),var(--green-dark));
-    color:white; border-radius:var(--radius); padding:22px;
-    box-shadow:var(--shadow-green); margin-bottom:14px;
-  }
+  .balance-card { background:linear-gradient(135deg,var(--green),var(--green-dark)); color:white; border-radius:var(--radius); padding:22px; box-shadow:var(--shadow-green); margin-bottom:14px; }
   .balance-label { font-size:11px; font-weight:800; opacity:0.9; text-transform:uppercase; letter-spacing:1px; margin-bottom:6px; }
   .balance-value { font-size:34px; font-weight:900; letter-spacing:-1px; font-variant-numeric:tabular-nums; }
   .balance-value small { font-size:16px; font-weight:700; opacity:0.9; margin-right:4px; }
   .balance-sub { display:flex; gap:16px; margin-top:12px; font-size:12px; font-weight:700; opacity:0.9; padding-top:12px; border-top:1px solid rgba(255,255,255,0.25); }
-  .pending-card {
-    background:#FFF8E1; border:1.5px solid #FFE8A1;
-    border-radius:var(--radius); padding:18px; margin-bottom:14px;
-  }
+  .pending-card { background:#FFF8E1; border:1.5px solid #FFE8A1; border-radius:var(--radius); padding:18px; margin-bottom:14px; }
   .pending-label { font-size:11px; font-weight:900; text-transform:uppercase; letter-spacing:0.6px; color:#8A6D3B; margin-bottom:6px; }
   .pending-value { font-size:26px; font-weight:900; color:#8A6D3B; letter-spacing:-0.5px; }
   .pending-sub { font-size:11px; color:#8A6D3B; font-weight:600; margin-top:4px; opacity:0.8; }
-  .mpesa-logo {
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    padding:0;
-    background:transparent;
-    border-radius:0;
-  }
-  .mpesa-logo svg {
-    display:block;
-    height:34px;
-    width:auto;
-  }
+  .mpesa-logo { display:inline-flex; align-items:center; justify-content:center; padding:0; background:transparent; }
+  .mpesa-logo svg { display:block; height:34px; width:auto; }
   .mpesa-logo.small svg { height:22px; }
-  .mpesa-logo.medium svg { height:28px; }
-  .mpesa-logo.large svg { height:44px; }
-  .mpesa-modal-sub {
-    display:flex;
-    align-items:center;
-    gap:10px;
-    flex-wrap:wrap;
-  }
+  .mpesa-modal-sub { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
   .mpesa-modal-sub .mpesa-logo svg { height:30px; }
-  .mpesa-modal-sub .mpesa-modal-text {
-    font-size:13px;
-    color:var(--gray-500);
-    font-weight:600;
-  }
-  .hist-item {
-    background:var(--white); border-radius:12px; padding:14px;
-    border:1px solid var(--gray-200); box-shadow:var(--shadow);
-    margin-bottom:10px; display:flex; gap:12px; align-items:center;
-    flex-wrap:wrap;
-  }
-  .hist-avatar {
-    width:38px; height:38px; border-radius:50%;
-    display:grid; place-items:center; font-size:20px; flex-shrink:0;
-  }
-  .hist-avatar.sub {
-    background:var(--green-light); color:var(--green-dark);
-    border-radius:12px;
-  }
+  .mpesa-modal-sub .mpesa-modal-text { font-size:13px; color:var(--gray-500); font-weight:600; }
+  .hist-item { background:var(--card-bg); border-radius:12px; padding:14px; border:1px solid var(--gray-200); box-shadow:var(--shadow); margin-bottom:10px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  .hist-avatar { width:38px; height:38px; border-radius:50%; display:grid; place-items:center; font-size:20px; flex-shrink:0; }
+  .hist-avatar.sub { background:var(--green-light); color:var(--green-dark); border-radius:12px; }
   .hist-body { flex:1; min-width:0; }
   .hist-title { font-size:13px; font-weight:800; margin-bottom:3px; }
   .hist-meta { font-size:11px; color:var(--gray-500); font-weight:600; }
   .hist-reward { font-size:14px; font-weight:900; color:var(--green); white-space:nowrap; }
-  .modal-backdrop {
-    position:fixed; inset:0; background:rgba(0,0,0,0.5);
-    display:none; z-index:200; align-items:flex-end;
-  }
+  .modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,0.5); display:none; z-index:200; align-items:flex-end; }
   .modal-backdrop.show { display:flex; }
-  .modal {
-    background:white; width:100%;
-    border-radius:20px 20px 0 0;
-    padding:22px; padding-bottom:calc(22px + env(safe-area-inset-bottom,0px));
-    animation:slideUp .25s ease-out;
-    max-height:92vh; overflow-y:auto; position:relative;
-  }
+  .modal { background:var(--card-bg); width:100%; border-radius:20px 20px 0 0; padding:22px; padding-bottom:calc(22px + env(safe-area-inset-bottom,0px)); animation:slideUp .25s ease-out; max-height:92vh; overflow-y:auto; position:relative; }
   @keyframes slideUp { from{transform:translateY(100%);} to{transform:translateY(0);} }
   .modal-title { font-size:18px; font-weight:900; margin-bottom:6px; }
   .modal-sub { font-size:13px; color:var(--gray-500); font-weight:600; margin-bottom:18px; }
-  .modal-close {
-    position:absolute; top:16px; right:16px;
-    background:var(--gray-100); border:none;
-    width:32px; height:32px; border-radius:50%;
-    font-size:18px; cursor:pointer;
-    display:grid; place-items:center; z-index:10;
-  }
-  .amount-input {
-    width:100%; padding:18px;
-    font-size:28px; font-weight:900; text-align:center;
-    font-family:inherit; color:var(--ink);
-    background:var(--gray-50); border:2px solid var(--gray-200);
-    border-radius:14px; font-variant-numeric:tabular-nums; margin-bottom:6px;
-  }
-  .amount-input:focus { outline:none; border-color:var(--green); background:white; box-shadow:0 0 0 3px rgba(67,176,42,0.15); }
+  .modal-close { position:absolute; top:16px; right:16px; background:var(--gray-100); border:none; width:32px; height:32px; border-radius:50%; font-size:18px; cursor:pointer; display:grid; place-items:center; z-index:10; }
+  .amount-input { width:100%; padding:18px; font-size:28px; font-weight:900; text-align:center; font-family:inherit; color:var(--ink); background:var(--gray-50); border:2px solid var(--gray-200); border-radius:14px; font-variant-numeric:tabular-nums; margin-bottom:6px; }
+  .amount-input:focus { outline:none; border-color:var(--green); background:var(--card-bg); box-shadow:0 0 0 3px rgba(67,176,42,0.15); }
   .quick-amounts { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:16px; }
-  .quick-amt {
-    padding:10px; border-radius:10px;
-    background:var(--white); border:1.5px solid var(--gray-200);
-    font-size:13px; font-weight:800; font-family:inherit;
-    cursor:pointer; color:var(--ink);
-  }
+  .quick-amt { padding:10px; border-radius:10px; background:var(--card-bg); border:1.5px solid var(--gray-200); font-size:13px; font-weight:800; font-family:inherit; cursor:pointer; color:var(--ink); }
   .quick-amt:active { background:var(--green-light); border-color:var(--green); }
   .modal-note { font-size:12px; color:var(--gray-500); font-weight:600; text-align:center; margin-top:12px; line-height:1.5; }
-  .survey-backdrop {
-    position:fixed; inset:0; background:rgba(0,0,0,0.55);
-    display:none; z-index:300; align-items:stretch; justify-content:center;
-  }
+  .survey-backdrop { position:fixed; inset:0; background:rgba(0,0,0,0.55); display:none; z-index:300; align-items:stretch; justify-content:center; }
   .survey-backdrop.show { display:flex; }
-  .survey-panel {
-    background:var(--white); width:100%; max-width:640px;
-    display:flex; flex-direction:column;
-    padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px);
-    animation:slideUp .25s ease-out;
-  }
-  .survey-topbar {
-    display:flex; align-items:center; gap:12px;
-    padding:14px 18px; border-bottom:1px solid var(--gray-200);
-  }
-  .survey-close {
-    background:var(--gray-100); border:none; width:34px; height:34px;
-    border-radius:50%; font-size:18px; cursor:pointer;
-    display:grid; place-items:center;
-  }
+  .survey-panel { background:var(--card-bg); width:100%; max-width:640px; display:flex; flex-direction:column; padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px); animation:slideUp .25s ease-out; }
+  .survey-topbar { display:flex; align-items:center; gap:12px; padding:14px 18px; border-bottom:1px solid var(--gray-200); }
+  .survey-close { background:var(--gray-100); border:none; width:34px; height:34px; border-radius:50%; font-size:18px; cursor:pointer; display:grid; place-items:center; }
   .survey-top-meta { flex:1; min-width:0; }
   .survey-top-title { font-size:12px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .survey-top-sub { font-size:11px; color:var(--gray-500); font-weight:700; }
-  .survey-reward-chip {
-    background:var(--green-light); color:var(--green-dark);
-    padding:6px 10px; border-radius:999px; font-size:11px; font-weight:900;
-    white-space:nowrap;
-  }
+  .survey-reward-chip { background:var(--green-light); color:var(--green-dark); padding:6px 10px; border-radius:999px; font-size:11px; font-weight:900; white-space:nowrap; }
   .survey-progress-wrap { padding:0 18px; }
-  .survey-progress {
-    height:5px; background:var(--gray-100); border-radius:999px;
-    overflow:hidden; margin-top:12px;
-  }
+  .survey-progress { height:5px; background:var(--gray-100); border-radius:999px; overflow:hidden; margin-top:12px; }
   .survey-progress-bar { height:100%; background:linear-gradient(90deg,var(--green),var(--green-mid)); width:0%; transition:width .25s; }
-  .survey-progress-text {
-    font-size:11px; font-weight:800; color:var(--gray-500);
-    margin-top:8px; display:flex; justify-content:space-between;
-  }
+  .survey-progress-text { font-size:11px; font-weight:800; color:var(--gray-500); margin-top:8px; display:flex; justify-content:space-between; }
   .survey-body { flex:1; overflow-y:auto; padding:22px 18px; }
   .survey-q { font-size:17px; font-weight:800; line-height:1.4; margin-bottom:20px; }
   .survey-options { display:flex; flex-direction:column; gap:10px; }
-  .survey-opt {
-    display:flex; align-items:center; gap:12px;
-    padding:14px 16px; border-radius:12px;
-    background:var(--white); border:1.5px solid var(--gray-200);
-    font-size:14px; font-weight:700; color:var(--ink);
-    cursor:pointer; text-align:left; font-family:inherit;
-    transition:border-color .12s, background .12s;
-  }
-  .survey-opt:active { transform:scale(0.99); }
+  .survey-opt { display:flex; align-items:center; gap:12px; padding:14px 16px; border-radius:12px; background:var(--card-bg); border:1.5px solid var(--gray-200); font-size:14px; font-weight:700; color:var(--ink); cursor:pointer; text-align:left; font-family:inherit; }
   .survey-opt.selected { border-color:var(--green); background:var(--green-light); color:var(--green-dark); }
-  .survey-opt .opt-radio {
-    width:22px; height:22px; border-radius:50%;
-    border:2px solid var(--gray-200); flex-shrink:0;
-    display:grid; place-items:center; transition:border-color .12s;
-  }
+  .survey-opt .opt-radio { width:22px; height:22px; border-radius:50%; border:2px solid var(--gray-200); flex-shrink:0; display:grid; place-items:center; }
   .survey-opt.selected .opt-radio { border-color:var(--green); }
-  .survey-opt.selected .opt-radio::after {
-    content:''; width:10px; height:10px; border-radius:50%; background:var(--green);
-  }
-  .survey-footer {
-    padding:14px 18px; border-top:1px solid var(--gray-200);
-    display:flex; gap:10px;
-  }
+  .survey-opt.selected .opt-radio::after { content:''; width:10px; height:10px; border-radius:50%; background:var(--green); }
+  .survey-footer { padding:14px 18px; border-top:1px solid var(--gray-200); display:flex; gap:10px; }
   .survey-footer .btn { flex:1; }
-  .survey-success {
-    display:flex; flex-direction:column; align-items:center; justify-content:center;
-    padding:40px 24px; text-align:center; flex:1;
-  }
-  .success-icon {
-    width:90px; height:90px; border-radius:50%;
-    background:linear-gradient(135deg,var(--green),var(--green-mid));
-    display:grid; place-items:center; color:white; font-size:44px;
-    box-shadow:var(--shadow-green); margin-bottom:20px;
-    animation:pop .4s ease-out;
-  }
-  .success-icon.pending {
-    background:linear-gradient(135deg,#F5A623,#D4901A);
-    box-shadow:0 6px 20px rgba(245,166,35,0.40);
-  }
-  @keyframes pop { 0%{transform:scale(0.6);opacity:0;} 100%{transform:scale(1);opacity:1;} }
+  .survey-success { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px 24px; text-align:center; flex:1; }
+  .success-icon { width:90px; height:90px; border-radius:50%; background:linear-gradient(135deg,var(--green),var(--green-mid)); display:grid; place-items:center; color:white; font-size:44px; box-shadow:var(--shadow-green); margin-bottom:20px; }
   .success-title { font-size:22px; font-weight:900; margin-bottom:8px; }
   .success-amount { font-size:38px; font-weight:900; color:var(--green); letter-spacing:-1px; margin:12px 0; }
-  .success-amount.pending { color:#D4901A; }
   .success-sub { font-size:13px; color:var(--gray-500); font-weight:600; margin-bottom:24px; line-height:1.6; }
-  .tx-row {
-    display:flex; justify-content:space-between; align-items:center;
-    padding:14px 0; border-bottom:1px solid var(--gray-100); gap:10px;
-  }
+  .tx-row { display:flex; justify-content:space-between; align-items:center; padding:14px 0; border-bottom:1px solid var(--gray-100); gap:10px; }
   .tx-row:last-child { border-bottom:none; }
   .tx-left { flex:1; min-width:0; display:flex; flex-direction:column; gap:4px; }
   .tx-label { font-size:13.5px; font-weight:800; }
@@ -488,42 +291,83 @@
   .tx-amount { font-size:15px; font-weight:900; white-space:nowrap; }
   .tx-amount.positive { color:var(--green); }
   .tx-amount.negative { color:var(--red); }
-
-  /* ══════ FLOWER SPRINKLE ══════ */
-  .flower-sprinkle {
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    z-index: 500;
-    overflow: hidden;
-  }
-  .flower {
-    position: absolute;
-    top: -60px;
-    font-size: 28px;
-    line-height: 1;
-    opacity: 0;
-    animation-name: flowerFall;
-    animation-timing-function: linear;
-    animation-fill-mode: forwards;
-    will-change: transform, opacity;
-  }
+  .flower-sprinkle { position: fixed; inset: 0; pointer-events: none; z-index: 500; overflow: hidden; }
+  .flower { position: absolute; top: -60px; font-size: 28px; line-height: 1; opacity: 0; animation-name: flowerFall; animation-timing-function: linear; animation-fill-mode: forwards; }
   @keyframes flowerFall {
     0% { transform: translateY(-60px) rotate(0deg) scale(0.5); opacity: 0; }
-    10% { opacity: 1; }
-    85% { opacity: 1; }
+    10% { opacity: 1; } 85% { opacity: 1; }
     100% { transform: translateY(105vh) rotate(720deg) scale(1.1); opacity: 0; }
   }
-  .success-title.celebrate {
-    animation: celebratePulse 0.7s ease-out;
-    color: var(--green-dark);
-    font-size: 26px;
+  .success-title.celebrate { color: var(--green-dark); font-size: 26px; }
+
+  /* DRAWER */
+  .drawer-backdrop { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:400; display:none; }
+  .drawer-backdrop.show { display:block; }
+  .drawer {
+    position:fixed; top:0; left:0; bottom:0;
+    width:300px; max-width:85vw;
+    background:var(--card-bg); transform:translateX(-100%); transition:transform .25s ease-out;
+    z-index:401; display:flex; flex-direction:column;
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+    box-shadow:4px 0 24px rgba(0,0,0,0.15);
   }
-  @keyframes celebratePulse {
-    0%   { transform: scale(0.6); opacity: 0; }
-    50%  { transform: scale(1.15); }
-    100% { transform: scale(1); opacity: 1; }
-  }
+  .drawer.show { transform:translateX(0); }
+  .drawer-header { padding:20px 18px 16px; border-bottom:1px solid var(--gray-200); }
+  .drawer-user { display:flex; align-items:center; gap:12px; }
+  .drawer-avatar { width:52px; height:52px; border-radius:16px; background:linear-gradient(135deg,var(--green),var(--green-mid)); display:grid; place-items:center; color:white; font-size:22px; font-weight:900; box-shadow:var(--shadow-green); }
+  .drawer-name { font-size:15px; font-weight:900; }
+  .drawer-email { font-size:11.5px; color:var(--gray-500); font-weight:600; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:180px; }
+  .drawer-status { display:inline-flex; align-items:center; gap:4px; margin-top:8px; padding:3px 9px; border-radius:999px; font-size:10px; font-weight:900; text-transform:uppercase; background:var(--green-light); color:var(--green-dark); }
+  .drawer-nav { flex:1; overflow-y:auto; padding:8px; display:flex; flex-direction:column; gap:2px; }
+  .drawer-nav button { display:flex; align-items:center; gap:14px; padding:14px 16px; border:none; background:transparent; font-family:inherit; font-size:14px; font-weight:700; color:var(--ink); text-align:left; cursor:pointer; border-radius:12px; }
+  .drawer-nav button:hover { background:var(--gray-100); }
+  .drawer-nav .nav-emoji { width:32px; height:32px; border-radius:10px; background:var(--gray-100); display:grid; place-items:center; font-size:16px; flex-shrink:0; }
+  .drawer-footer { padding:12px 16px; border-top:1px solid var(--gray-200); }
+  .drawer-footer button { width:100%; padding:12px; border-radius:10px; background:var(--red-light); color:var(--red); border:none; font-family:inherit; font-weight:800; font-size:13px; cursor:pointer; }
+
+  /* SETTINGS PANEL */
+  .settings-panel { position:fixed; top:0; left:0; right:0; bottom:0; background:var(--page-bg); z-index:350; display:none; flex-direction:column; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px); }
+  .settings-panel.show { display:flex; }
+  .settings-header { display:flex; align-items:center; gap:12px; padding:14px 18px; border-bottom:1px solid var(--gray-200); background:var(--card-bg); }
+  .settings-back { background:var(--gray-100); border:none; width:36px; height:36px; border-radius:50%; font-size:18px; cursor:pointer; display:grid; place-items:center; color:var(--ink); }
+  .settings-title { font-size:16px; font-weight:900; flex:1; }
+  .settings-body { flex:1; overflow-y:auto; padding:16px; padding-bottom:32px; }
+  .settings-group { background:var(--card-bg); border-radius:14px; border:1px solid var(--gray-200); margin-bottom:14px; overflow:hidden; }
+  .settings-group-title { padding:14px 16px 8px; font-size:10.5px; font-weight:900; text-transform:uppercase; letter-spacing:0.7px; color:var(--gray-500); background:var(--gray-50); }
+  .settings-row { display:flex; align-items:center; gap:12px; padding:14px 16px; border-top:1px solid var(--gray-100); }
+  .settings-row:first-of-type { border-top:none; }
+  .settings-row-icon { width:32px; height:32px; border-radius:10px; background:var(--gray-100); display:grid; place-items:center; font-size:16px; flex-shrink:0; }
+  .settings-row-text { flex:1; min-width:0; }
+  .settings-row-label { font-size:13.5px; font-weight:800; }
+  .settings-row-sub { font-size:11.5px; color:var(--gray-500); font-weight:600; margin-top:2px; }
+  .switch { position:relative; width:46px; height:26px; flex-shrink:0; display:inline-block; }
+  .switch input { opacity:0; width:0; height:0; }
+  .switch .slider { position:absolute; cursor:pointer; inset:0; background:var(--gray-200); border-radius:999px; transition:background .2s; }
+  .switch .slider::before { content:''; position:absolute; height:20px; width:20px; left:3px; top:3px; background:white; border-radius:50%; transition:transform .2s; box-shadow:0 1px 3px rgba(0,0,0,0.2); }
+  .switch input:checked + .slider { background:var(--green); }
+  .switch input:checked + .slider::before { transform:translateX(20px); }
+  .seg { display:flex; gap:6px; background:var(--gray-100); border-radius:10px; padding:4px; margin-top:8px; }
+  .seg label { flex:1; text-align:center; padding:8px 6px; border-radius:7px; font-size:12px; font-weight:800; color:var(--gray-500); cursor:pointer; }
+  .seg input { display:none; }
+  .seg input:checked + label { background:var(--card-bg); color:var(--green); box-shadow:0 1px 3px rgba(0,0,0,0.1); }
+  .faq-item { border-top:1px solid var(--gray-100); }
+  .faq-item:first-child { border-top:none; }
+  .faq-q { display:flex; justify-content:space-between; align-items:center; padding:14px 16px; cursor:pointer; font-size:13.5px; font-weight:800; }
+  .faq-a { display:none; padding:0 16px 14px; font-size:13px; color:var(--gray-500); line-height:1.6; font-weight:500; }
+  .faq-item.open .faq-a { display:block; }
+  .faq-item.open .faq-q::after { transform:rotate(180deg); }
+  .faq-q::after { content:'▾'; color:var(--gray-500); transition:transform .2s; }
+  .ticket-item { background:var(--card-bg); border-radius:12px; border:1px solid var(--gray-200); padding:14px; margin-bottom:10px; }
+  .ticket-head { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
+  .ticket-num { font-size:11px; color:var(--gray-500); font-weight:700; font-family:ui-monospace,monospace; }
+  .ticket-subj { font-size:14px; font-weight:800; margin-top:4px; }
+  .ticket-status { font-size:9.5px; font-weight:900; text-transform:uppercase; padding:3px 8px; border-radius:6px; }
+  .ticket-status.open { background:#FFF3CD; color:#8A6D3B; }
+  .ticket-status.resolved { background:var(--green-light); color:var(--green-dark); }
+  .ticket-msg { font-size:12px; color:var(--gray-500); margin-top:6px; font-weight:500; }
+  .pin-input { width:100%; padding:16px; text-align:center; font-size:22px; font-weight:900; letter-spacing:8px; font-family:inherit; color:var(--ink); background:var(--gray-50); border:2px solid var(--gray-200); border-radius:14px; font-variant-numeric:tabular-nums; margin-bottom:14px; }
+  .pin-input:focus { outline:none; border-color:var(--green); background:var(--card-bg); }
 
   @media (min-width:500px) {
     .tier-grid { flex-direction:row; }
@@ -534,74 +378,241 @@
 <body>
 
 <header class="header">
-  <div class="brand">
-    <div class="brand-mark">◆</div>
-    <div class="brand-name">Job<span>Pay</span></div>
+  <div class="header-left">
+    <button class="menu-btn" id="menuBtn" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="brand">
+      <div class="brand-mark">◆</div>
+      <div class="brand-name">Job<span>Pay</span></div>
+    </div>
   </div>
   <div class="header-right" id="headerRight" style="display:none;">
     <span class="pill" id="tierPill">Free</span>
-    <button class="logout-btn" id="logoutBtn">Logout</button>
   </div>
 </header>
+
+<!-- DRAWER -->
+<div class="drawer-backdrop" id="drawerBackdrop"></div>
+<aside class="drawer" id="drawer">
+  <div class="drawer-header">
+    <div class="drawer-user">
+      <div class="drawer-avatar" id="drawerAvatar">U</div>
+      <div style="min-width:0;">
+        <div class="drawer-name" id="drawerName">Guest</div>
+        <div class="drawer-email" id="drawerEmail">not signed in</div>
+        <div class="drawer-status" id="drawerStatus">🟢 Active</div>
+      </div>
+    </div>
+  </div>
+  <nav class="drawer-nav">
+    <button data-section="account"><span class="nav-emoji">👤</span> Account Settings</button>
+    <button data-section="security"><span class="nav-emoji">🔐</span> Security</button>
+    <button data-section="notifications"><span class="nav-emoji">🔔</span> Notifications</button>
+    <button data-section="language"><span class="nav-emoji">🌍</span> Language & Location</button>
+    <button data-section="appearance"><span class="nav-emoji">🎨</span> Appearance</button>
+    <button data-section="accessibility"><span class="nav-emoji">♿</span> Accessibility</button>
+    <button data-section="privacy"><span class="nav-emoji">🔒</span> Privacy</button>
+    <button data-section="help"><span class="nav-emoji">💬</span> Help & Support</button>
+  </nav>
+  <div class="drawer-footer">
+    <button id="drawerLogout">🚪 Logout</button>
+  </div>
+</aside>
+
+<!-- SETTINGS PANELS -->
+<div class="settings-panel" id="spAccount">
+  <div class="settings-header"><button class="settings-back" data-close-panel>←</button><div class="settings-title">Account Settings</div></div>
+  <div class="settings-body">
+    <div class="msg" id="acctSettingsMsg"></div>
+    <div class="settings-group">
+      <div class="settings-group-title">Profile</div>
+      <div style="padding:16px;">
+        <div class="field"><label for="setUsername">Username</label><input type="text" id="setUsername" /></div>
+        <div class="field"><label for="setEmail">Email</label><input type="email" id="setEmail" /></div>
+        <div class="field"><label for="setPhone">M‑Pesa Phone</label><input type="tel" id="setPhone" /></div>
+        <button class="btn btn-primary" id="saveProfileBtn">Save Changes</button>
+      </div>
+    </div>
+    <div class="settings-group">
+      <div class="settings-group-title">Account Status</div>
+      <div class="settings-row"><div class="settings-row-icon">🟢</div><div class="settings-row-text"><div class="settings-row-label">Status</div><div class="settings-row-sub" id="acctStatusText">Active</div></div></div>
+    </div>
+    <div class="settings-group">
+      <div class="settings-group-title">Danger Zone</div>
+      <div class="settings-row" style="cursor:pointer;" id="deactivateBtn"><div class="settings-row-icon" style="background:#FFF3CD;">⏸️</div><div class="settings-row-text"><div class="settings-row-label">Deactivate Account</div><div class="settings-row-sub">Hide account temporarily</div></div></div>
+      <div class="settings-row" style="cursor:pointer;" id="deleteAccountBtn"><div class="settings-row-icon" style="background:var(--red-light);">🗑️</div><div class="settings-row-text"><div class="settings-row-label" style="color:var(--red);">Delete Account Permanently</div><div class="settings-row-sub">Cannot be undone</div></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="settings-panel" id="spSecurity">
+  <div class="settings-header"><button class="settings-back" data-close-panel>←</button><div class="settings-title">Security</div></div>
+  <div class="settings-body">
+    <div class="msg" id="secMsg"></div>
+    <div class="settings-group">
+      <div class="settings-group-title">Password</div>
+      <div style="padding:16px;">
+        <div class="field"><label for="curPw">Current password</label><input type="password" id="curPw" /></div>
+        <div class="field"><label for="newPw">New password</label><input type="password" id="newPw" /></div>
+        <div class="field"><label for="confPw">Confirm new password</label><input type="password" id="confPw" /></div>
+        <button class="btn btn-primary" id="changePwBtn">Change Password</button>
+      </div>
+    </div>
+    <div class="settings-group">
+      <div class="settings-group-title">Two-Factor Authentication</div>
+      <div class="settings-row"><div class="settings-row-icon">🔐</div><div class="settings-row-text"><div class="settings-row-label">2FA</div><div class="settings-row-sub" id="twoFaStatus">Disabled</div></div><label class="switch"><input type="checkbox" id="twoFaToggle"><span class="slider"></span></label></div>
+    </div>
+    <div class="settings-group">
+      <div class="settings-group-title">Withdrawal PIN</div>
+      <div class="settings-row"><div class="settings-row-icon">🔢</div><div class="settings-row-text"><div class="settings-row-label">Withdrawal PIN</div><div class="settings-row-sub" id="pinStatus">Not set</div></div><button class="btn btn-ghost btn-sm" id="setPinBtn" style="width:auto;padding:8px 14px;">Set PIN</button></div>
+    </div>
+    <div class="settings-group">
+      <div class="settings-group-title">Login History</div>
+      <div id="loginHistoryList" style="padding:16px;"><div style="font-size:12.5px;color:var(--gray-500);font-weight:600;">Loading…</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="settings-panel" id="spNotifications">
+  <div class="settings-header"><button class="settings-back" data-close-panel>←</button><div class="settings-title">Notifications</div></div>
+  <div class="settings-body">
+    <div class="settings-group">
+      <div class="settings-group-title">Job Notifications</div>
+      <div class="settings-row"><div class="settings-row-text"><div class="settings-row-label">New jobs</div></div><label class="switch"><input type="checkbox" data-notif="job_new" checked><span class="slider"></span></label></div>
+      <div class="settings-row"><div class="settings-row-text"><div class="settings-row-label">Recommended jobs</div></div><label class="switch"><input type="checkbox" data-notif="job_recommended" checked><span class="slider"></span></label></div>
+      <div class="settings-row"><div class="settings-row-text"><div class="settings-row-label">Expiring jobs</div></div><label class="switch"><input type="checkbox" data-notif="job_expiring" checked><span class="slider"></span></label></div>
+    </div>
+    <div class="settings-group">
+      <div class="settings-group-title">Task Notifications</div>
+      <div class="settings-row"><div class="settings-row-text"><div class="settings-row-label">Task submitted</div></div><label class="switch"><input type="checkbox" data-notif="task_submitted" checked><span class="slider"></span></label></div>
+      <div class="settings-row"><div class="settings-row-text"><div class="settings-row-label">Task approved</div></div><label class="switch"><input type="checkbox" data-notif="task_approved" checked><span class="slider"></span></label></div>
+      <div class="settings-row"><div class="settings-row-text"><div class="settings-row-label">Task rejected</div></div><label class="switch"><input type="checkbox" data-notif="task_rejected" checked><span class="slider"></span></label></div>
+    </div>
+    <div class="settings-group">
+      <div class="settings-group-title">Payment Notifications</div>
+      <div class="settings-row"><div class="settings-row-text"><div class="settings-row-label">Payment received</div></div><label class="switch"><input type="checkbox" data-notif="pay_received" checked><span class="slider"></span></label></div>
+      <div class="settings-row"><div class="settings-row-text"><div class="settings-row-label">Withdrawal updates</div></div><label class="switch"><input type="checkbox" data-notif="pay_withdraw" checked><span class="slider"></span></label></div>
+    </div>
+    <div class="settings-group">
+      <div class="settings-group-title">Promotions</div>
+      <div class="settings-row"><div class="settings-row-text"><div class="settings-row-label">Special offers</div></div><label class="switch"><input type="checkbox" data-notif="promo_offers"><span class="slider"></span></label></div>
+      <div class="settings-row"><div class="settings-row-text"><div class="settings-row-label">Platform announcements</div></div><label class="switch"><input type="checkbox" data-notif="promo_announce" checked><span class="slider"></span></label></div>
+    </div>
+  </div>
+</div>
+
+<div class="settings-panel" id="spLanguage">
+  <div class="settings-header"><button class="settings-back" data-close-panel>←</button><div class="settings-title">Language & Location</div></div>
+  <div class="settings-body">
+    <div class="settings-group"><div class="settings-group-title">Country</div><div class="settings-row"><div class="settings-row-text"><div class="settings-row-label">🇰🇪 Kenya</div><div class="settings-row-sub">Affects jobs, currency, and payment methods</div></div></div></div>
+    <div class="settings-group"><div class="settings-group-title">Language</div><div style="padding:16px;"><div class="seg"><input type="radio" name="lang" id="langEn" value="en" checked><label for="langEn">English</label><input type="radio" name="lang" id="langSw" value="sw"><label for="langSw">Kiswahili</label></div></div></div>
+    <div class="settings-group"><div class="settings-group-title">Currency</div><div class="settings-row"><div class="settings-row-text"><div class="settings-row-label">KES — Kenyan Shilling</div></div></div></div>
+    <div class="settings-group"><div class="settings-group-title">Location-based jobs</div><div class="settings-row"><div class="settings-row-text"><div class="settings-row-label">Allow location-based jobs</div><div class="settings-row-sub">Show tasks tailored to your area</div></div><label class="switch"><input type="checkbox" id="locationJobsToggle" checked><span class="slider"></span></label></div></div>
+  </div>
+</div>
+
+<div class="settings-panel" id="spAppearance">
+  <div class="settings-header"><button class="settings-back" data-close-panel>←</button><div class="settings-title">Appearance</div></div>
+  <div class="settings-body">
+    <div class="settings-group"><div class="settings-group-title">Theme</div><div style="padding:16px;"><div class="seg"><input type="radio" name="theme" id="themeSystem" value="system" checked><label for="themeSystem">System</label><input type="radio" name="theme" id="themeLight" value="light"><label for="themeLight">Light</label><input type="radio" name="theme" id="themeDark" value="dark"><label for="themeDark">Dark</label></div></div></div>
+    <div class="settings-group"><div class="settings-group-title">Task Display</div><div style="padding:16px;"><div class="seg"><input type="radio" name="taskDisplay" id="taskComfort" value="comfortable" checked><label for="taskComfort">Comfortable</label><input type="radio" name="taskDisplay" id="taskCompact" value="compact"><label for="taskCompact">Compact</label></div></div></div>
+    <div class="settings-group"><div class="settings-group-title">Text Size</div><div style="padding:16px;"><div class="seg"><input type="radio" name="fontSize" id="fsSmall" value="small"><label for="fsSmall">A</label><input type="radio" name="fontSize" id="fsNormal" value="normal" checked><label for="fsNormal">A</label><input type="radio" name="fontSize" id="fsLarge" value="large"><label for="fsLarge">A</label><input type="radio" name="fontSize" id="fsXLarge" value="xlarge"><label for="fsXLarge">A</label></div></div></div>
+  </div>
+</div>
+
+<div class="settings-panel" id="spAccessibility">
+  <div class="settings-header"><button class="settings-back" data-close-panel>←</button><div class="settings-title">Accessibility</div></div>
+  <div class="settings-body">
+    <div class="settings-group">
+      <div class="settings-row"><div class="settings-row-text"><div class="settings-row-label">Large text</div><div class="settings-row-sub">Increase UI text size</div></div><label class="switch"><input type="checkbox" id="accLargeText"><span class="slider"></span></label></div>
+      <div class="settings-row"><div class="settings-row-text"><div class="settings-row-label">High contrast</div><div class="settings-row-sub">Stronger colors for readability</div></div><label class="switch"><input type="checkbox" id="accHighContrast"><span class="slider"></span></label></div>
+      <div class="settings-row"><div class="settings-row-text"><div class="settings-row-label">Reduce animations</div><div class="settings-row-sub">Disable unnecessary motion</div></div><label class="switch"><input type="checkbox" id="accReduceAnim"><span class="slider"></span></label></div>
+    </div>
+  </div>
+</div>
+
+<div class="settings-panel" id="spPrivacy">
+  <div class="settings-header"><button class="settings-back" data-close-panel>←</button><div class="settings-title">Privacy</div></div>
+  <div class="settings-body">
+    <div class="settings-group"><div class="settings-group-title">Profile Visibility</div><div style="padding:16px;"><div class="seg"><input type="radio" name="profileVis" id="visPrivate" value="private" checked><label for="visPrivate">Private</label><input type="radio" name="profileVis" id="visPublic" value="public"><label for="visPublic">Public</label></div></div></div>
+    <div class="settings-group">
+      <div class="settings-group-title">Personalization</div>
+      <div class="settings-row"><div class="settings-row-text"><div class="settings-row-label">Personalized job recommendations</div><div class="settings-row-sub">Use history to suggest relevant tasks</div></div><label class="switch"><input type="checkbox" id="privPersonalize" checked><span class="slider"></span></label></div>
+      <div class="settings-row"><div class="settings-row-text"><div class="settings-row-label">Share anonymous statistics</div><div class="settings-row-sub">Help improve JobPay</div></div><label class="switch"><input type="checkbox" id="privAnalytics" checked><span class="slider"></span></label></div>
+    </div>
+    <div class="settings-group"><div class="settings-group-title">Your Data</div><div class="settings-row" style="cursor:pointer;" id="downloadDataBtn"><div class="settings-row-icon">📥</div><div class="settings-row-text"><div class="settings-row-label">Download my data</div><div class="settings-row-sub">Export profile, tasks, transactions</div></div></div></div>
+  </div>
+</div>
+
+<div class="settings-panel" id="spHelp">
+  <div class="settings-header"><button class="settings-back" data-close-panel>←</button><div class="settings-title">Help & Support</div></div>
+  <div class="settings-body">
+    <div class="settings-group">
+      <div class="settings-group-title">Frequently Asked</div>
+      <div class="faq-item"><div class="faq-q">Why haven't I received payment?</div><div class="faq-a">Payments go through: Pending → Under Review → Approved → Paid. If your task is still Pending, an admin has not yet confirmed it.</div></div>
+      <div class="faq-item"><div class="faq-q">How do withdrawals work?</div><div class="faq-a">You can withdraw once your Available balance ≥ KES 200. Your first withdrawal requires a one-time KES 499 activation fee.</div></div>
+      <div class="faq-item"><div class="faq-q">Why was my task rejected?</div><div class="faq-a">Tasks can be rejected if the answers are incomplete or contradictory. You'll see the reason in your History tab.</div></div>
+      <div class="faq-item"><div class="faq-q">How do referrals work?</div><div class="faq-a">Share your referral link with friends. When they sign up and complete their first paid task, you earn a reward.</div></div>
+    </div>
+    <div class="settings-group">
+      <div class="settings-group-title">Submit a Ticket</div>
+      <div style="padding:16px;">
+        <div class="msg" id="ticketMsg"></div>
+        <div class="field"><label for="ticketCategory">Category</label><select id="ticketCategory"><option value="payment">Payment problem</option><option value="withdrawal">Withdrawal issue</option><option value="task">Task problem</option><option value="account">Account issue</option><option value="other">Other</option></select></div>
+        <div class="field"><label for="ticketSubject">Subject</label><input type="text" id="ticketSubject" placeholder="Briefly describe your issue" /></div>
+        <div class="field"><label for="ticketMessage">Message</label><textarea id="ticketMessage" placeholder="Explain what happened…"></textarea></div>
+        <button class="btn btn-primary" id="submitTicketBtn">Submit Ticket</button>
+      </div>
+    </div>
+    <div class="settings-group"><div class="settings-group-title">My Tickets</div><div id="ticketsList" style="padding:16px;"><div style="font-size:12.5px;color:var(--gray-500);font-weight:600;">Loading…</div></div></div>
+  </div>
+</div>
+
+<!-- PIN MODAL -->
+<div class="modal-backdrop" id="pinModal">
+  <div class="modal">
+    <button class="modal-close" data-close="pinModal">✕</button>
+    <div class="modal-title">Set Withdrawal PIN</div>
+    <div class="modal-sub">Create a 4–6 digit PIN for withdrawals.</div>
+    <div class="msg" id="pinModalMsg"></div>
+    <div class="field"><label for="newPinInput">New PIN</label><input type="password" id="newPinInput" class="pin-input" inputmode="numeric" maxlength="6" placeholder="••••" /></div>
+    <div class="field"><label for="pinConfirmPw">Confirm with account password</label><input type="password" id="pinConfirmPw" /></div>
+    <button class="btn btn-primary" id="confirmPinBtn">Save PIN</button>
+  </div>
+</div>
+
+<!-- DANGER MODAL -->
+<div class="modal-backdrop" id="dangerModal">
+  <div class="modal">
+    <button class="modal-close" data-close="dangerModal">✕</button>
+    <div class="modal-title" id="dangerTitle">Confirm</div>
+    <div class="modal-sub" id="dangerSub">—</div>
+    <div class="msg" id="dangerMsg"></div>
+    <div class="field" id="dangerConfirmField" style="display:none;"><label>Type <strong id="dangerWord">DELETE</strong> to confirm</label><input type="text" id="dangerConfirm" /></div>
+    <div class="field"><label for="dangerPw">Account password</label><input type="password" id="dangerPw" /></div>
+    <button class="btn btn-danger" id="dangerConfirmBtn">Confirm</button>
+  </div>
+</div>
 
 <!-- AUTH -->
 <section class="screen active" id="screen-auth">
   <div class="card green-border">
     <div class="section-title">Welcome to JobPay</div>
-    <p style="font-size:13px;color:var(--gray-500);margin-bottom:16px;font-weight:600;">
-      Complete surveys &amp; tasks. Get paid. New users get
-      <strong style="color:var(--green);">2 free tasks (KES 21 each) every day</strong>.
-    </p>
-
-    <div class="auth-tabs">
-      <button class="auth-tab active" id="tabRegister" type="button">Create Account</button>
-      <button class="auth-tab" id="tabLogin" type="button">Login</button>
-    </div>
-
+    <p style="font-size:13px;color:var(--gray-500);margin-bottom:16px;font-weight:600;">Complete surveys &amp; tasks. Get paid. New users get <strong style="color:var(--green);">2 free tasks (KES 21 each) every day</strong>.</p>
+    <div class="auth-tabs"><button class="auth-tab active" id="tabRegister" type="button">Create Account</button><button class="auth-tab" id="tabLogin" type="button">Login</button></div>
     <div id="authMsg" class="msg"></div>
-
     <div id="authRegisterForm">
-      <div class="field">
-        <label for="authUsername">Username</label>
-        <input type="text" id="authUsername" class="no-icon" placeholder="e.g. john_doe" autocomplete="username" />
-      </div>
-      <div class="field">
-        <label for="authEmail">Email</label>
-        <input type="email" id="authEmail" class="no-icon" placeholder="you@example.com" autocomplete="email" />
-      </div>
-      <div class="field">
-        <label for="authPhone">M‑Pesa Phone</label>
-        <input type="tel" id="authPhone" class="no-icon" placeholder="0712 345 678" autocomplete="tel" />
-      </div>
-      <div class="field">
-        <label for="authPassword">Password</label>
-        <input type="password" id="authPassword" placeholder="••••••••" autocomplete="new-password" />
-        <button class="pw-toggle" id="togglePw1" type="button">👁</button>
-        <div class="pw-hint" id="pwHint">
-          <span data-req="len">• 8+ chars</span>
-          <span data-req="upper">• Uppercase</span>
-          <span data-req="lower">• Lowercase</span>
-          <span data-req="num">• Number</span>
-        </div>
-      </div>
-      <div class="field">
-        <label for="authConfirm">Confirm Password</label>
-        <input type="password" id="authConfirm" placeholder="••••••••" autocomplete="new-password" />
-        <button class="pw-toggle" id="togglePw2" type="button">👁</button>
-      </div>
+      <div class="field"><label for="authUsername">Username</label><input type="text" id="authUsername" class="no-icon" placeholder="e.g. john_doe" /></div>
+      <div class="field"><label for="authEmail">Email</label><input type="email" id="authEmail" class="no-icon" placeholder="you@example.com" /></div>
+      <div class="field"><label for="authPhone">M‑Pesa Phone</label><input type="tel" id="authPhone" class="no-icon" placeholder="0712 345 678" /></div>
+      <div class="field"><label for="authPassword">Password</label><input type="password" id="authPassword" placeholder="••••••••" /><button class="pw-toggle" id="togglePw1" type="button">👁</button><div class="pw-hint" id="pwHint"><span data-req="len">• 8+ chars</span><span data-req="upper">• Uppercase</span><span data-req="lower">• Lowercase</span><span data-req="num">• Number</span></div></div>
+      <div class="field"><label for="authConfirm">Confirm Password</label><input type="password" id="authConfirm" placeholder="••••••••" /><button class="pw-toggle" id="togglePw2" type="button">👁</button></div>
       <button class="btn btn-primary" id="btnRegister" style="margin-top:6px;">Create Account</button>
     </div>
-
     <div id="authLoginForm" style="display:none;">
-      <div class="field">
-        <label for="loginEmail">Email</label>
-        <input type="email" id="loginEmail" class="no-icon" placeholder="you@example.com" autocomplete="email" />
-      </div>
-      <div class="field">
-        <label for="loginPassword">Password</label>
-        <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password" />
-        <button class="pw-toggle" id="togglePwLogin" type="button">👁</button>
-      </div>
+      <div class="field"><label for="loginEmail">Email</label><input type="email" id="loginEmail" class="no-icon" placeholder="you@example.com" /></div>
+      <div class="field"><label for="loginPassword">Password</label><input type="password" id="loginPassword" placeholder="••••••••" /><button class="pw-toggle" id="togglePwLogin" type="button">👁</button></div>
       <button class="btn btn-primary" id="btnLogin" style="margin-top:6px;">Login</button>
     </div>
   </div>
@@ -610,152 +621,46 @@
 <!-- DASHBOARD -->
 <section class="screen" id="screen-dashboard">
   <div class="stats">
-    <div class="stat">
-      <div class="stat-label">Available</div>
-      <div class="stat-value green" id="dashBalance">KES 0</div>
-      <div class="stat-sub" id="dashEarned">Earned: KES 0</div>
-    </div>
-    <div class="stat">
-      <div class="stat-label">Pending</div>
-      <div class="stat-value yellow" id="dashPending">KES 0</div>
-      <div class="stat-sub" id="dashDone">0 of 0 today</div>
-    </div>
+    <div class="stat"><div class="stat-label">Available</div><div class="stat-value green" id="dashBalance">KES 0</div><div class="stat-sub" id="dashEarned">Earned: KES 0</div></div>
+    <div class="stat"><div class="stat-label">Pending</div><div class="stat-value yellow" id="dashPending">KES 0</div><div class="stat-sub" id="dashDone">0 of 0 today</div></div>
   </div>
-  <div class="card" id="subStatusCard">
-    <div class="section-title">Subscription</div>
-    <div id="subStatusBody"></div>
-  </div>
+  <div class="card" id="subStatusCard"><div class="section-title">Subscription</div><div id="subStatusBody"></div></div>
   <div class="section-title">All Tasks (<span id="taskCount">0</span>)</div>
-  <div class="filter-row" id="filterRow">
-    <button class="filter-chip active" data-type="">All</button>
-    <button class="filter-chip" data-type="survey">📋 Surveys</button>
-    <button class="filter-chip" data-type="task">⚡ Micro‑tasks</button>
-  </div>
+  <div class="filter-row" id="filterRow"><button class="filter-chip active" data-type="">All</button><button class="filter-chip" data-type="survey">📋 Surveys</button><button class="filter-chip" data-type="task">⚡ Micro‑tasks</button></div>
   <div id="taskList"></div>
-  <div style="text-align:center;padding:16px;">
-    <button class="btn btn-ghost" id="loadMoreBtn">Load More Tasks</button>
-  </div>
+  <div style="text-align:center;padding:16px;"><button class="btn btn-ghost" id="loadMoreBtn">Load More Tasks</button></div>
 </section>
 
 <!-- SUBSCRIBE -->
 <section class="screen" id="screen-subscribe">
   <div class="msg" id="subMsg"></div>
   <div class="tier-grid">
-    <div class="tier-card classic">
-      <span class="tier-badge classic">Classic</span>
-      <div class="tier-name">Classic</div>
-      <div class="tier-price" id="tierPriceClassic">KES 200 <span>/ week</span></div>
-      <div class="tier-limit">🔓 Unlock 10 tasks per day</div>
-      <button class="tier-btn classic" data-tier="classic" id="tierBtnClassic">Upgrade – KES 200</button>
-    </div>
-    <div class="tier-card premium">
-      <span class="tier-badge premium">Premium</span>
-      <div class="tier-name">Premium</div>
-      <div class="tier-price" id="tierPricePremium" style="color:var(--blue);">KES 350 <span>/ week</span></div>
-      <div class="tier-limit">🔓 Unlock 20 tasks per day</div>
-      <button class="tier-btn premium" data-tier="premium" id="tierBtnPremium">Upgrade – KES 350</button>
-    </div>
-    <div class="tier-card golden">
-      <span class="tier-badge golden">Golden</span>
-      <div class="tier-name">Golden</div>
-      <div class="tier-price" id="tierPriceGolden" style="color:var(--gold);">KES 450 <span>/ week</span></div>
-      <div class="tier-limit">🔓 Unlock 50+ tasks per day</div>
-      <button class="tier-btn golden" data-tier="golden" id="tierBtnGolden">Upgrade – KES 450</button>
-    </div>
+    <div class="tier-card classic"><span class="tier-badge classic">Classic</span><div class="tier-name">Classic</div><div class="tier-price" id="tierPriceClassic">KES 200 <span>/ week</span></div><div class="tier-limit">🔓 Unlock 10 tasks per day</div><button class="tier-btn classic" data-tier="classic" id="tierBtnClassic">Upgrade – KES 200</button></div>
+    <div class="tier-card premium"><span class="tier-badge premium">Premium</span><div class="tier-name">Premium</div><div class="tier-price" id="tierPricePremium" style="color:var(--blue);">KES 350 <span>/ week</span></div><div class="tier-limit">🔓 Unlock 20 tasks per day</div><button class="tier-btn premium" data-tier="premium" id="tierBtnPremium">Upgrade – KES 350</button></div>
+    <div class="tier-card golden"><span class="tier-badge golden">Golden</span><div class="tier-name">Golden</div><div class="tier-price" id="tierPriceGolden" style="color:var(--gold);">KES 450 <span>/ week</span></div><div class="tier-limit">🔓 Unlock 50+ tasks per day</div><button class="tier-btn golden" data-tier="golden" id="tierBtnGolden">Upgrade – KES 450</button></div>
   </div>
-  <div class="card">
-    <div style="font-size:12px;color:var(--gray-500);font-weight:600;line-height:1.7;">
-      💡 Tap an upgrade button. You'll be asked to confirm your M‑Pesa number, then receive an STK push. Enter your PIN to pay.
-      Subscription activates instantly and is valid for <strong>7 days</strong>.
-    </div>
-  </div>
+  <div class="card"><div style="font-size:12px;color:var(--gray-500);font-weight:600;line-height:1.7;">💡 Tap an upgrade button. You'll be asked to confirm your M‑Pesa number, then receive an STK push. Enter your PIN to pay. Subscription activates instantly and is valid for <strong>7 days</strong>.</div></div>
 </section>
 
 <!-- ACCOUNT -->
 <section class="screen" id="screen-account">
-  <div class="balance-card">
-    <div class="balance-label">Available Balance</div>
-    <div class="balance-value" id="acctBalance"><small>KES</small>0.00</div>
-    <div class="balance-sub">
-      <span>💵 Total earned: <span id="acctTotal">KES 0</span></span>
-    </div>
-  </div>
-
-  <div class="pending-card">
-    <div style="display:flex;justify-content:space-between;align-items:center;">
-      <div>
-        <div class="pending-label">⏳ Pending Confirmation</div>
-        <div class="pending-value" id="acctPending">KES 0</div>
-        <div class="pending-sub">Task rewards awaiting admin approval</div>
-      </div>
-      <div style="width:46px;height:46px;border-radius:14px;background:#FFE8A1;color:#8A6D3B;
-                  display:grid;place-items:center;font-size:22px;">⏳</div>
-    </div>
-  </div>
-
+  <div class="balance-card"><div class="balance-label">Available Balance</div><div class="balance-value" id="acctBalance"><small>KES</small>0.00</div><div class="balance-sub"><span>💵 Total earned: <span id="acctTotal">KES 0</span></span></div></div>
+  <div class="pending-card"><div style="display:flex;justify-content:space-between;align-items:center;"><div><div class="pending-label">⏳ Pending Confirmation</div><div class="pending-value" id="acctPending">KES 0</div><div class="pending-sub">Task rewards awaiting admin approval</div></div><div style="width:46px;height:46px;border-radius:14px;background:#FFE8A1;color:#8A6D3B;display:grid;place-items:center;font-size:22px;">⏳</div></div></div>
   <div class="btn-row" style="margin-bottom:14px;">
-    <button class="btn btn-mpesa" id="btnDeposit" style="gap:10px;">
-      <span class="mpesa-logo small">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 64">
-          <text x="14" y="46" font-family="'Arial Black','Helvetica Neue',Arial,sans-serif"
-                font-size="38" font-weight="900" fill="#FFFFFF" letter-spacing="-1">M</text>
-          <g transform="translate(64,10)">
-            <rect x="0" y="0" width="26" height="44" rx="5" fill="none" stroke="#FFFFFF" stroke-width="3"/>
-            <rect x="5" y="5" width="16" height="30" rx="2" fill="#FFFFFF" fill-opacity="0.55"/>
-            <circle cx="13" cy="40" r="2" fill="#FFFFFF"/>
-          </g>
-          <path d="M 58 26 Q 77 16 96 28" stroke="#E30613" stroke-width="4"
-                fill="none" stroke-linecap="round"/>
-          <text x="102" y="46" font-family="'Arial Black','Helvetica Neue',Arial,sans-serif"
-                font-size="38" font-weight="900" fill="#FFFFFF" letter-spacing="-1">PESA</text>
-        </svg>
-      </span>
-      Deposit
-    </button>
-
-    <button class="btn btn-primary" id="btnWithdraw" style="gap:10px;">
-      <span class="mpesa-logo small">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 64">
-          <text x="14" y="46" font-family="'Arial Black','Helvetica Neue',Arial,sans-serif"
-                font-size="38" font-weight="900" fill="#FFFFFF" letter-spacing="-1">M</text>
-          <g transform="translate(64,10)">
-            <rect x="0" y="0" width="26" height="44" rx="5" fill="none" stroke="#FFFFFF" stroke-width="3"/>
-            <rect x="5" y="5" width="16" height="30" rx="2" fill="#FFFFFF" fill-opacity="0.55"/>
-            <circle cx="13" cy="40" r="2" fill="#FFFFFF"/>
-          </g>
-          <path d="M 58 26 Q 77 16 96 28" stroke="#E30613" stroke-width="4"
-                fill="none" stroke-linecap="round"/>
-          <text x="102" y="46" font-family="'Arial Black','Helvetica Neue',Arial,sans-serif"
-                font-size="38" font-weight="900" fill="#FFFFFF" letter-spacing="-1">PESA</text>
-        </svg>
-      </span>
-      Withdraw
-    </button>
+    <button class="btn btn-mpesa" id="btnDeposit" style="gap:10px;"><span class="mpesa-logo small"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 64"><text x="14" y="46" font-family="'Arial Black',Arial,sans-serif" font-size="38" font-weight="900" fill="#FFFFFF" letter-spacing="-1">M</text><g transform="translate(64,10)"><rect x="0" y="0" width="26" height="44" rx="5" fill="none" stroke="#FFFFFF" stroke-width="3"/><rect x="5" y="5" width="16" height="30" rx="2" fill="#FFFFFF" fill-opacity="0.55"/><circle cx="13" cy="40" r="2" fill="#FFFFFF"/></g><path d="M 58 26 Q 77 16 96 28" stroke="#E30613" stroke-width="4" fill="none" stroke-linecap="round"/><text x="102" y="46" font-family="'Arial Black',Arial,sans-serif" font-size="38" font-weight="900" fill="#FFFFFF" letter-spacing="-1">PESA</text></svg></span>Deposit</button>
+    <button class="btn btn-primary" id="btnWithdraw" style="gap:10px;"><span class="mpesa-logo small"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 64"><text x="14" y="46" font-family="'Arial Black',Arial,sans-serif" font-size="38" font-weight="900" fill="#FFFFFF" letter-spacing="-1">M</text><g transform="translate(64,10)"><rect x="0" y="0" width="26" height="44" rx="5" fill="none" stroke="#FFFFFF" stroke-width="3"/><rect x="5" y="5" width="16" height="30" rx="2" fill="#FFFFFF" fill-opacity="0.55"/><circle cx="13" cy="40" r="2" fill="#FFFFFF"/></g><path d="M 58 26 Q 77 16 96 28" stroke="#E30613" stroke-width="4" fill="none" stroke-linecap="round"/><text x="102" y="46" font-family="'Arial Black',Arial,sans-serif" font-size="38" font-weight="900" fill="#FFFFFF" letter-spacing="-1">PESA</text></svg></span>Withdraw</button>
   </div>
-
-  <div class="card">
-    <div class="section-title">Deposits &amp; Withdrawals</div>
-    <div id="txList"></div>
-  </div>
+  <div class="card"><div class="section-title">Deposits &amp; Withdrawals</div><div id="txList"></div></div>
 </section>
 
 <!-- HISTORY -->
 <section class="screen" id="screen-history">
-  <div class="filter-row" id="historyFilters">
-    <button class="filter-chip active" data-hfilter="">All</button>
-    <button class="filter-chip" data-hfilter="tasks">📋 Tasks</button>
-    <button class="filter-chip" data-hfilter="subscriptions">⭐ Upgrades</button>
-  </div>
+  <div class="filter-row" id="historyFilters"><button class="filter-chip active" data-hfilter="">All</button><button class="filter-chip" data-hfilter="tasks">📋 Tasks</button><button class="filter-chip" data-hfilter="subscriptions">⭐ Upgrades</button></div>
   <div id="historyList"></div>
 </section>
 
 <!-- PROFILE -->
-<section class="screen" id="screen-profile">
-  <div class="card">
-    <div class="section-title">Account Details</div>
-    <div id="profileBody"></div>
-  </div>
-</section>
+<section class="screen" id="screen-profile"><div class="card"><div class="section-title">Account Details</div><div id="profileBody"></div></div></section>
 
 <nav class="bottom-nav" id="bottomNav" style="display:none;">
   <button class="nav-btn active" data-screen="dashboard"><span class="nav-icon">📊</span><span>Tasks</span></button>
@@ -765,112 +670,34 @@
   <button class="nav-btn" data-screen="profile"><span class="nav-icon">👤</span><span>Profile</span></button>
 </nav>
 
-<!-- UPGRADE PROMPT MODAL -->
-<div class="modal-backdrop" id="upgradeModal">
-  <div class="modal">
-    <button class="modal-close" data-close="upgradeModal">✕</button>
-    <div style="text-align:center;padding:8px 0 4px;">
-      <div style="width:80px;height:80px;border-radius:24px;background:#FFF3CD;color:#8A6D3B;
-                  display:grid;place-items:center;font-size:38px;margin:0 auto 16px;">🔒</div>
-      <div class="modal-title">Task Locked</div>
-      <div class="modal-sub" style="max-width:320px;margin:0 auto 20px;">
-        You've used all your free tasks for today. Upgrade to unlock more daily tasks and keep earning!
-      </div>
-      <button class="btn btn-primary" id="upgradeFromModal">⭐ View Upgrade Plans</button>
-      <button class="btn btn-ghost" style="margin-top:10px;" data-close="upgradeModal">Maybe Later</button>
-    </div>
-  </div>
-</div>
+<!-- UPGRADE MODAL -->
+<div class="modal-backdrop" id="upgradeModal"><div class="modal"><button class="modal-close" data-close="upgradeModal">✕</button><div style="text-align:center;padding:8px 0 4px;"><div style="width:80px;height:80px;border-radius:24px;background:#FFF3CD;color:#8A6D3B;display:grid;place-items:center;font-size:38px;margin:0 auto 16px;">🔒</div><div class="modal-title">Task Locked</div><div class="modal-sub" style="max-width:320px;margin:0 auto 20px;">You've used all your free tasks for today. Upgrade to unlock more!</div><button class="btn btn-primary" id="upgradeFromModal">⭐ View Upgrade Plans</button><button class="btn btn-ghost" style="margin-top:10px;" data-close="upgradeModal">Maybe Later</button></div></div></div>
 
 <!-- SUBSCRIBE MODAL -->
 <div class="modal-backdrop" id="subscribeModal">
   <div class="modal">
     <button class="modal-close" data-close="subscribeModal">✕</button>
     <div class="modal-title">Upgrade to <span id="subTierName" style="color:var(--green);">Classic</span></div>
-    <div class="modal-sub mpesa-modal-sub">
-      <span class="mpesa-logo">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 64">
-          <rect width="200" height="64" rx="10" fill="#43B02A"/>
-          <text x="14" y="46" font-family="'Arial Black','Helvetica Neue',Arial,sans-serif"
-                font-size="38" font-weight="900" fill="#FFFFFF" letter-spacing="-1">M</text>
-          <g transform="translate(64,10)">
-            <rect x="0" y="0" width="26" height="44" rx="5" fill="none" stroke="#FFFFFF" stroke-width="3"/>
-            <rect x="5" y="5" width="16" height="30" rx="2" fill="#7AC943"/>
-            <circle cx="13" cy="40" r="2" fill="#FFFFFF"/>
-          </g>
-          <path d="M 58 26 Q 77 16 96 28" stroke="#E30613" stroke-width="4"
-                fill="none" stroke-linecap="round"/>
-          <text x="102" y="46" font-family="'Arial Black','Helvetica Neue',Arial,sans-serif"
-                font-size="38" font-weight="900" fill="#FFFFFF" letter-spacing="-1">PESA</text>
-        </svg>
-      </span>
-      <span class="mpesa-modal-text">Pay KES <span id="subTierPrice">200</span> for 7 days</span>
-    </div>
+    <div class="modal-sub mpesa-modal-sub"><span class="mpesa-logo"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 64"><rect width="200" height="64" rx="10" fill="#43B02A"/><text x="14" y="46" font-family="'Arial Black',Arial,sans-serif" font-size="38" font-weight="900" fill="#FFFFFF" letter-spacing="-1">M</text><g transform="translate(64,10)"><rect x="0" y="0" width="26" height="44" rx="5" fill="none" stroke="#FFFFFF" stroke-width="3"/><rect x="5" y="5" width="16" height="30" rx="2" fill="#7AC943"/><circle cx="13" cy="40" r="2" fill="#FFFFFF"/></g><path d="M 58 26 Q 77 16 96 28" stroke="#E30613" stroke-width="4" fill="none" stroke-linecap="round"/><text x="102" y="46" font-family="'Arial Black',Arial,sans-serif" font-size="38" font-weight="900" fill="#FFFFFF" letter-spacing="-1">PESA</text></svg></span><span class="mpesa-modal-text">Pay KES <span id="subTierPrice">200</span> for 7 days</span></div>
     <div class="msg" id="subModalMsg"></div>
     <div id="subModalForm">
-      <div class="field">
-        <label for="subPhone">M‑Pesa Number</label>
-        <input type="tel" id="subPhone" class="no-icon" placeholder="0712 345 678" inputmode="tel" />
-      </div>
-      <div style="font-size:11px;color:var(--gray-500);font-weight:600;margin-top:-8px;margin-bottom:14px;">
-        This is the number on your account. You can change it.
-      </div>
+      <div class="field"><label for="subPhone">M‑Pesa Number</label><input type="tel" id="subPhone" class="no-icon" placeholder="0712 345 678" inputmode="tel" /></div>
       <button class="btn btn-primary" id="confirmSubscribe">Send STK Push</button>
-      <div class="modal-note">
-        A prompt will appear on your phone. Enter your M‑Pesa PIN to complete payment.
-      </div>
+      <div class="modal-note">A prompt will appear on your phone.</div>
     </div>
   </div>
 </div>
 
-<!-- ACTIVATION FEE MODAL -->
+<!-- ACTIVATION MODAL -->
 <div class="modal-backdrop" id="activationModal">
   <div class="modal">
     <button class="modal-close" data-close="activationModal">✕</button>
     <div class="modal-title">Account Activation</div>
-    <div class="modal-sub mpesa-modal-sub">
-      <span class="mpesa-logo">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 64">
-          <rect width="200" height="64" rx="10" fill="#43B02A"/>
-          <text x="14" y="46" font-family="'Arial Black','Helvetica Neue',Arial,sans-serif"
-                font-size="38" font-weight="900" fill="#FFFFFF" letter-spacing="-1">M</text>
-          <g transform="translate(64,10)">
-            <rect x="0" y="0" width="26" height="44" rx="5" fill="none" stroke="#FFFFFF" stroke-width="3"/>
-            <rect x="5" y="5" width="16" height="30" rx="2" fill="#7AC943"/>
-            <circle cx="13" cy="40" r="2" fill="#FFFFFF"/>
-          </g>
-          <path d="M 58 26 Q 77 16 96 28" stroke="#E30613" stroke-width="4"
-                fill="none" stroke-linecap="round"/>
-          <text x="102" y="46" font-family="'Arial Black','Helvetica Neue',Arial,sans-serif"
-                font-size="38" font-weight="900" fill="#FFFFFF" letter-spacing="-1">PESA</text>
-        </svg>
-      </span>
-      <span class="mpesa-modal-text">One-time activation fee</span>
-    </div>
-
-    <div style="background:#FFF8E1;border:1.5px solid #FFE8A1;border-radius:14px;
-                padding:18px;margin-bottom:16px;">
-      <div style="font-size:11px;font-weight:900;text-transform:uppercase;
-                  letter-spacing:0.6px;color:#8A6D3B;margin-bottom:6px;">
-        ⚠️ One-time fee required
-      </div>
-      <div style="font-size:28px;font-weight:900;color:#8A6D3B;">KES 499</div>
-      <div style="font-size:12px;color:#8A6D3B;font-weight:600;margin-top:6px;line-height:1.5;">
-        To unlock withdrawals, you must pay a one-time account activation fee of
-        <strong>KES 499</strong>. This is charged only once before your first withdrawal.
-      </div>
-    </div>
-
+    <div class="modal-sub mpesa-modal-sub"><span class="mpesa-logo"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 64"><rect width="200" height="64" rx="10" fill="#43B02A"/><text x="14" y="46" font-family="'Arial Black',Arial,sans-serif" font-size="38" font-weight="900" fill="#FFFFFF" letter-spacing="-1">M</text><g transform="translate(64,10)"><rect x="0" y="0" width="26" height="44" rx="5" fill="none" stroke="#FFFFFF" stroke-width="3"/><rect x="5" y="5" width="16" height="30" rx="2" fill="#7AC943"/><circle cx="13" cy="40" r="2" fill="#FFFFFF"/></g><path d="M 58 26 Q 77 16 96 28" stroke="#E30613" stroke-width="4" fill="none" stroke-linecap="round"/><text x="102" y="46" font-family="'Arial Black',Arial,sans-serif" font-size="38" font-weight="900" fill="#FFFFFF" letter-spacing="-1">PESA</text></svg></span><span class="mpesa-modal-text">One-time activation fee</span></div>
+    <div style="background:#FFF8E1;border:1.5px solid #FFE8A1;border-radius:14px;padding:18px;margin-bottom:16px;"><div style="font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:0.6px;color:#8A6D3B;margin-bottom:6px;">⚠️ One-time fee required</div><div style="font-size:28px;font-weight:900;color:#8A6D3B;">KES 499</div><div style="font-size:12px;color:#8A6D3B;font-weight:600;margin-top:6px;line-height:1.5;">To unlock withdrawals, you must pay a one-time account activation fee of <strong>KES 499</strong>.</div></div>
     <div class="msg" id="activationModalMsg"></div>
-
-    <div class="field">
-      <label for="activationPhone">M‑Pesa Number</label>
-      <input type="tel" id="activationPhone" class="no-icon" placeholder="0712 345 678" inputmode="tel" />
-    </div>
+    <div class="field"><label for="activationPhone">M‑Pesa Number</label><input type="tel" id="activationPhone" class="no-icon" placeholder="0712 345 678" inputmode="tel" /></div>
     <button class="btn btn-mpesa" id="confirmActivation">Pay KES 499 Activation Fee</button>
-    <div class="modal-note">
-      You'll receive an STK push on your phone. Enter your M‑Pesa PIN to complete.
-    </div>
   </div>
 </div>
 
@@ -879,41 +706,12 @@
   <div class="modal">
     <button class="modal-close" data-close="depositModal">✕</button>
     <div class="modal-title">Deposit Money</div>
-    <div class="modal-sub mpesa-modal-sub">
-      <span class="mpesa-logo">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 64">
-          <rect width="200" height="64" rx="10" fill="#43B02A"/>
-          <text x="14" y="46" font-family="'Arial Black','Helvetica Neue',Arial,sans-serif"
-                font-size="38" font-weight="900" fill="#FFFFFF" letter-spacing="-1">M</text>
-          <g transform="translate(64,10)">
-            <rect x="0" y="0" width="26" height="44" rx="5" fill="none" stroke="#FFFFFF" stroke-width="3"/>
-            <rect x="5" y="5" width="16" height="30" rx="2" fill="#7AC943"/>
-            <circle cx="13" cy="40" r="2" fill="#FFFFFF"/>
-          </g>
-          <path d="M 58 26 Q 77 16 96 28" stroke="#E30613" stroke-width="4"
-                fill="none" stroke-linecap="round"/>
-          <text x="102" y="46" font-family="'Arial Black','Helvetica Neue',Arial,sans-serif"
-                font-size="38" font-weight="900" fill="#FFFFFF" letter-spacing="-1">PESA</text>
-        </svg>
-      </span>
-      <span class="mpesa-modal-text">Minimum deposit is KES 50</span>
-    </div>
+    <div class="modal-sub mpesa-modal-sub"><span class="mpesa-logo"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 64"><rect width="200" height="64" rx="10" fill="#43B02A"/><text x="14" y="46" font-family="'Arial Black',Arial,sans-serif" font-size="38" font-weight="900" fill="#FFFFFF" letter-spacing="-1">M</text><g transform="translate(64,10)"><rect x="0" y="0" width="26" height="44" rx="5" fill="none" stroke="#FFFFFF" stroke-width="3"/><rect x="5" y="5" width="16" height="30" rx="2" fill="#7AC943"/><circle cx="13" cy="40" r="2" fill="#FFFFFF"/></g><path d="M 58 26 Q 77 16 96 28" stroke="#E30613" stroke-width="4" fill="none" stroke-linecap="round"/><text x="102" y="46" font-family="'Arial Black',Arial,sans-serif" font-size="38" font-weight="900" fill="#FFFFFF" letter-spacing="-1">PESA</text></svg></span><span class="mpesa-modal-text">Minimum deposit is KES 50</span></div>
     <div class="msg" id="depositModalMsg"></div>
-    <div class="field">
-      <label for="depositPhone">M‑Pesa Number</label>
-      <input type="tel" id="depositPhone" class="no-icon" placeholder="0712 345 678" inputmode="tel" />
-    </div>
+    <div class="field"><label for="depositPhone">M‑Pesa Number</label><input type="tel" id="depositPhone" class="no-icon" placeholder="0712 345 678" inputmode="tel" /></div>
     <input type="number" class="amount-input" id="depositAmount" placeholder="0" inputmode="numeric" />
-    <div class="quick-amounts">
-      <button class="quick-amt" data-amt="50">50</button>
-      <button class="quick-amt" data-amt="100">100</button>
-      <button class="quick-amt" data-amt="200">200</button>
-      <button class="quick-amt" data-amt="500">500</button>
-      <button class="quick-amt" data-amt="1000">1000</button>
-      <button class="quick-amt" data-amt="2000">2000</button>
-    </div>
+    <div class="quick-amounts"><button class="quick-amt" data-amt="50">50</button><button class="quick-amt" data-amt="100">100</button><button class="quick-amt" data-amt="200">200</button><button class="quick-amt" data-amt="500">500</button><button class="quick-amt" data-amt="1000">1000</button><button class="quick-amt" data-amt="2000">2000</button></div>
     <button class="btn btn-mpesa" id="confirmDeposit">Send STK to this number</button>
-    <div class="modal-note">You'll receive an STK push. Enter your M‑Pesa PIN to complete.</div>
   </div>
 </div>
 
@@ -922,63 +720,22 @@
   <div class="modal">
     <button class="modal-close" data-close="withdrawModal">✕</button>
     <div class="modal-title">Withdraw Money</div>
-    <div class="modal-sub mpesa-modal-sub">
-      <span class="mpesa-logo">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 64">
-          <rect width="200" height="64" rx="10" fill="#43B02A"/>
-          <text x="14" y="46" font-family="'Arial Black','Helvetica Neue',Arial,sans-serif"
-                font-size="38" font-weight="900" fill="#FFFFFF" letter-spacing="-1">M</text>
-          <g transform="translate(64,10)">
-            <rect x="0" y="0" width="26" height="44" rx="5" fill="none" stroke="#FFFFFF" stroke-width="3"/>
-            <rect x="5" y="5" width="16" height="30" rx="2" fill="#7AC943"/>
-            <circle cx="13" cy="40" r="2" fill="#FFFFFF"/>
-          </g>
-          <path d="M 58 26 Q 77 16 96 28" stroke="#E30613" stroke-width="4"
-                fill="none" stroke-linecap="round"/>
-          <text x="102" y="46" font-family="'Arial Black','Helvetica Neue',Arial,sans-serif"
-                font-size="38" font-weight="900" fill="#FFFFFF" letter-spacing="-1">PESA</text>
-        </svg>
-      </span>
-      <span class="mpesa-modal-text">Minimum withdrawal is KES 200</span>
-    </div>
+    <div class="modal-sub mpesa-modal-sub"><span class="mpesa-logo"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 64"><rect width="200" height="64" rx="10" fill="#43B02A"/><text x="14" y="46" font-family="'Arial Black',Arial,sans-serif" font-size="38" font-weight="900" fill="#FFFFFF" letter-spacing="-1">M</text><g transform="translate(64,10)"><rect x="0" y="0" width="26" height="44" rx="5" fill="none" stroke="#FFFFFF" stroke-width="3"/><rect x="5" y="5" width="16" height="30" rx="2" fill="#7AC943"/><circle cx="13" cy="40" r="2" fill="#FFFFFF"/></g><path d="M 58 26 Q 77 16 96 28" stroke="#E30613" stroke-width="4" fill="none" stroke-linecap="round"/><text x="102" y="46" font-family="'Arial Black',Arial,sans-serif" font-size="38" font-weight="900" fill="#FFFFFF" letter-spacing="-1">PESA</text></svg></span><span class="mpesa-modal-text">Minimum withdrawal is KES 200</span></div>
     <div class="msg" id="withdrawModalMsg"></div>
     <input type="number" class="amount-input" id="withdrawAmount" placeholder="0" inputmode="numeric" />
-    <div class="quick-amounts">
-      <button class="quick-amt" data-amt="200">200</button>
-      <button class="quick-amt" data-amt="300">300</button>
-      <button class="quick-amt" data-amt="500">500</button>
-      <button class="quick-amt" data-amt="1000">1000</button>
-      <button class="quick-amt" data-amt="2000">2000</button>
-      <button class="quick-amt" data-amt="5000">5000</button>
-    </div>
+    <div class="field" id="withdrawPinField" style="display:none;"><label for="withdrawPin">Withdrawal PIN</label><input type="password" id="withdrawPin" class="pin-input" inputmode="numeric" maxlength="6" placeholder="••••" /></div>
+    <div class="quick-amounts"><button class="quick-amt" data-amt="200">200</button><button class="quick-amt" data-amt="300">300</button><button class="quick-amt" data-amt="500">500</button><button class="quick-amt" data-amt="1000">1000</button><button class="quick-amt" data-amt="2000">2000</button><button class="quick-amt" data-amt="5000">5000</button></div>
     <button class="btn btn-primary" id="confirmWithdraw">Withdraw to M‑Pesa</button>
-    <div class="modal-note" id="withdrawNote">Funds sent to your registered number after admin approval.</div>
   </div>
 </div>
 
-<!-- SURVEY FULL-SCREEN -->
+<!-- SURVEY MODAL -->
 <div class="survey-backdrop" id="surveyModal">
   <div class="survey-panel">
-    <div class="survey-topbar">
-      <button class="survey-close" id="surveyClose">✕</button>
-      <div class="survey-top-meta">
-        <div class="survey-top-title" id="surveyTitle">—</div>
-        <div class="survey-top-sub" id="surveyOwner">—</div>
-      </div>
-      <div class="survey-reward-chip" id="surveyRewardChip">KES 0</div>
-    </div>
-    <div class="survey-progress-wrap">
-      <div class="survey-progress"><div class="survey-progress-bar" id="surveyProgressBar"></div></div>
-      <div class="survey-progress-text">
-        <span id="surveyProgressText">Question 1 of 10</span>
-        <span id="surveyProgressPct">0%</span>
-      </div>
-    </div>
+    <div class="survey-topbar"><button class="survey-close" id="surveyClose">✕</button><div class="survey-top-meta"><div class="survey-top-title" id="surveyTitle">—</div><div class="survey-top-sub" id="surveyOwner">—</div></div><div class="survey-reward-chip" id="surveyRewardChip">KES 0</div></div>
+    <div class="survey-progress-wrap"><div class="survey-progress"><div class="survey-progress-bar" id="surveyProgressBar"></div></div><div class="survey-progress-text"><span id="surveyProgressText">Question 1 of 10</span><span id="surveyProgressPct">0%</span></div></div>
     <div class="survey-body" id="surveyBody"></div>
-    <div class="survey-footer" id="surveyFooter">
-      <button class="btn btn-ghost" id="surveyPrev">Back</button>
-      <button class="btn btn-primary" id="surveyNext">Next</button>
-    </div>
+    <div class="survey-footer" id="surveyFooter"><button class="btn btn-ghost" id="surveyPrev">Back</button><button class="btn btn-primary" id="surveyNext">Next</button></div>
   </div>
 </div>
 
@@ -993,10 +750,43 @@
   let survey = { task:null, questions:[], current:0, answers:[] };
   let currentSubscribeTier = null;
   let historyFilter = '';
-
-  // Cache of tier prices fetched from server
   let publicPrices = { classic: 200, premium: 350, golden: 450 };
 
+  // ══════ PREFS ══════
+  const prefsKey = 'jobpay_prefs';
+  let prefs = JSON.parse(localStorage.getItem(prefsKey) || '{}');
+  prefs = {
+    theme: prefs.theme || 'system',
+    taskDisplay: prefs.taskDisplay || 'comfortable',
+    fontSize: prefs.fontSize || 'normal',
+    accLargeText: !!prefs.accLargeText,
+    accHighContrast: !!prefs.accHighContrast,
+    accReduceAnim: !!prefs.accReduceAnim,
+    notif: prefs.notif || {},
+    language: prefs.language || 'en',
+    locationJobs: prefs.locationJobs !== false,
+    profileVis: prefs.profileVis || 'private',
+    privPersonalize: prefs.privPersonalize !== false,
+    privAnalytics: prefs.privAnalytics !== false
+  };
+  function savePrefs() { localStorage.setItem(prefsKey, JSON.stringify(prefs)); }
+  function applyPrefs() {
+    document.body.classList.remove('theme-dark','font-small','font-normal','font-large','font-xlarge','high-contrast','reduce-anim');
+    const useDark = prefs.theme === 'dark' ||
+      (prefs.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    if (useDark) document.body.classList.add('theme-dark');
+    let fs = prefs.fontSize;
+    if (prefs.accLargeText && (fs === 'normal' || fs === 'small')) fs = 'large';
+    document.body.classList.add('font-' + fs);
+    if (prefs.accHighContrast) document.body.classList.add('high-contrast');
+    if (prefs.accReduceAnim) document.body.classList.add('reduce-anim');
+  }
+  applyPrefs();
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    if (prefs.theme === 'system') applyPrefs();
+  });
+
+  // ══════ API ══════
   async function api(path, opts = {}) {
     const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
     if (token) headers.Authorization = `Bearer ${token}`;
@@ -1004,74 +794,313 @@
     const data = await res.json();
     if (!res.ok) {
       const err = new Error(data.error || data.message || 'Request failed');
-      err.code = data.error;
-      err.data = data;
-      throw err;
+      err.code = data.error; err.data = data; throw err;
     }
     return data;
   }
-
   function goTo(name) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     $('screen-' + name)?.classList.add('active');
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.screen === name));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
-
-  document.querySelectorAll('.nav-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const s = btn.dataset.screen;
-      if (s === 'dashboard') loadDashboard();
-      if (s === 'account') loadAccount();
-      if (s === 'history') loadHistory();
-      if (s === 'profile') loadProfile();
-      if (s === 'subscribe') loadPublicPrices(); // ← always refresh prices
-      goTo(s);
-    });
-  });
-
-  function showMsg(el, text, type='success') {
-    el.textContent = text;
-    el.className = `msg show ${type}`;
-  }
+  function showMsg(el, text, type='success') { el.textContent = text; el.className = `msg show ${type}`; }
   function clearMsg(el) { el.className = 'msg'; el.textContent = ''; }
 
-  // ══════ LIVE PRICE LOADER ══════
+  // ══════ DRAWER ══════
+  function openDrawer() { $('drawer').classList.add('show'); $('drawerBackdrop').classList.add('show'); }
+  function closeDrawer() { $('drawer').classList.remove('show'); $('drawerBackdrop').classList.remove('show'); }
+  $('menuBtn').addEventListener('click', openDrawer);
+  $('drawerBackdrop').addEventListener('click', closeDrawer);
+  function updateDrawer() {
+    if (!user) return;
+    $('drawerAvatar').textContent = (user.username || 'U').charAt(0).toUpperCase();
+    $('drawerName').textContent = user.username || 'User';
+    $('drawerEmail').textContent = user.email || '';
+    const st = user.accountStatus || 'active';
+    const map = { active:'🟢 Active', deactivated:'⏸️ Deactivated', suspended:'🚫 Suspended' };
+    $('drawerStatus').textContent = map[st] || '🟢 Active';
+  }
+  document.querySelectorAll('.drawer-nav button[data-section]').forEach(btn => {
+    btn.addEventListener('click', () => { const sec = btn.dataset.section; closeDrawer(); openSettings(sec); });
+  });
+  function openSettings(section) {
+    document.querySelectorAll('.settings-panel').forEach(p => p.classList.remove('show'));
+    const map = { account:'spAccount', security:'spSecurity', notifications:'spNotifications',
+      language:'spLanguage', appearance:'spAppearance', accessibility:'spAccessibility',
+      privacy:'spPrivacy', help:'spHelp' };
+    const id = map[section];
+    if (!id) return;
+    $(id).classList.add('show');
+    if (section === 'account') loadAccountSettings();
+    if (section === 'security') { loadSecuritySettings(); loadLoginHistory(); }
+    if (section === 'appearance') applyAppearanceUI();
+    if (section === 'accessibility') applyAccessibilityUI();
+    if (section === 'notifications') applyNotificationsUI();
+    if (section === 'language') applyLanguageUI();
+    if (section === 'privacy') applyPrivacyUI();
+    if (section === 'help') loadTickets();
+  }
+  document.querySelectorAll('[data-close-panel]').forEach(b => {
+    b.addEventListener('click', () => document.querySelectorAll('.settings-panel').forEach(p => p.classList.remove('show')));
+  });
+  $('drawerLogout').addEventListener('click', () => {
+    closeDrawer();
+    if (!confirm('Logout?')) return;
+    token = null; user = null;
+    localStorage.removeItem('jobpay_token'); localStorage.removeItem('jobpay_user');
+    $('headerRight').style.display = 'none'; $('bottomNav').style.display = 'none';
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    $('screen-auth').classList.add('active');
+    setAuthTab('register');
+  });
+
+  // ══════ ACCOUNT SETTINGS ══════
+  async function loadAccountSettings() {
+    try {
+      const me = await api('/api/me'); user = me;
+      $('setUsername').value = me.username || '';
+      $('setEmail').value = me.email || '';
+      $('setPhone').value = me.phone || '';
+      const map = { active:'🟢 Active', deactivated:'⏸️ Deactivated', suspended:'🚫 Suspended' };
+      $('acctStatusText').textContent = map[me.accountStatus] || '🟢 Active';
+    } catch (err) { console.error(err); }
+  }
+  $('saveProfileBtn').addEventListener('click', async () => {
+    const btn = $('saveProfileBtn'); btn.disabled = true; btn.innerHTML = '<span class="loader"></span>';
+    try {
+      const res = await api('/api/user/profile', {
+        method:'PUT', body: JSON.stringify({
+          username: $('setUsername').value.trim(),
+          email: $('setEmail').value.trim(),
+          phone: $('setPhone').value.trim()
+        })
+      });
+      user = res.user;
+      localStorage.setItem('jobpay_user', JSON.stringify(user));
+      updateDrawer(); updateHeaderPill();
+      showMsg($('acctSettingsMsg'), '✓ Profile updated', 'success');
+    } catch (err) { showMsg($('acctSettingsMsg'), err.message, 'error'); }
+    finally { btn.disabled = false; btn.textContent = 'Save Changes'; }
+  });
+  function openDanger(mode) {
+    $('dangerTitle').textContent = mode === 'delete' ? 'Delete Account Permanently' : 'Deactivate Account';
+    $('dangerSub').textContent = mode === 'delete' ? 'This cannot be undone.' : 'Your account will be hidden.';
+    $('dangerConfirmField').style.display = mode === 'delete' ? 'block' : 'none';
+    $('dangerWord').textContent = 'DELETE';
+    $('dangerConfirm').value = ''; $('dangerPw').value = '';
+    clearMsg($('dangerMsg'));
+    $('dangerConfirmBtn').dataset.mode = mode;
+    $('dangerModal').classList.add('show');
+  }
+  $('deactivateBtn').addEventListener('click', () => openDanger('deactivate'));
+  $('deleteAccountBtn').addEventListener('click', () => openDanger('delete'));
+  $('dangerConfirmBtn').addEventListener('click', async () => {
+    const mode = $('dangerConfirmBtn').dataset.mode;
+    const password = $('dangerPw').value;
+    if (!password) return showMsg($('dangerMsg'), 'Enter your password', 'error');
+    const body = { password };
+    if (mode === 'delete') {
+      body.confirm = $('dangerConfirm').value;
+      if (body.confirm !== 'DELETE') return showMsg($('dangerMsg'), 'Type DELETE to confirm', 'error');
+    }
+    const url = mode === 'delete' ? '/api/user/delete' : '/api/user/deactivate';
+    const btn = $('dangerConfirmBtn'); btn.disabled = true; btn.innerHTML = '<span class="loader"></span>';
+    try {
+      await api(url, { method:'POST', body: JSON.stringify(body) });
+      alert(mode === 'delete' ? 'Account deleted.' : 'Account deactivated.');
+      token = null; user = null;
+      localStorage.removeItem('jobpay_token'); localStorage.removeItem('jobpay_user');
+      location.reload();
+    } catch (err) { showMsg($('dangerMsg'), err.message, 'error'); btn.disabled = false; btn.textContent = 'Confirm'; }
+  });
+
+  // ══════ SECURITY ══════
+  async function loadSecuritySettings() {
+    try {
+      const me = await api('/api/me'); user = me;
+      $('twoFaToggle').checked = !!me.twoFactorEnabled;
+      $('twoFaStatus').textContent = me.twoFactorEnabled ? 'Enabled' : 'Disabled';
+      $('pinStatus').textContent = me.hasWithdrawalPin ? 'Set' : 'Not set';
+      $('setPinBtn').textContent = me.hasWithdrawalPin ? 'Change PIN' : 'Set PIN';
+    } catch (err) { console.error(err); }
+  }
+  $('changePwBtn').addEventListener('click', async () => {
+    const cur = $('curPw').value, nw = $('newPw').value, cf = $('confPw').value;
+    if (!cur || !nw || !cf) return showMsg($('secMsg'), 'All fields required', 'error');
+    if (nw !== cf) return showMsg($('secMsg'), 'New passwords do not match', 'error');
+    if (!(nw.length>=8 && /[A-Z]/.test(nw) && /[a-z]/.test(nw) && /[0-9]/.test(nw)))
+      return showMsg($('secMsg'), 'Password must be 8+ chars with uppercase, lowercase, and a number', 'error');
+    const btn = $('changePwBtn'); btn.disabled = true; btn.innerHTML = '<span class="loader"></span>';
+    try {
+      await api('/api/user/change-password', { method:'POST', body: JSON.stringify({ currentPassword: cur, newPassword: nw }) });
+      $('curPw').value = ''; $('newPw').value = ''; $('confPw').value = '';
+      showMsg($('secMsg'), '✓ Password changed successfully', 'success');
+    } catch (err) { showMsg($('secMsg'), err.message, 'error'); }
+    finally { btn.disabled = false; btn.textContent = 'Change Password'; }
+  });
+  $('twoFaToggle').addEventListener('change', async (e) => {
+    const enabled = e.target.checked;
+    try {
+      await api('/api/user/2fa', { method:'POST', body: JSON.stringify({ enabled }) });
+      $('twoFaStatus').textContent = enabled ? 'Enabled' : 'Disabled';
+      showMsg($('secMsg'), enabled ? '✓ 2FA enabled' : '✓ 2FA disabled', 'success');
+    } catch (err) { e.target.checked = !enabled; showMsg($('secMsg'), err.message, 'error'); }
+  });
+  $('setPinBtn').addEventListener('click', () => {
+    $('newPinInput').value = ''; $('pinConfirmPw').value = '';
+    clearMsg($('pinModalMsg'));
+    $('pinModal').classList.add('show');
+  });
+  $('confirmPinBtn').addEventListener('click', async () => {
+    const pin = $('newPinInput').value, pw = $('pinConfirmPw').value;
+    if (!/^\d{4,6}$/.test(pin)) return showMsg($('pinModalMsg'), 'PIN must be 4 to 6 digits', 'error');
+    if (!pw) return showMsg($('pinModalMsg'), 'Password required', 'error');
+    const btn = $('confirmPinBtn'); btn.disabled = true; btn.innerHTML = '<span class="loader"></span>';
+    try {
+      await api('/api/user/withdrawal-pin', { method:'POST', body: JSON.stringify({ pin, password: pw }) });
+      showMsg($('pinModalMsg'), '✓ Withdrawal PIN saved', 'success');
+      setTimeout(() => { $('pinModal').classList.remove('show'); loadSecuritySettings(); }, 1200);
+    } catch (err) { showMsg($('pinModalMsg'), err.message, 'error'); }
+    finally { btn.disabled = false; btn.textContent = 'Save PIN'; }
+  });
+  async function loadLoginHistory() {
+    try {
+      const items = await api('/api/user/login-history');
+      const el = $('loginHistoryList');
+      if (!items.length) { el.innerHTML = '<div style="font-size:12.5px;color:var(--gray-500);font-weight:600;">No login history.</div>'; return; }
+      el.innerHTML = items.slice(0, 6).map(i => {
+        const date = new Date(i.at);
+        const dt = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+        const device = /android/i.test(i.ua||'') ? '📱 Android' :
+                       /iphone|ipad/i.test(i.ua||'') ? '📱 iOS' :
+                       /windows/i.test(i.ua||'') ? '💻 Windows' :
+                       /mac/i.test(i.ua||'') ? '💻 Mac' : '🌐 Device';
+        return `<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--gray-100);gap:10px;"><div><div style="font-size:12.5px;font-weight:800;">${device} ${i.success?'':'· ✕ Failed'}</div><div style="font-size:11px;color:var(--gray-500);font-weight:600;">${dt} · ${i.ip||'—'}</div></div></div>`;
+      }).join('');
+    } catch (err) { console.error(err); }
+  }
+
+  // ══════ NOTIFICATIONS ══════
+  function applyNotificationsUI() {
+    document.querySelectorAll('[data-notif]').forEach(t => {
+      const k = t.dataset.notif;
+      t.checked = prefs.notif[k] !== false;
+    });
+  }
+  document.querySelectorAll('[data-notif]').forEach(t => {
+    t.addEventListener('change', () => { prefs.notif[t.dataset.notif] = t.checked; savePrefs(); });
+  });
+
+  // ══════ LANGUAGE ══════
+  function applyLanguageUI() {
+    document.getElementById(prefs.language === 'sw' ? 'langSw' : 'langEn').checked = true;
+    $('locationJobsToggle').checked = prefs.locationJobs !== false;
+  }
+  document.querySelectorAll('input[name="lang"]').forEach(r => {
+    r.addEventListener('change', () => { prefs.language = r.value; savePrefs(); document.documentElement.lang = r.value; });
+  });
+  $('locationJobsToggle').addEventListener('change', e => { prefs.locationJobs = e.target.checked; savePrefs(); });
+
+  // ══════ APPEARANCE ══════
+  function applyAppearanceUI() {
+    const t = 'theme' + prefs.theme.charAt(0).toUpperCase() + prefs.theme.slice(1);
+    const tEl = document.getElementById(t); if (tEl) tEl.checked = true;
+    document.getElementById(prefs.taskDisplay === 'compact' ? 'taskCompact' : 'taskComfort').checked = true;
+    const fsMap = { small:'fsSmall', normal:'fsNormal', large:'fsLarge', xlarge:'fsXLarge' };
+    document.getElementById(fsMap[prefs.fontSize] || 'fsNormal').checked = true;
+  }
+  document.querySelectorAll('input[name="theme"]').forEach(r => {
+    r.addEventListener('change', () => { prefs.theme = r.value; savePrefs(); applyPrefs(); });
+  });
+  document.querySelectorAll('input[name="taskDisplay"]').forEach(r => {
+    r.addEventListener('change', () => { prefs.taskDisplay = r.value; savePrefs(); });
+  });
+  document.querySelectorAll('input[name="fontSize"]').forEach(r => {
+    r.addEventListener('change', () => { prefs.fontSize = r.value; savePrefs(); applyPrefs(); });
+  });
+
+  // ══════ ACCESSIBILITY ══════
+  function applyAccessibilityUI() {
+    $('accLargeText').checked = prefs.accLargeText;
+    $('accHighContrast').checked = prefs.accHighContrast;
+    $('accReduceAnim').checked = prefs.accReduceAnim;
+  }
+  $('accLargeText').addEventListener('change', e => { prefs.accLargeText = e.target.checked; savePrefs(); applyPrefs(); });
+  $('accHighContrast').addEventListener('change', e => { prefs.accHighContrast = e.target.checked; savePrefs(); applyPrefs(); });
+  $('accReduceAnim').addEventListener('change', e => { prefs.accReduceAnim = e.target.checked; savePrefs(); applyPrefs(); });
+
+  // ══════ PRIVACY ══════
+  function applyPrivacyUI() {
+    document.getElementById(prefs.profileVis === 'public' ? 'visPublic' : 'visPrivate').checked = true;
+    $('privPersonalize').checked = prefs.privPersonalize !== false;
+    $('privAnalytics').checked = prefs.privAnalytics !== false;
+  }
+  document.querySelectorAll('input[name="profileVis"]').forEach(r => {
+    r.addEventListener('change', () => { prefs.profileVis = r.value; savePrefs(); });
+  });
+  $('privPersonalize').addEventListener('change', e => { prefs.privPersonalize = e.target.checked; savePrefs(); });
+  $('privAnalytics').addEventListener('change', e => { prefs.privAnalytics = e.target.checked; savePrefs(); });
+  $('downloadDataBtn').addEventListener('click', async () => {
+    try {
+      const [me, history, wallet] = await Promise.all([api('/api/me'), api('/api/history'), api('/api/wallet/history')]);
+      const data = { exportedAt: new Date().toISOString(), profile: { username: me.username, email: me.email, phone: me.phone, tier: me.subscriptionTier }, balance: { available: me.balance, pending: me.pendingBalance, totalEarned: me.totalEarnings }, tasks: history, transactions: wallet };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = `jobpay-data-${Date.now()}.json`; a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) { alert(err.message); }
+  });
+
+  // ══════ HELP ══════
+  document.querySelectorAll('.faq-q').forEach(q => {
+    q.addEventListener('click', () => q.parentElement.classList.toggle('open'));
+  });
+  async function loadTickets() {
+    try {
+      const items = await api('/api/support/tickets');
+      const el = $('ticketsList');
+      if (!items.length) { el.innerHTML = '<div style="font-size:12.5px;color:var(--gray-500);font-weight:600;">No tickets yet.</div>'; return; }
+      el.innerHTML = items.map(t => `<div class="ticket-item"><div class="ticket-head"><div><div class="ticket-num">#${t.ticketNumber}</div><div class="ticket-subj">${(t.subject||'').replace(/[<>&"]/g,'')}</div></div><span class="ticket-status ${t.status || 'open'}">${(t.status||'open').toUpperCase()}</span></div><div class="ticket-msg">${(t.message||'').replace(/[<>&"]/g,'').slice(0,140)}${(t.message||'').length>140?'…':''}</div></div>`).join('');
+    } catch (err) { console.error(err); }
+  }
+  $('submitTicketBtn').addEventListener('click', async () => {
+    const category = $('ticketCategory').value;
+    const subject = $('ticketSubject').value.trim();
+    const message = $('ticketMessage').value.trim();
+    if (!subject || !message) return showMsg($('ticketMsg'), 'Subject and message required', 'error');
+    const btn = $('submitTicketBtn'); btn.disabled = true; btn.innerHTML = '<span class="loader"></span>';
+    try {
+      await api('/api/support/ticket', { method:'POST', body: JSON.stringify({ category, subject, message }) });
+      showMsg($('ticketMsg'), '✓ Ticket submitted. We\'ll reply soon.', 'success');
+      $('ticketSubject').value = ''; $('ticketMessage').value = '';
+      loadTickets();
+    } catch (err) { showMsg($('ticketMsg'), err.message, 'error'); }
+    finally { btn.disabled = false; btn.textContent = 'Submit Ticket'; }
+  });
+
+  // ══════ PRICES ══════
   async function loadPublicPrices() {
     try {
       const res = await fetch('/api/prices?_=' + Date.now(), { cache: 'no-store' });
       if (!res.ok) return;
       const p = await res.json();
-      publicPrices = {
-        classic: Number(p.classic) || 200,
-        premium: Number(p.premium) || 350,
-        golden:  Number(p.golden)  || 450
-      };
-
-      // Update tier card prices using IDs (safest)
-      const priceElC = $('tierPriceClassic');
-      const priceElP = $('tierPricePremium');
-      const priceElG = $('tierPriceGolden');
-      if (priceElC) priceElC.innerHTML = `KES ${publicPrices.classic} <span>/ week</span>`;
-      if (priceElP) priceElP.innerHTML = `KES ${publicPrices.premium} <span>/ week</span>`;
-      if (priceElG) priceElG.innerHTML = `KES ${publicPrices.golden} <span>/ week</span>`;
-
-      // Update button labels
-      const btnC = $('tierBtnClassic');
-      const btnP = $('tierBtnPremium');
-      const btnG = $('tierBtnGolden');
-      if (btnC) btnC.textContent = `Upgrade – KES ${publicPrices.classic}`;
-      if (btnP) btnP.textContent = `Upgrade – KES ${publicPrices.premium}`;
-      if (btnG) btnG.textContent = `Upgrade – KES ${publicPrices.golden}`;
-
-      console.log('💵 Prices loaded:', publicPrices);
+      publicPrices = { classic: Number(p.classic) || 200, premium: Number(p.premium) || 350, golden: Number(p.golden) || 450 };
+      const setHTML = (id, html) => { const el = $(id); if (el) el.innerHTML = html; };
+      const setText = (id, txt) => { const el = $(id); if (el) el.textContent = txt; };
+      setHTML('tierPriceClassic', `KES ${publicPrices.classic} <span>/ week</span>`);
+      setHTML('tierPricePremium', `KES ${publicPrices.premium} <span>/ week</span>`);
+      setHTML('tierPriceGolden',  `KES ${publicPrices.golden} <span>/ week</span>`);
+      setText('tierBtnClassic', `Upgrade – KES ${publicPrices.classic}`);
+      setText('tierBtnPremium', `Upgrade – KES ${publicPrices.premium}`);
+      setText('tierBtnGolden',  `Upgrade – KES ${publicPrices.golden}`);
     } catch (err) { console.error('Load prices error:', err); }
   }
 
+  // ══════ AUTH ══════
   function attachToggle(btnId, inputId) {
     $(btnId).addEventListener('click', () => {
-      const inp = $(inputId);
-      const shown = inp.type === 'text';
+      const inp = $(inputId); const shown = inp.type === 'text';
       inp.type = shown ? 'password' : 'text';
       $(btnId).textContent = shown ? '👁' : '🙈';
     });
@@ -1079,7 +1108,6 @@
   attachToggle('togglePw1', 'authPassword');
   attachToggle('togglePw2', 'authConfirm');
   attachToggle('togglePwLogin', 'loginPassword');
-
   $('authPassword').addEventListener('input', () => {
     const v = $('authPassword').value;
     const checks = { len:v.length>=8, upper:/[A-Z]/.test(v), lower:/[a-z]/.test(v), num:/[0-9]/.test(v) };
@@ -1090,8 +1118,6 @@
     $('authConfirm').classList.toggle('error', cf.length > 0 && cf !== pw);
     $('authConfirm').classList.toggle('valid', cf.length > 0 && cf === pw);
   });
-
-  // ── AUTH TAB SWITCHING ──
   function setAuthTab(tab) {
     const isLogin = tab === 'login';
     $('tabRegister').classList.toggle('active', !isLogin);
@@ -1102,221 +1128,125 @@
   }
   $('tabRegister').addEventListener('click', () => setAuthTab('register'));
   $('tabLogin').addEventListener('click', () => setAuthTab('login'));
-
   async function register() {
     const username = $('authUsername').value.trim();
     const email = $('authEmail').value.trim();
     const phone = $('authPhone').value.trim();
     const password = $('authPassword').value;
     const confirmPassword = $('authConfirm').value;
-    if (!username || !email || !phone || !password || !confirmPassword)
-      return showMsg($('authMsg'), 'Please fill all fields', 'error');
-    if (password !== confirmPassword)
-      return showMsg($('authMsg'), 'Passwords do not match', 'error');
+    if (!username || !email || !phone || !password || !confirmPassword) return showMsg($('authMsg'), 'Please fill all fields', 'error');
+    if (password !== confirmPassword) return showMsg($('authMsg'), 'Passwords do not match', 'error');
     if (!(password.length>=8 && /[A-Z]/.test(password) && /[a-z]/.test(password) && /[0-9]/.test(password)))
       return showMsg($('authMsg'), 'Password must be 8+ chars with uppercase, lowercase, and a number', 'error');
-
     try {
-      $('btnRegister').disabled = true;
-      $('btnRegister').innerHTML = '<span class="loader"></span>';
-      const data = await api('/api/register', {
-        method:'POST',
-        body: JSON.stringify({ username, email, phone, password, confirmPassword })
-      });
+      $('btnRegister').disabled = true; $('btnRegister').innerHTML = '<span class="loader"></span>';
+      const data = await api('/api/register', { method:'POST', body: JSON.stringify({ username, email, phone, password, confirmPassword }) });
       token = data.token; user = data.user;
-      localStorage.setItem('jobpay_token', token);
-      localStorage.setItem('jobpay_user', JSON.stringify(user));
+      localStorage.setItem('jobpay_token', token); localStorage.setItem('jobpay_user', JSON.stringify(user));
       enterApp();
-    } catch (err) {
-      showMsg($('authMsg'), err.message, 'error');
-    } finally {
-      $('btnRegister').disabled = false;
-      $('btnRegister').textContent = 'Create Account';
-    }
+    } catch (err) { showMsg($('authMsg'), err.message, 'error'); }
+    finally { $('btnRegister').disabled = false; $('btnRegister').textContent = 'Create Account'; }
   }
-
   async function login() {
     const email = $('loginEmail').value.trim();
     const password = $('loginPassword').value;
     if (!email || !password) return showMsg($('authMsg'), 'Enter email and password', 'error');
     try {
-      $('btnLogin').disabled = true;
-      $('btnLogin').innerHTML = '<span class="loader"></span>';
+      $('btnLogin').disabled = true; $('btnLogin').innerHTML = '<span class="loader"></span>';
       const data = await api('/api/login', { method:'POST', body: JSON.stringify({ email, password }) });
       token = data.token; user = data.user;
-      localStorage.setItem('jobpay_token', token);
-      localStorage.setItem('jobpay_user', JSON.stringify(user));
+      localStorage.setItem('jobpay_token', token); localStorage.setItem('jobpay_user', JSON.stringify(user));
       enterApp();
-    } catch (err) {
-      showMsg($('authMsg'), err.message, 'error');
-    } finally {
-      $('btnLogin').disabled = false;
-      $('btnLogin').textContent = 'Login';
-    }
+    } catch (err) { showMsg($('authMsg'), err.message, 'error'); }
+    finally { $('btnLogin').disabled = false; $('btnLogin').textContent = 'Login'; }
   }
-
   $('btnRegister').addEventListener('click', register);
   $('btnLogin').addEventListener('click', login);
-
   function enterApp() {
     $('screen-auth').classList.remove('active');
     $('headerRight').style.display = 'flex';
     $('bottomNav').style.display = 'flex';
-    updateHeaderPill();
+    updateHeaderPill(); updateDrawer();
     loadDashboard();
     goTo('dashboard');
   }
-
   function updateHeaderPill() {
     const tier = user?.subscriptionTier || 'free';
-    const pill = $('tierPill');
-    pill.className = 'pill';
+    const pill = $('tierPill'); pill.className = 'pill';
     if (tier === 'classic') { pill.classList.add('green'); pill.textContent = 'Classic'; }
     else if (tier === 'premium') { pill.classList.add('blue'); pill.textContent = 'Premium'; }
     else if (tier === 'golden') { pill.classList.add('gold'); pill.textContent = 'Golden'; }
     else { pill.textContent = 'Free'; }
   }
-
-  $('logoutBtn').addEventListener('click', () => {
-    token = null; user = null;
-    localStorage.removeItem('jobpay_token'); localStorage.removeItem('jobpay_user');
-    $('headerRight').style.display = 'none'; $('bottomNav').style.display = 'none';
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    $('screen-auth').classList.add('active');
-    setAuthTab('register');
-    ['authUsername','authEmail','authPhone','authPassword','authConfirm','loginEmail','loginPassword'].forEach(id => {
-      const el = $(id); if (el) el.value = '';
+  document.querySelectorAll('.nav-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const s = btn.dataset.screen;
+      if (s === 'dashboard') loadDashboard();
+      if (s === 'account') loadAccount();
+      if (s === 'history') loadHistory();
+      if (s === 'profile') loadProfile();
+      if (s === 'subscribe') loadPublicPrices();
+      goTo(s);
     });
   });
 
+  // ══════ DASHBOARD ══════
   async function loadDashboard(page = 1, append = false) {
     try {
       if (!append) currentPage = 1;
       const me = await api('/api/me');
-      user = me;
-      localStorage.setItem('jobpay_user', JSON.stringify(me));
-      updateHeaderPill();
-
+      user = me; localStorage.setItem('jobpay_user', JSON.stringify(me));
+      updateHeaderPill(); updateDrawer();
       $('dashBalance').textContent = `KES ${(me.balance||0).toLocaleString()}`;
       $('dashPending').textContent = `KES ${(me.pendingBalance||0).toLocaleString()}`;
       $('dashEarned').textContent = `Earned: KES ${(me.totalEarnings||0).toLocaleString()}`;
       $('dashDone').textContent = `${me.tasksCompletedToday||0} of ${me.dailyLimit||0} today`;
-
       const body = $('subStatusBody');
       if (me.subscriptionTier === 'free') {
-        body.innerHTML = `
-          <div style="text-align:center;padding:8px 0;">
-            <div style="font-size:13px;color:var(--gray-700);font-weight:700;margin-bottom:6px;">
-              🎁 You're on the Free plan
-            </div>
-            <div style="font-size:12px;color:var(--gray-500);font-weight:600;margin-bottom:14px;">
-              ${me.tasksRemaining} unlocked task${me.tasksRemaining!==1?'s':''} left today (KES 21 each).
-              Unlock up to 50+ daily tasks with an upgrade.
-            </div>
-            <button class="btn btn-primary" onclick="document.querySelector('[data-screen=subscribe]').click()">View Upgrade Plans</button>
-          </div>`;
+        body.innerHTML = `<div style="text-align:center;padding:8px 0;"><div style="font-size:13px;color:var(--gray-700);font-weight:700;margin-bottom:6px;">🎁 You're on the Free plan</div><div style="font-size:12px;color:var(--gray-500);font-weight:600;margin-bottom:14px;">${me.tasksRemaining} unlocked task${me.tasksRemaining!==1?'s':''} left today (KES 21 each).</div><button class="btn btn-primary" onclick="document.querySelector('[data-screen=subscribe]').click()">View Upgrade Plans</button></div>`;
       } else {
         const expiry = new Date(me.subscriptionExpiry);
         const daysLeft = Math.ceil((expiry - new Date()) / 86400000);
-        body.innerHTML = `
-          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-100);">
-            <span style="color:var(--gray-500);font-weight:600;">Plan</span>
-            <span style="font-weight:800;color:var(--green);text-transform:capitalize;">${me.subscriptionTier}</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-100);">
-            <span style="color:var(--gray-500);font-weight:600;">Daily unlock</span>
-            <span style="font-weight:800;">${me.dailyLimit} tasks</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;padding:8px 0;">
-            <span style="color:var(--gray-500);font-weight:600;">Expires in</span>
-            <span style="font-weight:800;color:${daysLeft<=2?'var(--red)':'var(--green)'};">${daysLeft} day${daysLeft!==1?'s':''}</span>
-          </div>`;
+        body.innerHTML = `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-100);"><span style="color:var(--gray-500);font-weight:600;">Plan</span><span style="font-weight:800;color:var(--green);text-transform:capitalize;">${me.subscriptionTier}</span></div><div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-100);"><span style="color:var(--gray-500);font-weight:600;">Daily unlock</span><span style="font-weight:800;">${me.dailyLimit} tasks</span></div><div style="display:flex;justify-content:space-between;padding:8px 0;"><span style="color:var(--gray-500);font-weight:600;">Expires in</span><span style="font-weight:800;color:${daysLeft<=2?'var(--red)':'var(--green)'};">${daysLeft} day${daysLeft!==1?'s':''}</span></div>`;
       }
-
       const data = await api(`/api/tasks?page=${page}&size=50&type=${currentType}`);
       totalTaskCount = data.totalCount;
       $('taskCount').textContent = totalTaskCount.toLocaleString();
-
       const html = data.tasks.map(t => renderTaskCard(t)).join('');
       const list = $('taskList');
       if (append) list.insertAdjacentHTML('beforeend', html);
-      else list.innerHTML = html || `<div class="card"><div class="empty"><div class="empty-icon">📋</div>
-        <div class="empty-title">No tasks</div>
-        <div class="empty-text">Try a different filter.</div></div></div>`;
-
+      else list.innerHTML = html || `<div class="card"><div class="empty"><div class="empty-icon">📋</div><div class="empty-title">No tasks</div></div></div>`;
       const loaded = (page - 1) * 50 + data.tasks.length;
       $('loadMoreBtn').style.display = loaded < totalTaskCount ? 'block' : 'none';
-
       list.querySelectorAll('.task-action button').forEach(btn => {
-        if (btn.dataset.bound) return;
-        btn.dataset.bound = '1';
-        const status = btn.dataset.status;
-        const taskId = btn.dataset.taskId;
+        if (btn.dataset.bound) return; btn.dataset.bound = '1';
+        const status = btn.dataset.status, taskId = btn.dataset.taskId;
         btn.addEventListener('click', () => {
-          if (status === 'locked') return openModal('upgradeModal');
+          if (status === 'locked') return $('upgradeModal').classList.add('show');
           if (status === 'completed') return;
           startSurvey(Number(taskId));
         });
       });
     } catch (err) { console.error('Dashboard error:', err); }
   }
-
   function renderTaskCard(t) {
     const lockIcon = t.status === 'unlocked' ? '▶' : t.status === 'completed' ? '✓' : '🔒';
     const lockCls  = t.status === 'unlocked' ? 'unlocked' : t.status === 'completed' ? 'unlocked' : 'locked-badge';
     const cardCls  = `task ${t.status === 'locked' ? 'locked' : ''} ${t.status === 'completed' ? 'completed' : ''}`;
-    const action = t.status === 'unlocked'
-      ? `<button class="btn-start" data-task-id="${t.id}" data-status="unlocked">Start Task ▶</button>`
-      : t.status === 'completed'
-      ? `<button class="btn-done" data-task-id="${t.id}" data-status="completed">✓ Completed today</button>`
+    const action = t.status === 'unlocked' ? `<button class="btn-start" data-task-id="${t.id}" data-status="unlocked">Start Task ▶</button>`
+      : t.status === 'completed' ? `<button class="btn-done" data-task-id="${t.id}" data-status="completed">✓ Completed today</button>`
       : `<button class="btn-locked" data-task-id="${t.id}" data-status="locked">🔒 Upgrade to unlock</button>`;
-
-    return `
-      <div class="${cardCls}">
-        <div class="task-owner">
-          <div class="owner-avatar" style="background:${t.owner.color}20;color:${t.owner.color};">
-            ${t.owner.avatar}
-          </div>
-          <div class="owner-info">
-            <div class="owner-name">${t.owner.name}</div>
-            <div class="owner-meta">
-              <span>📍 ${t.owner.country}</span>
-              <span>⭐ ${t.owner.rating}</span>
-            </div>
-          </div>
-          <div class="lock-badge ${lockCls}">${lockIcon}</div>
-        </div>
-        <div class="task-body">
-          <div class="task-type-row">
-            <span class="task-type ${t.type}">${t.type}</span>
-            <span class="task-reward">KES ${t.reward}</span>
-          </div>
-          <div class="task-title">${t.title}</div>
-          <div class="task-desc">${t.description}</div>
-          <div class="task-meta">
-            <span>⏱ ${t.time}</span>
-            <span>❓ ${t.questions} questions</span>
-            <span>🎯 ${t.difficulty}</span>
-          </div>
-        </div>
-        <div class="task-action">${action}</div>
-      </div>`;
+    return `<div class="${cardCls}"><div class="task-owner"><div class="owner-avatar" style="background:${t.owner.color}20;color:${t.owner.color};">${t.owner.avatar}</div><div class="owner-info"><div class="owner-name">${t.owner.name}</div><div class="owner-meta"><span>📍 ${t.owner.country}</span><span>⭐ ${t.owner.rating}</span></div></div><div class="lock-badge ${lockCls}">${lockIcon}</div></div><div class="task-body"><div class="task-type-row"><span class="task-type ${t.type}">${t.type}</span><span class="task-reward">KES ${t.reward}</span></div><div class="task-title">${t.title}</div><div class="task-desc">${t.description}</div><div class="task-meta"><span>⏱ ${t.time}</span><span>❓ ${t.questions} questions</span><span>🎯 ${t.difficulty}</span></div></div><div class="task-action">${action}</div></div>`;
   }
-
-  $('loadMoreBtn').addEventListener('click', () => {
-    currentPage++;
-    loadDashboard(currentPage, true);
-  });
-
+  $('loadMoreBtn').addEventListener('click', () => { currentPage++; loadDashboard(currentPage, true); });
   document.querySelectorAll('.filter-chip[data-type]').forEach(chip => {
     chip.addEventListener('click', () => {
       document.querySelectorAll('.filter-chip[data-type]').forEach(c => c.classList.remove('active'));
-      chip.classList.add('active');
-      currentType = chip.dataset.type;
-      loadDashboard();
+      chip.classList.add('active'); currentType = chip.dataset.type; loadDashboard();
     });
   });
 
+  // ══════ SURVEY ══════
   async function startSurvey(taskId) {
     try {
       const data = await api(`/api/tasks/${taskId}`);
@@ -1326,10 +1256,9 @@
       $('surveyRewardChip').textContent = `KES ${data.task.reward}`;
       $('surveyFooter').style.display = 'flex';
       renderSurveyQuestion();
-      openModal('surveyModal');
+      $('surveyModal').classList.add('show');
     } catch (err) { alert(err.message); }
   }
-
   function renderSurveyQuestion() {
     const { questions, current, answers } = survey;
     const q = questions[current];
@@ -1337,66 +1266,29 @@
     $('surveyProgressBar').style.width = pct + '%';
     $('surveyProgressText').textContent = `Question ${current + 1} of ${questions.length}`;
     $('surveyProgressPct').textContent = pct + '%';
-
-    $('surveyBody').innerHTML = `
-      <div class="survey-q">${q.question}</div>
-      <div class="survey-options">
-        ${q.options.map((opt, i) => `
-          <button class="survey-opt ${answers[current] === i ? 'selected' : ''}" data-i="${i}">
-            <span class="opt-radio"></span>
-            <span>${opt}</span>
-          </button>
-        `).join('')}
-      </div>`;
-
+    $('surveyBody').innerHTML = `<div class="survey-q">${q.question}</div><div class="survey-options">${q.options.map((opt,i)=>`<button class="survey-opt ${answers[current]===i?'selected':''}" data-i="${i}"><span class="opt-radio"></span><span>${opt}</span></button>`).join('')}</div>`;
     $('surveyBody').querySelectorAll('.survey-opt').forEach(btn => {
-      btn.addEventListener('click', () => {
-        survey.answers[current] = Number(btn.dataset.i);
-        renderSurveyQuestion();
-      });
+      btn.addEventListener('click', () => { survey.answers[current] = Number(btn.dataset.i); renderSurveyQuestion(); });
     });
-
     $('surveyPrev').style.visibility = current === 0 ? 'hidden' : 'visible';
     $('surveyNext').textContent = current === questions.length - 1 ? 'Finish & Submit' : 'Next';
   }
-
-  $('surveyPrev').addEventListener('click', () => {
-    if (survey.current > 0) { survey.current--; renderSurveyQuestion(); }
-  });
-
+  $('surveyPrev').addEventListener('click', () => { if (survey.current > 0) { survey.current--; renderSurveyQuestion(); } });
   $('surveyNext').addEventListener('click', async () => {
-    if (survey.answers[survey.current] == null) {
-      return alert('Please select an answer to continue.');
-    }
-    if (survey.current < survey.questions.length - 1) {
-      survey.current++;
-      return renderSurveyQuestion();
-    }
-    const btn = $('surveyNext');
-    btn.disabled = true; btn.innerHTML = '<span class="loader"></span>';
+    if (survey.answers[survey.current] == null) return alert('Please select an answer.');
+    if (survey.current < survey.questions.length - 1) { survey.current++; return renderSurveyQuestion(); }
+    const btn = $('surveyNext'); btn.disabled = true; btn.innerHTML = '<span class="loader"></span>';
     try {
-      const res = await api(`/api/tasks/${survey.task.id}/complete`, {
-        method:'POST',
-        body: JSON.stringify({ answers: survey.answers })
-      });
+      const res = await api(`/api/tasks/${survey.task.id}/complete`, { method:'POST', body: JSON.stringify({ answers: survey.answers }) });
       showSurveySuccess(res.reward);
-    } catch (err) {
-      alert(err.message);
-      btn.disabled = false; btn.textContent = 'Finish & Submit';
-    }
+    } catch (err) { alert(err.message); btn.disabled = false; btn.textContent = 'Finish & Submit'; }
   });
-
-  function sprinkleFlowers(durationMs = 5500) {
-    const container = document.createElement('div');
-    container.className = 'flower-sprinkle';
+  function sprinkleFlowers() {
+    const container = document.createElement('div'); container.className = 'flower-sprinkle';
     document.body.appendChild(container);
-
     const flowers = ['🌸','🌺','🌼','🌻','🌷','💐','🌹','🏵️','💮','🌾','🎉','✨'];
-    const total = 45;
-
-    for (let i = 0; i < total; i++) {
-      const f = document.createElement('div');
-      f.className = 'flower';
+    for (let i = 0; i < 45; i++) {
+      const f = document.createElement('div'); f.className = 'flower';
       f.textContent = flowers[Math.floor(Math.random() * flowers.length)];
       f.style.left = (Math.random() * 100) + '%';
       f.style.fontSize = (16 + Math.random() * 26) + 'px';
@@ -1404,459 +1296,248 @@
       f.style.animationDelay = (Math.random() * 1.8) + 's';
       container.appendChild(f);
     }
-
-    setTimeout(() => container.remove(), durationMs);
+    setTimeout(() => container.remove(), 5500);
   }
-
   function showSurveySuccess(reward) {
-    $('surveyProgressBar').style.width = '100%';
-    $('surveyProgressPct').textContent = '100%';
+    $('surveyProgressBar').style.width = '100%'; $('surveyProgressPct').textContent = '100%';
     $('surveyProgressText').textContent = 'Completed';
     $('surveyFooter').style.display = 'none';
-
-    $('surveyBody').innerHTML = `
-      <div class="survey-success">
-        <div class="success-icon" style="background:linear-gradient(135deg,#43B02A,#7AC943);">🎉</div>
-        <div class="success-title celebrate">Congratulations!</div>
-        <div style="font-size:15px;font-weight:800;color:var(--green-dark);margin:2px 0 6px;">
-          You have completed the task!
-        </div>
-        <div class="success-amount pending" style="color:#D4901A;">KES ${reward}</div>
-        <div class="success-sub">
-          Your reward is <strong>pending admin confirmation</strong>.<br>
-          It will be added to your Available Balance once approved.
-        </div>
-        <button class="btn btn-primary" id="successDone" style="width:100%;">Back to Tasks</button>
-      </div>`;
-
+    $('surveyBody').innerHTML = `<div class="survey-success"><div class="success-icon" style="background:linear-gradient(135deg,#43B02A,#7AC943);">🎉</div><div class="success-title celebrate">Congratulations!</div><div style="font-size:15px;font-weight:800;color:var(--green-dark);margin:2px 0 6px;">You have completed the task!</div><div class="success-amount" style="color:#D4901A;">KES ${reward}</div><div class="success-sub">Your reward is <strong>pending admin confirmation</strong>.<br>It will be added to your Available Balance once approved.</div><button class="btn btn-primary" id="successDone" style="width:100%;">Back to Tasks</button></div>`;
     sprinkleFlowers();
-
     $('successDone').addEventListener('click', () => {
-      closeModal('surveyModal');
-      $('surveyFooter').style.display = 'flex';
-      loadDashboard();
-      goTo('dashboard');
+      $('surveyModal').classList.remove('show'); $('surveyFooter').style.display = 'flex';
+      loadDashboard(); goTo('dashboard');
     });
   }
-
   $('surveyClose').addEventListener('click', () => {
-    if (survey.current > 0 || survey.answers.some(a => a !== null)) {
-      if (!confirm('Quit this survey? Your progress will be lost.')) return;
-    }
-    closeModal('surveyModal');
-    $('surveyFooter').style.display = 'flex';
+    if (survey.current > 0 || survey.answers.some(a => a !== null)) { if (!confirm('Quit this survey?')) return; }
+    $('surveyModal').classList.remove('show'); $('surveyFooter').style.display = 'flex';
   });
 
+  // ══════ HISTORY ══════
   async function loadHistory() {
     try {
-      const [taskList, walletData] = await Promise.all([
-        api('/api/history'),
-        api('/api/wallet/history')
-      ]);
-
-      const taskEntries = (taskList || []).map(h => ({
-        _kind: 'task',
-        id: h.id,
-        title: h.taskTitle,
-        owner: h.owner,
-        reward: h.reward,
-        answersCount: h.answersCount,
-        status: h.status,
-        at: new Date(h.completedAt)
-      }));
-
-      const subEntries = (walletData.paymentTransactions || [])
-        .filter(t => t.kind === 'subscription')
-        .map(t => {
-          const ageMs = Date.now() - new Date(t.createdAt).getTime();
-          let status = t.status;
-          if (status === 'pending' && ageMs > 5 * 60 * 1000) status = 'failed';
-          return {
-            _kind: 'subscription',
-            id: t.id,
-            tier: t.tier || 'subscription',
-            amount: t.amount,
-            status,
-            at: new Date(t.createdAt)
-          };
-        });
-
+      const [taskList, walletData] = await Promise.all([api('/api/history'), api('/api/wallet/history')]);
+      const taskEntries = (taskList || []).map(h => ({ _kind:'task', id:h.id, title:h.taskTitle, owner:h.owner, reward:h.reward, answersCount:h.answersCount, status:h.status, at:new Date(h.completedAt) }));
+      const subEntries = (walletData.paymentTransactions || []).filter(t => t.kind === 'subscription').map(t => {
+        const ageMs = Date.now() - new Date(t.createdAt).getTime();
+        let status = t.status;
+        if (status === 'pending' && ageMs > 5*60*1000) status = 'failed';
+        return { _kind:'subscription', id:t.id, tier:t.tier||'subscription', amount:t.amount, status, at:new Date(t.createdAt) };
+      });
       let entries = [...taskEntries, ...subEntries];
       if (historyFilter === 'tasks') entries = taskEntries;
       if (historyFilter === 'subscriptions') entries = subEntries;
-      entries.sort((a, b) => b.at - a.at);
-
+      entries.sort((a,b) => b.at - a.at);
       const el = $('historyList');
-      if (!entries.length) {
-        el.innerHTML = `<div class="card"><div class="empty">
-          <div class="empty-icon">📜</div>
-          <div class="empty-title">Nothing here yet</div>
-          <div class="empty-text">Complete a task or upgrade your plan to see activity.</div>
-        </div></div>`;
-        return;
-      }
-
+      if (!entries.length) { el.innerHTML = `<div class="card"><div class="empty"><div class="empty-icon">📜</div><div class="empty-title">Nothing here yet</div></div></div>`; return; }
       el.innerHTML = entries.map(e => {
         const date = e.at.toLocaleDateString() + ' • ' + e.at.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
         const pillCls = { completed:'green', failed:'red', pending:'yellow' }[e.status] || 'gray';
         const pillLabel = { completed:'✓ Confirmed', failed:'✕ Failed', pending:'⏳ Pending' }[e.status] || e.status;
-
         if (e._kind === 'task') {
-          const taskPillLabel = { completed:'✓ Confirmed', failed:'✕ Rejected', pending:'⏳ Pending' }[e.status] || e.status;
-          return `
-            <div class="hist-item">
-              <div class="hist-avatar" style="background:${e.owner?.color || '#43B02A'}20;color:${e.owner?.color || '#43B02A'};">
-                ${e.owner?.avatar || '📋'}
-              </div>
-              <div class="hist-body">
-                <div class="hist-title">${e.title}</div>
-                <div class="hist-meta">${date} • ${e.answersCount} answers</div>
-                <span class="pill ${pillCls}" style="font-size:9px;padding:2px 7px;margin-top:4px;display:inline-block;">${taskPillLabel}</span>
-              </div>
-              <div class="hist-reward">+KES ${e.reward}</div>
-            </div>`;
-        } else {
-          const tierName = e.tier.charAt(0).toUpperCase() + e.tier.slice(1);
-          return `
-            <div class="hist-item">
-              <div class="hist-avatar sub">⭐</div>
-              <div class="hist-body">
-                <div class="hist-title">${tierName} Upgrade</div>
-                <div class="hist-meta">${date} • 7‑day subscription</div>
-                <span class="pill ${pillCls}" style="font-size:9px;padding:2px 7px;margin-top:4px;display:inline-block;">${pillLabel}</span>
-              </div>
-              <div class="hist-reward">-KES ${e.amount.toLocaleString()}</div>
-            </div>`;
+          const tl = { completed:'✓ Confirmed', failed:'✕ Rejected', pending:'⏳ Pending' }[e.status] || e.status;
+          return `<div class="hist-item"><div class="hist-avatar" style="background:${e.owner?.color||'#43B02A'}20;color:${e.owner?.color||'#43B02A'};">${e.owner?.avatar||'📋'}</div><div class="hist-body"><div class="hist-title">${e.title}</div><div class="hist-meta">${date} • ${e.answersCount} answers</div><span class="pill ${pillCls}" style="font-size:9px;padding:2px 7px;margin-top:4px;display:inline-block;">${tl}</span></div><div class="hist-reward">+KES ${e.reward}</div></div>`;
         }
+        const tierName = e.tier.charAt(0).toUpperCase() + e.tier.slice(1);
+        return `<div class="hist-item"><div class="hist-avatar sub">⭐</div><div class="hist-body"><div class="hist-title">${tierName} Upgrade</div><div class="hist-meta">${date} • 7‑day subscription</div><span class="pill ${pillCls}" style="font-size:9px;padding:2px 7px;margin-top:4px;display:inline-block;">${pillLabel}</span></div><div class="hist-reward">-KES ${e.amount.toLocaleString()}</div></div>`;
       }).join('');
     } catch (err) { console.error(err); }
   }
-
   document.querySelectorAll('.filter-chip[data-hfilter]').forEach(chip => {
     chip.addEventListener('click', () => {
       document.querySelectorAll('.filter-chip[data-hfilter]').forEach(c => c.classList.remove('active'));
-      chip.classList.add('active');
-      historyFilter = chip.dataset.hfilter;
-      loadHistory();
+      chip.classList.add('active'); historyFilter = chip.dataset.hfilter; loadHistory();
     });
   });
 
+  // ══════ ACCOUNT ══════
   async function loadAccount() {
     try {
-      const me = await api('/api/me');
-      user = me;
+      const me = await api('/api/me'); user = me;
       $('acctBalance').innerHTML = `<small>KES</small>${(me.balance||0).toLocaleString()}.00`;
       $('acctPending').textContent = `KES ${(me.pendingBalance||0).toLocaleString()}`;
       $('acctTotal').textContent = `KES ${(me.totalEarnings||0).toLocaleString()}`;
-      $('withdrawNote').innerHTML = `Funds sent to <strong>${me.phone}</strong> after admin approval.`;
-
       const data = await api('/api/wallet/history');
-
-      const deposits = (data.paymentTransactions || [])
-        .filter(t => t.kind === 'deposit')
-        .map(t => ({ ...t, _type:'deposit' }));
-
-      const withdrawals = (data.walletTransactions || [])
-        .filter(t => t.type === 'withdrawal')
-        .map(t => ({ ...t, _type:'withdrawal' }));
-
-      const all = [...deposits, ...withdrawals].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
+      const deposits = (data.paymentTransactions || []).filter(t => t.kind === 'deposit').map(t => ({ ...t, _type:'deposit' }));
+      const withdrawals = (data.walletTransactions || []).filter(t => t.type === 'withdrawal').map(t => ({ ...t, _type:'withdrawal' }));
+      const all = [...deposits, ...withdrawals].sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
       const list = $('txList');
-      if (!all.length) {
-        list.innerHTML = `<div class="empty" style="padding:20px 0;">
-          <div class="empty-text">No deposits or withdrawals yet.</div>
-        </div>`;
-        return;
-      }
-
+      if (!all.length) { list.innerHTML = `<div class="empty" style="padding:20px 0;"><div class="empty-text">No deposits or withdrawals yet.</div></div>`; return; }
       list.innerHTML = all.map(tx => {
         const d = new Date(tx.createdAt);
         const date = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
         const ageMs = Date.now() - d.getTime();
-
         let displayStatus = tx.status;
-        if (tx._type === 'deposit' && tx.status === 'pending' && ageMs > 5 * 60 * 1000) displayStatus = 'failed';
-
+        if (tx._type === 'deposit' && tx.status === 'pending' && ageMs > 5*60*1000) displayStatus = 'failed';
         let label, amountCls, amountTxt;
-        if (tx._type === 'deposit') {
-          label = '💳 Deposit';
-          amountCls = 'positive';
-          amountTxt = `+KES ${tx.amount.toLocaleString()}`;
-        } else {
-          label = '💸 Withdrawal';
-          amountCls = 'negative';
-          amountTxt = `-KES ${Math.abs(tx.amount).toLocaleString()}`;
-        }
-
+        if (tx._type === 'deposit') { label = '💳 Deposit'; amountCls = 'positive'; amountTxt = `+KES ${tx.amount.toLocaleString()}`; }
+        else { label = '💸 Withdrawal'; amountCls = 'negative'; amountTxt = `-KES ${Math.abs(tx.amount).toLocaleString()}`; }
         const pillCls = { completed:'green', failed:'red', pending:'yellow' }[displayStatus] || 'gray';
         const pillLabel = { completed:'✓ Successful', failed:'✕ Failed', pending:'⏳ Pending' }[displayStatus] || displayStatus;
-
-        return `
-          <div class="tx-row">
-            <div class="tx-left">
-              <div class="tx-label">${label}</div>
-              <div class="tx-sub">${date}</div>
-              <span class="pill ${pillCls}" style="align-self:flex-start;font-size:9px;padding:2px 7px;">${pillLabel}</span>
-            </div>
-            <div class="tx-amount ${amountCls}">${amountTxt}</div>
-          </div>`;
+        return `<div class="tx-row"><div class="tx-left"><div class="tx-label">${label}</div><div class="tx-sub">${date}</div><span class="pill ${pillCls}" style="align-self:flex-start;font-size:9px;padding:2px 7px;">${pillLabel}</span></div><div class="tx-amount ${amountCls}">${amountTxt}</div></div>`;
       }).join('');
     } catch (err) { console.error(err); }
   }
 
-  function openModal(id) { $(id).classList.add('show'); }
-  function closeModal(id) { $(id).classList.remove('show'); }
+  // ══════ PROFILE ══════
+  async function loadProfile() {
+    try {
+      const me = await api('/api/me');
+      $('profileBody').innerHTML = `<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--gray-100);"><span style="color:var(--gray-500);font-weight:600;">Username</span><span style="font-weight:800;">${me.username}</span></div><div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--gray-100);"><span style="color:var(--gray-500);font-weight:600;">Email</span><span style="font-weight:800;font-size:13px;">${me.email}</span></div><div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--gray-100);"><span style="color:var(--gray-500);font-weight:600;">Phone</span><span style="font-weight:800;">${me.phone || '—'}</span></div><div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--gray-100);"><span style="color:var(--gray-500);font-weight:600;">Plan</span><span style="font-weight:800;color:var(--green);text-transform:capitalize;">${me.subscriptionTier}</span></div><div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--gray-100);"><span style="color:var(--gray-500);font-weight:600;">Activation</span><span style="font-weight:800;color:${me.activationFeePaid ? 'var(--green)' : 'var(--red)'};">${me.activationFeePaid ? '✓ Paid' : '✗ Not paid'}</span></div><div style="display:flex;justify-content:space-between;padding:10px 0;"><span style="color:var(--gray-500);font-weight:600;">Balance</span><span style="font-weight:800;">KES ${(me.balance||0).toLocaleString()}</span></div>`;
+    } catch (err) { console.error(err); }
+  }
 
+  // ══════ MODAL HELPERS ══════
   document.querySelectorAll('[data-close]').forEach(btn => {
-    btn.addEventListener('click', () => closeModal(btn.dataset.close));
+    btn.addEventListener('click', () => $(btn.dataset.close).classList.remove('show'));
   });
   document.querySelectorAll('.modal-backdrop').forEach(m => {
     m.addEventListener('click', e => { if (e.target === m) m.classList.remove('show'); });
   });
-  $('upgradeFromModal').addEventListener('click', () => {
-    closeModal('upgradeModal');
-    goTo('subscribe');
-    loadPublicPrices();
-  });
+  $('upgradeFromModal').addEventListener('click', () => { $('upgradeModal').classList.remove('show'); goTo('subscribe'); loadPublicPrices(); });
 
-  // ── SUBSCRIBE FLOW ──
+  // ══════ SUBSCRIBE ══════
   document.querySelectorAll('.tier-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       currentSubscribeTier = btn.dataset.tier;
       const names = { classic:'Classic', premium:'Premium', golden:'Golden' };
-
-      $('subTierName').textContent  = names[currentSubscribeTier];
+      $('subTierName').textContent = names[currentSubscribeTier];
       $('subTierPrice').textContent = publicPrices[currentSubscribeTier];
       $('subPhone').value = user?.phone || '';
       clearMsg($('subModalMsg'));
       $('subModalForm').style.display = 'block';
-      $('confirmSubscribe').disabled = false;
-      $('confirmSubscribe').textContent = 'Send STK Push';
-      openModal('subscribeModal');
+      $('confirmSubscribe').disabled = false; $('confirmSubscribe').textContent = 'Send STK Push';
+      $('subscribeModal').classList.add('show');
     });
   });
-
   $('confirmSubscribe').addEventListener('click', async () => {
-    if (!currentSubscribeTier) return;
     const phone = $('subPhone').value.trim();
     if (!phone) return showMsg($('subModalMsg'), 'Please enter your M‑Pesa number', 'error');
-
-    const btn = $('confirmSubscribe');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="loader"></span>';
-
+    const btn = $('confirmSubscribe'); btn.disabled = true; btn.innerHTML = '<span class="loader"></span>';
     try {
-      const data = await api('/api/subscribe', {
-        method: 'POST',
-        body: JSON.stringify({ tier: currentSubscribeTier, phone })
-      });
-
-      showMsg($('subModalMsg'),
-        `📲 STK push sent to ${data.phone}. Check your phone and enter your M‑Pesa PIN to complete payment.`,
-        'success');
-
+      const data = await api('/api/subscribe', { method:'POST', body: JSON.stringify({ tier: currentSubscribeTier, phone }) });
+      showMsg($('subModalMsg'), `📲 STK push sent to ${data.phone}. Check your phone.`, 'success');
       btn.textContent = 'Waiting for payment…';
-      btn.disabled = true;
-
-      let attempts = 0;
-      const tier = currentSubscribeTier;
+      let attempts = 0; const tier = currentSubscribeTier;
       const poll = setInterval(async () => {
         attempts++;
         try {
           const me = await api('/api/me');
           if (me.subscriptionTier === tier && me.subscriptionExpiry) {
-            clearInterval(poll);
-            user = me;
-            localStorage.setItem('jobpay_user', JSON.stringify(me));
+            clearInterval(poll); user = me; localStorage.setItem('jobpay_user', JSON.stringify(me));
             updateHeaderPill();
-            showMsg($('subModalMsg'), `✅ ${tier.charAt(0).toUpperCase() + tier.slice(1)} activated! Valid for 7 days.`, 'success');
-            setTimeout(() => {
-              closeModal('subscribeModal');
-              loadDashboard();
-              goTo('dashboard');
-            }, 1500);
+            showMsg($('subModalMsg'), `✅ ${tier.charAt(0).toUpperCase()+tier.slice(1)} activated!`, 'success');
+            setTimeout(() => { $('subscribeModal').classList.remove('show'); loadDashboard(); goTo('dashboard'); }, 1500);
             return;
           }
         } catch {}
-
         if (attempts > 60) {
           clearInterval(poll);
-          showMsg($('subModalMsg'),
-            '⏳ Payment not received yet. If you already paid, your plan will activate automatically. Otherwise try again.',
-            'error');
-          btn.disabled = false;
-          btn.textContent = 'Send STK Push';
+          showMsg($('subModalMsg'), '⏳ Payment not received. Try again.', 'error');
+          btn.disabled = false; btn.textContent = 'Send STK Push';
         }
       }, 3000);
-
-    } catch (err) {
-      showMsg($('subModalMsg'), err.message, 'error');
-      btn.disabled = false;
-      btn.textContent = 'Send STK Push';
-    }
+    } catch (err) { showMsg($('subModalMsg'), err.message, 'error'); btn.disabled = false; btn.textContent = 'Send STK Push'; }
   });
 
+  // ══════ DEPOSIT ══════
   $('btnDeposit').addEventListener('click', () => {
-    $('depositAmount').value = '';
-    $('depositPhone').value = user?.phone || '';
+    $('depositAmount').value = ''; $('depositPhone').value = user?.phone || '';
     clearMsg($('depositModalMsg'));
-    $('confirmDeposit').disabled = false;
-    $('confirmDeposit').textContent = 'Send STK to this number';
-    openModal('depositModal');
+    $('confirmDeposit').disabled = false; $('confirmDeposit').textContent = 'Send STK to this number';
+    $('depositModal').classList.add('show');
   });
-
   $('confirmDeposit').addEventListener('click', async () => {
     const amount = Number($('depositAmount').value) || 0;
-    const phone  = $('depositPhone').value.trim();
-    if (!phone) return showMsg($('depositModalMsg'), 'Please enter your M‑Pesa number', 'error');
-    if (amount < 50) return showMsg($('depositModalMsg'), 'Minimum deposit is KES 50', 'error');
-    const btn = $('confirmDeposit');
-    btn.disabled = true; btn.innerHTML = '<span class="loader"></span>';
+    const phone = $('depositPhone').value.trim();
+    if (!phone) return showMsg($('depositModalMsg'), 'Enter M‑Pesa number', 'error');
+    if (amount < 50) return showMsg($('depositModalMsg'), 'Minimum KES 50', 'error');
+    const btn = $('confirmDeposit'); btn.disabled = true; btn.innerHTML = '<span class="loader"></span>';
     try {
-      const res = await api('/api/wallet/deposit', {
-        method:'POST', body: JSON.stringify({ amount, phone })
-      });
-      showMsg($('depositModalMsg'), `📲 STK push sent to ${res.phone}. Approve KES ${res.amount} on your phone.`, 'success');
-      btn.textContent = 'Waiting for payment…';
-
-      const startBal = user.balance || 0;
-      let attempts = 0;
+      const res = await api('/api/wallet/deposit', { method:'POST', body: JSON.stringify({ amount, phone }) });
+      showMsg($('depositModalMsg'), `📲 STK sent to ${res.phone}. Approve KES ${res.amount}.`, 'success');
+      btn.textContent = 'Waiting…';
+      const startBal = user.balance || 0; let attempts = 0;
       const poll = setInterval(async () => {
         attempts++;
         try {
           const me = await api('/api/me');
           if (me.balance > startBal) {
-            clearInterval(poll);
-            user = me;
-            showMsg($('depositModalMsg'), `✅ Deposit successful! New balance: KES ${me.balance.toLocaleString()}`, 'success');
-            setTimeout(() => {
-              closeModal('depositModal');
-              loadAccount();
-            }, 1500);
+            clearInterval(poll); user = me;
+            showMsg($('depositModalMsg'), `✅ Deposit successful!`, 'success');
+            setTimeout(() => { $('depositModal').classList.remove('show'); loadAccount(); }, 1500);
             return;
           }
         } catch {}
-        if (attempts > 60) {
-          clearInterval(poll);
-          showMsg($('depositModalMsg'), '⏳ Payment not received. Check your phone or try again.', 'error');
-          btn.disabled = false;
-          btn.textContent = 'Send STK to this number';
-        }
+        if (attempts > 60) { clearInterval(poll); showMsg($('depositModalMsg'), '⏳ Payment not received.', 'error'); btn.disabled = false; btn.textContent = 'Send STK to this number'; }
       }, 3000);
-    } catch (err) {
-      showMsg($('depositModalMsg'), err.message, 'error');
-      btn.disabled = false;
-      btn.textContent = 'Send STK to this number';
-    }
+    } catch (err) { showMsg($('depositModalMsg'), err.message, 'error'); btn.disabled = false; btn.textContent = 'Send STK to this number'; }
   });
 
-  // ── WITHDRAW (with activation gate) ──
+  // ══════ WITHDRAW ══════
   $('btnWithdraw').addEventListener('click', () => {
     if (user?.activationFeePaid !== true) {
-      if ((user?.balance || 0) < 200) {
-        alert('You need at least KES 200 in your Available Balance to withdraw.');
-        return;
-      }
+      if ((user?.balance || 0) < 200) { alert('You need at least KES 200 to withdraw.'); return; }
       $('activationPhone').value = user?.phone || '';
       clearMsg($('activationModalMsg'));
-      $('confirmActivation').disabled = false;
-      $('confirmActivation').textContent = 'Pay KES 499 Activation Fee';
-      openModal('activationModal');
+      $('confirmActivation').disabled = false; $('confirmActivation').textContent = 'Pay KES 499 Activation Fee';
+      $('activationModal').classList.add('show');
       return;
     }
-    $('withdrawAmount').value = '';
-    clearMsg($('withdrawModalMsg'));
-    $('confirmWithdraw').disabled = false;
-    $('confirmWithdraw').textContent = 'Withdraw to M‑Pesa';
-    openModal('withdrawModal');
+    $('withdrawAmount').value = ''; clearMsg($('withdrawModalMsg'));
+    $('confirmWithdraw').disabled = false; $('confirmWithdraw').textContent = 'Withdraw to M‑Pesa';
+    $('withdrawPinField').style.display = user?.hasWithdrawalPin ? 'block' : 'none';
+    $('withdrawPin').value = '';
+    $('withdrawModal').classList.add('show');
   });
-
-  // ── ACTIVATION FEE ──
   $('confirmActivation').addEventListener('click', async () => {
     const phone = $('activationPhone').value.trim();
-    if (!phone) return showMsg($('activationModalMsg'), 'Please enter your M‑Pesa number', 'error');
-    const btn = $('confirmActivation');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="loader"></span>';
+    if (!phone) return showMsg($('activationModalMsg'), 'Enter M‑Pesa number', 'error');
+    const btn = $('confirmActivation'); btn.disabled = true; btn.innerHTML = '<span class="loader"></span>';
     try {
-      const res = await api('/api/wallet/pay-activation', {
-        method: 'POST',
-        body: JSON.stringify({ phone })
-      });
-      showMsg($('activationModalMsg'),
-        `📲 STK push sent to ${res.phone}. Pay KES ${res.amount} to activate your account.`,
-        'success');
-      btn.textContent = 'Waiting for payment…';
-
+      const res = await api('/api/wallet/pay-activation', { method:'POST', body: JSON.stringify({ phone }) });
+      showMsg($('activationModalMsg'), `📲 STK sent to ${res.phone}. Pay KES ${res.amount}.`, 'success');
+      btn.textContent = 'Waiting…';
       let attempts = 0;
       const poll = setInterval(async () => {
         attempts++;
         try {
           const me = await api('/api/me');
           if (me.activationFeePaid === true) {
-            clearInterval(poll);
-            user = me;
-            localStorage.setItem('jobpay_user', JSON.stringify(me));
-            showMsg($('activationModalMsg'),
-              '✅ Account activated! You can now request a withdrawal.',
-              'success');
-            setTimeout(() => {
-              closeModal('activationModal');
-              $('withdrawAmount').value = '';
-              clearMsg($('withdrawModalMsg'));
-              $('confirmWithdraw').disabled = false;
-              $('confirmWithdraw').textContent = 'Withdraw to M‑Pesa';
-              openModal('withdrawModal');
-            }, 1500);
+            clearInterval(poll); user = me; localStorage.setItem('jobpay_user', JSON.stringify(me));
+            showMsg($('activationModalMsg'), '✅ Account activated!', 'success');
+            setTimeout(() => { $('activationModal').classList.remove('show'); $('withdrawAmount').value = ''; clearMsg($('withdrawModalMsg')); $('confirmWithdraw').disabled = false; $('confirmWithdraw').textContent = 'Withdraw to M‑Pesa'; $('withdrawModal').classList.add('show'); }, 1500);
             return;
           }
         } catch {}
-        if (attempts > 60) {
-          clearInterval(poll);
-          showMsg($('activationModalMsg'),
-            '⏳ Payment not received. If you already paid, please wait a moment or reopen this window.',
-            'error');
-          btn.disabled = false;
-          btn.textContent = 'Pay KES 499 Activation Fee';
-        }
+        if (attempts > 60) { clearInterval(poll); showMsg($('activationModalMsg'), '⏳ Not received.', 'error'); btn.disabled = false; btn.textContent = 'Pay KES 499 Activation Fee'; }
       }, 3000);
-    } catch (err) {
-      showMsg($('activationModalMsg'), err.message, 'error');
-      btn.disabled = false;
-      btn.textContent = 'Pay KES 499 Activation Fee';
-    }
+    } catch (err) { showMsg($('activationModalMsg'), err.message, 'error'); btn.disabled = false; btn.textContent = 'Pay KES 499 Activation Fee'; }
   });
-
   $('confirmWithdraw').addEventListener('click', async () => {
     const amount = Number($('withdrawAmount').value) || 0;
-    if (amount < 200) return showMsg($('withdrawModalMsg'), 'Minimum withdrawal is KES 200', 'error');
+    const pin = $('withdrawPin').value;
+    if (amount < 200) return showMsg($('withdrawModalMsg'), 'Minimum KES 200', 'error');
     if (amount > (user.balance || 0)) return showMsg($('withdrawModalMsg'), 'Insufficient balance', 'error');
-    const btn = $('confirmWithdraw');
-    btn.disabled = true; btn.innerHTML = '<span class="loader"></span>';
+    if (user?.hasWithdrawalPin && !pin) return showMsg($('withdrawModalMsg'), 'Enter your withdrawal PIN', 'error');
+    const btn = $('confirmWithdraw'); btn.disabled = true; btn.innerHTML = '<span class="loader"></span>';
     try {
-      const res = await api('/api/wallet/withdraw', { method:'POST', body: JSON.stringify({ amount }) });
+      const res = await api('/api/wallet/withdraw', { method:'POST', body: JSON.stringify({ amount, pin }) });
       showMsg($('withdrawModalMsg'), `✅ ${res.message}`, 'success');
-      setTimeout(() => {
-        closeModal('withdrawModal');
-        loadAccount();
-      }, 1800);
+      setTimeout(() => { $('withdrawModal').classList.remove('show'); loadAccount(); }, 1800);
     } catch (err) {
       if (err.code === 'ACTIVATION_REQUIRED') {
-        closeModal('withdrawModal');
-        $('activationPhone').value = user?.phone || '';
-        clearMsg($('activationModalMsg'));
-        $('confirmActivation').disabled = false;
-        $('confirmActivation').textContent = 'Pay KES 499 Activation Fee';
-        openModal('activationModal');
+        $('withdrawModal').classList.remove('show');
+        $('activationPhone').value = user?.phone || ''; clearMsg($('activationModalMsg'));
+        $('confirmActivation').disabled = false; $('confirmActivation').textContent = 'Pay KES 499 Activation Fee';
+        $('activationModal').classList.add('show');
         return;
       }
       showMsg($('withdrawModalMsg'), err.message, 'error');
-      btn.disabled = false;
-      btn.textContent = 'Withdraw to M‑Pesa';
+      btn.disabled = false; btn.textContent = 'Withdraw to M‑Pesa';
     }
   });
-
   document.querySelectorAll('.quick-amt').forEach(btn => {
     btn.addEventListener('click', () => {
       const modal = btn.closest('.modal');
@@ -1864,56 +1545,9 @@
     });
   });
 
-  async function loadProfile() {
-    try {
-      const me = await api('/api/me');
-      $('profileBody').innerHTML = `
-        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--gray-100);">
-          <span style="color:var(--gray-500);font-weight:600;">Username</span>
-          <span style="font-weight:800;">${me.username}</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--gray-100);">
-          <span style="color:var(--gray-500);font-weight:600;">Email</span>
-          <span style="font-weight:800;font-size:13px;">${me.email}</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--gray-100);">
-          <span style="color:var(--gray-500);font-weight:600;">Phone</span>
-          <span style="font-weight:800;">${me.phone || '—'}</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--gray-100);">
-          <span style="color:var(--gray-500);font-weight:600;">Plan</span>
-          <span style="font-weight:800;color:var(--green);text-transform:capitalize;">${me.subscriptionTier}</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--gray-100);">
-          <span style="color:var(--gray-500);font-weight:600;">Activation</span>
-          <span style="font-weight:800;color:${me.activationFeePaid ? 'var(--green)' : 'var(--red)'};">
-            ${me.activationFeePaid ? '✓ Paid' : '✗ Not paid'}
-          </span>
-        </div>
-        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--gray-100);">
-          <span style="color:var(--gray-500);font-weight:600;">Total earned</span>
-          <span style="font-weight:800;color:var(--green);">KES ${(me.totalEarnings||0).toLocaleString()}</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--gray-100);">
-          <span style="color:var(--gray-500);font-weight:600;">Available balance</span>
-          <span style="font-weight:800;">KES ${(me.balance||0).toLocaleString()}</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;padding:10px 0;">
-          <span style="color:var(--gray-500);font-weight:600;">Pending balance</span>
-          <span style="font-weight:800;color:var(--yellow);">KES ${(me.pendingBalance||0).toLocaleString()}</span>
-        </div>`;
-    } catch (err) { console.error(err); }
-  }
-
-  // ── Always fetch current prices on load ──
+  // ══════ INIT ══════
   loadPublicPrices();
-
-  // ── Refresh prices whenever the tab regains focus ──
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') loadPublicPrices();
-  });
-
-  // ── Auto-poll prices every 15 seconds ──
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') loadPublicPrices(); });
   setInterval(() => {
     const sub = document.getElementById('screen-subscribe');
     if (sub && sub.classList.contains('active')) loadPublicPrices();
@@ -1923,4 +1557,4 @@
 })();
 </script>
 </body>
-  </html>
+      </html>
