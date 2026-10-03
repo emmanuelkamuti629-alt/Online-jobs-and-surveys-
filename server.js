@@ -94,6 +94,15 @@ async function loadTierPrices() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// DAILY SEED LOGIC - Ensures new questions & tasks every day
+// ═══════════════════════════════════════════════════════════════════════════
+function getDailySeed() {
+  const d = new Date();
+  // Returns a number like 20231025 (YYYYMMDD)
+  return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // NOTIFICATIONS
 // ═══════════════════════════════════════════════════════════════════════════
 async function createNotification(userId, type, title, message, meta = {}) {
@@ -223,8 +232,11 @@ const QT = [
   { q:'Which device do you primarily use for {topic}?', o:['Smartphone','Laptop/PC','Tablet','Other'] },
   { q:'How would you describe your income level?', o:['Low','Lower middle','Upper middle','High'] }
 ];
+
+// UPDATED: Generates new unique questions every day using the daily seed
 function generateQuestions(task) {
-  const seed = Number(task.id) || 1;
+  const dailySeed = getDailySeed();
+  const seed = (Number(task.id) || 1) + dailySeed; 
   const count = Math.min(20, Math.max(10, Number(task.questions) || 12));
   const out = [];
   for (let i = 0; i < count; i++) {
@@ -259,19 +271,19 @@ function dailyLimit(u) {
 function startOfToday() { const d = new Date(); d.setHours(0,0,0,0); return d; }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// UPDATED 24-HOUR ROLLING WINDOW RESET LOGIC
+// 24-HOUR ROLLING WINDOW RESET LOGIC
 // ═══════════════════════════════════════════════════════════════════════════
 function resetDailyTasks(u) {
   if (!u.lastTaskDate) {
-    u.lastTaskDate = new Date(0).toISOString(); // start of time if never set
+    u.lastTaskDate = new Date(0).toISOString();
   }
   const now = Date.now();
   const lastReset = new Date(u.lastTaskDate).getTime();
-  const cooldown = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+  const cooldown = 24 * 60 * 60 * 1000;
 
   if (now - lastReset > cooldown) {
     u.tasksCompletedToday = 0;
-    u.lastTaskDate = new Date().toISOString(); // reset to now
+    u.lastTaskDate = new Date().toISOString();
     return true;
   }
   return false;
@@ -309,7 +321,7 @@ function publicUser(u) {
     country: u.country || 'Kenya',
     county: u.county || null,
     photo: u.photo || null,
-    lastTaskDate: u.lastTaskDate // IMPORTANT: Sent to frontend for countdown timer
+    lastTaskDate: u.lastTaskDate
   };
 }
 function auth(req, res, next) {
@@ -391,7 +403,7 @@ app.post('/api/register', async (req, res) => {
     const user = {
       username: cleanUsername, email: cleanEmail, phone: normalizedPhone,
       password: hashed, subscriptionTier: 'free', subscriptionExpiry: null,
-      tasksCompletedToday: 0, lastTaskDate: new Date(0).toISOString(), // Set to past so it resets immediately
+      tasksCompletedToday: 0, lastTaskDate: new Date(0).toISOString(),
       balance: 0, pendingBalance: 0, totalEarnings: 0,
       activationFeePaid: false, withdrawalPin: null,
       accountStatus: 'active', twoFactorEnabled: false,
@@ -674,6 +686,9 @@ app.get('/api/support/tickets', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Server error' }); }
 });
 
+// ═══════════════════════════════════════════════════════════════════════════
+// UPDATED TASKS ROUTE - Simulates new tasks every day using daily seed
+// ═══════════════════════════════════════════════════════════════════════════
 app.get('/api/tasks', auth, async (req, res) => {
   try {
     const user = await usersCol.findOne({ _id: new ObjectId(req.userId) });
@@ -684,14 +699,27 @@ app.get('/api/tasks', auth, async (req, res) => {
     const type = req.query.type;
     const filter = {};
     if (type === 'survey' || type === 'task') filter.type = type;
+    
     const totalCount = await tasksCol.countDocuments(filter);
-    const tasks = await tasksCol.find(filter).sort({ id: 1 }).skip((page-1)*size).limit(size).toArray();
+    const dailySeed = getDailySeed();
+
+    // Use aggregation to dynamically shuffle tasks daily
+    // This ensures users see different tasks at the top of their list every day
+    const tasks = await tasksCol.aggregate([
+      { $match: filter },
+      { $addFields: { dailyOrder: { $mod: [ { $add: ["$id", dailySeed] }, 10000 ] } } },
+      { $sort: { dailyOrder: 1 } },
+      { $skip: (page - 1) * size },
+      { $limit: size }
+    ]).toArray();
+
     const todayHistory = await historyCol.find({ userId: user._id, completedAt: { $gte: startOfToday() } }).project({ taskId: 1 }).toArray();
     const completedIds = new Set(todayHistory.map(h => h.taskId));
     const limit = dailyLimit(user);
     const done = user.tasksCompletedToday || 0;
     const remaining = Math.max(0, limit - done);
     let unlockSlots = remaining;
+    
     const shaped = tasks.map(t => {
       let status = 'locked';
       if (completedIds.has(t.id)) status = 'completed';
@@ -705,7 +733,7 @@ app.get('/api/tasks', auth, async (req, res) => {
       };
     });
     res.json({ tier: user.subscriptionTier, dailyLimit: limit, tasksCompletedToday: done, tasksRemaining: remaining, page, size, totalCount, tasks: shaped });
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
+  } catch (err) { console.error('Fetch tasks error:', err); res.status(500).json({ error: 'Server error' }); }
 });
 
 app.get('/api/tasks/:id', auth, async (req, res) => {
@@ -747,7 +775,6 @@ app.post('/api/tasks/:id/complete', auth, async (req, res) => {
     };
     const wRes = await walletCol.insertOne(wTxn);
     
-    // UPDATED: lastTaskDate is set to current time so the 24-hour countdown starts immediately
     await usersCol.updateOne(
       { _id: user._id },
       { $inc: { tasksCompletedToday: 1, pendingBalance: reward, totalEarnings: reward }, $set: { lastTaskDate: new Date().toISOString() } }
