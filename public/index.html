@@ -13,6 +13,7 @@
     --radius:16px; --radius-sm:12px; --radius-lg:20px;
     --shadow-sm:0 2px 8px rgba(0,0,0,0.06);
     --shadow-green:0 6px 20px rgba(67,176,42,0.30);
+    --shadow-card:0 10px 30px rgba(0,0,0,0.15);
     --nav-h:68px; --header-h:60px;
   }
   body.theme-light {
@@ -22,6 +23,7 @@
     --overlay:rgba(0,0,0,0.45); --input-bg:#F8F9FB; --input-border:#E4E7EC;
     --header-bg:#FFFFFF; --nav-bg:#FFFFFF; --drawer-bg:#FFFFFF;
     --chip-bg:#FFFFFF; --chip-border:#E4E7EC; --stat-icon-bg:#F2F4F7;
+    --debit-bg: linear-gradient(135deg, #0D5E1A 0%, #1A8F2A 100%);
   }
   body.theme-dark {
     --bg:#0B1220; --bg-alt:#0F172A; --card:#131C2E; --card-alt:#1A2436;
@@ -30,6 +32,7 @@
     --overlay:rgba(0,0,0,0.65); --input-bg:#1A2436; --input-border:#2A3A52;
     --header-bg:#0B1220; --nav-bg:#0F172A; --drawer-bg:#0F172A;
     --chip-bg:#131C2E; --chip-border:#1F2A3D; --stat-icon-bg:#1A2436;
+    --debit-bg: linear-gradient(135deg, #0A3D11 0%, #156B1F 100%);
   }
   @media (prefers-color-scheme: dark) {
     body.theme-system {
@@ -39,6 +42,7 @@
       --overlay:rgba(0,0,0,0.65); --input-bg:#1A2436; --input-border:#2A3A52;
       --header-bg:#0B1220; --nav-bg:#0F172A; --drawer-bg:#0F172A;
       --chip-bg:#131C2E; --chip-border:#1F2A3D; --stat-icon-bg:#1A2436;
+      --debit-bg: linear-gradient(135deg, #0A3D11 0%, #156B1F 100%);
     }
   }
   @media (prefers-color-scheme: light) {
@@ -49,6 +53,7 @@
       --overlay:rgba(0,0,0,0.45); --input-bg:#F8F9FB; --input-border:#E4E7EC;
       --header-bg:#FFFFFF; --nav-bg:#FFFFFF; --drawer-bg:#FFFFFF;
       --chip-bg:#FFFFFF; --chip-border:#E4E7EC; --stat-icon-bg:#F2F4F7;
+      --debit-bg: linear-gradient(135deg, #0D5E1A 0%, #1A8F2A 100%);
     }
   }
   body.high-contrast { --text:#000 !important; --border:#000 !important; }
@@ -213,31 +218,45 @@
     font-size:11.5px; font-weight:900; color:var(--green); white-space:nowrap;
   }
 
-  /* Balance card */
-  .balance-card {
-    background:linear-gradient(135deg,var(--green),var(--green-dark));
-    border-radius:var(--radius-lg); padding:20px; color:white;
-    margin-bottom:16px; position:relative; overflow:hidden;
-    box-shadow:var(--shadow-green);
+  /* NEW DEBIT CARD DESIGN (IMAGE 1) */
+  .debit-card {
+    background: var(--debit-bg);
+    border-radius: 20px; padding: 20px; color: white;
+    margin-bottom: 20px; position: relative; overflow: hidden;
+    box-shadow: var(--shadow-card);
+    aspect-ratio: 1.6;
+    display: flex; flex-direction: column; justify-content: space-between;
   }
-  .balance-card::before, .balance-card::after {
-    content:''; position:absolute; border-radius:50%;
-    background:rgba(255,255,255,0.08);
+  .debit-card::before {
+    content:''; position:absolute; right:-40px; top:-40px;
+    width:200px; height:200px; border-radius:50%;
+    background:radial-gradient(circle,rgba(255,255,255,0.1) 0%,transparent 70%);
   }
-  .balance-card::before { right:-40px; top:-40px; width:160px; height:160px; }
-  .balance-card::after { right:-20px; bottom:-60px; width:120px; height:120px; background:rgba(255,255,255,0.06); }
-  .balance-label { font-size:12px; font-weight:700; opacity:0.9; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.8px; }
-  .balance-row { display:flex; align-items:center; justify-content:space-between; gap:12px; position:relative; z-index:1; }
-  .balance-amount { font-size:34px; font-weight:900; letter-spacing:-1px; }
-  .balance-amount small { font-size:16px; font-weight:700; opacity:0.9; margin-right:4px; }
-  .withdraw-btn {
-    padding:10px 18px; border-radius:10px;
-    background:rgba(255,255,255,0.20);
-    border:1.5px solid rgba(255,255,255,0.40);
-    color:white; font-weight:800; font-size:13px;
-    cursor:pointer; font-family:inherit;
-    display:flex; align-items:center; gap:6px;
+  .debit-card::after {
+    content:''; position:absolute; left:-40px; bottom:-40px;
+    width:180px; height:180px; border-radius:50%;
+    background:radial-gradient(circle,rgba(255,255,255,0.05) 0%,transparent 70%);
   }
+  .card-top { display: flex; justify-content: space-between; align-items: flex-start; position: relative; z-index: 1; }
+  .card-logo { font-size: 18px; font-weight: 900; display: flex; flex-direction: column; }
+  .card-logo small { font-size: 8px; font-weight: 700; letter-spacing: 1px; opacity: 0.8; }
+  .card-chip { width: 36px; height: 26px; border-radius: 4px; background: linear-gradient(135deg, #D4AF37, #F5D76E); display: grid; place-items: center; font-size: 14px; position: relative; z-index: 1; }
+  .card-middle { display: flex; justify-content: space-between; align-items: center; gap: 10px; position: relative; z-index: 1; margin-top: 10px; }
+  .balance-box {
+    background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 12px; padding: 8px 12px; flex: 1;
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .balance-box.available { border-color: rgba(255,255,255,0.4); }
+  .balance-box.pending { border-color: rgba(245,166,35,0.5); background: rgba(245,166,35,0.15); }
+  .balance-box-label { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.9; }
+  .balance-box-value { font-size: 20px; font-weight: 900; display: flex; align-items: center; gap: 4px; }
+  .balance-box-value small { font-size: 11px; font-weight: 700; opacity: 0.8; }
+  .card-bottom { display: flex; justify-content: space-between; align-items: center; position: relative; z-index: 1; }
+  .withdraw-link { background: none; border: none; color: white; font-weight: 800; font-size: 14px; display: flex; align-items: center; gap: 4px; cursor: pointer; font-family: inherit; }
+  .visa-logo { font-size: 24px; font-weight: 900; font-style: italic; letter-spacing: -1px; color: #F5A623; display: flex; align-items: center; }
+
+  /* END DEBIT CARD DESIGN */
 
   /* Quick actions */
   .quick-actions { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:20px; }
@@ -436,6 +455,52 @@
   .btn-mpesa { background:linear-gradient(135deg,#43B02A,#2E7D1E); color:white; }
   .btn-sm { padding:10px 14px; font-size:13px; border-radius:10px; }
   .btn-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+
+  /* NEW WALLET CARD DESIGN (IMAGE 2) */
+  .wallet-card-top {
+    background: var(--debit-bg);
+    border-radius: 20px; padding: 20px; color: white;
+    margin-bottom: 16px; position: relative; overflow: hidden;
+    box-shadow: var(--shadow-card);
+    min-height: 160px;
+    display: flex; flex-direction: column; justify-content: space-between;
+  }
+  .wallet-card-top::before {
+    content:''; position:absolute; right:-40px; bottom:-40px;
+    width:180px; height:180px; border-radius:50%;
+    background:radial-gradient(circle,rgba(255,255,255,0.05) 0%,transparent 70%);
+  }
+  .wallet-card-header { display: flex; justify-content: space-between; align-items: flex-start; }
+  .wallet-card-label { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.9; }
+  .wallet-card-mpesa { font-size: 14px; font-weight: 900; display: flex; align-items: center; gap: 4px; background: rgba(255,255,255,0.2); padding: 4px 8px; border-radius: 6px; }
+  .wallet-card-balance { font-size: 34px; font-weight: 900; display: flex; align-items: center; gap: 6px; margin-top: 10px; }
+  .wallet-card-balance small { font-size: 18px; font-weight: 700; opacity: 0.9; }
+  .wallet-card-total { font-size: 12px; font-weight: 600; opacity: 0.9; margin-top: 10px; display: flex; align-items: center; gap: 4px; }
+
+  .pending-card {
+    background: #FFF8E1; border: 1.5px solid #FFE8A1;
+    border-radius: 16px; padding: 18px;
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 16px;
+  }
+  .pending-label { font-size: 11px; font-weight: 900; text-transform: uppercase; color: #8A6D3B; margin-bottom: 4px; }
+  .pending-value { font-size: 26px; font-weight: 900; color: #8A6D3B; }
+  .pending-sub { font-size: 11px; font-weight: 600; color: #8A6D3B; margin-top: 4px; }
+  .pending-icon { width: 46px; height: 46px; border-radius: 14px; background: #FFE8A1; display: grid; place-items: center; font-size: 22px; }
+
+  .mpesa-btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+  .mpesa-btn {
+    background: linear-gradient(135deg, #43B02A, #2E7D1E);
+    border-radius: 16px; padding: 16px 10px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+    color: white; font-weight: 800; font-size: 13px; border: none; cursor: pointer;
+    font-family: inherit; text-align: center; line-height: 1.3;
+    box-shadow: 0 4px 12px rgba(67,176,42,0.3);
+    position: relative; overflow: hidden;
+  }
+  .mpesa-btn:active { transform: scale(0.97); }
+  .mpesa-btn-icon { width: 36px; height: 36px; border-radius: 50%; background: white; display: grid; place-items: center; font-size: 18px; color: var(--green); font-weight: 900; }
+  /* END WALLET CARD DESIGN */
 
   /* Auth */
   .auth-tabs { display:grid; grid-template-columns:1fr 1fr; gap:6px; background:var(--stat-icon-bg); border-radius:12px; padding:4px; margin-bottom:18px; }
@@ -869,19 +934,25 @@
       <div class="level-chip"><span class="crown">👑</span><span id="levelText">Classic · Lv 1</span></div>
     </div>
 
-    <div class="balance-card">
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; position:relative; z-index:1;">
-        <div>
-          <div class="balance-label">Available</div>
-          <div class="balance-amount"><small>KES</small><span id="homeBalance">0</span></div>
+    <!-- NEW DEBIT CARD DESIGN (IMAGE 1) -->
+    <div class="debit-card">
+      <div class="card-top">
+        <div class="card-logo">JobPay <small>DEBIT CARD</small></div>
+        <div class="card-chip">💳</div>
+      </div>
+      <div class="card-middle">
+        <div class="balance-box available">
+          <div class="balance-box-label">AVAILABLE BALANCE</div>
+          <div class="balance-box-value"><small>KES</small><span id="homeBalance">0</span></div>
         </div>
-        <div style="text-align:right; opacity:0.9;">
-          <div class="balance-label">Pending</div>
-          <div style="font-size:20px; font-weight:900;"><small>KES</small><span id="homePending">0</span></div>
+        <div class="balance-box pending">
+          <div class="balance-box-label">PENDING BALANCE</div>
+          <div class="balance-box-value"><small>KES</small><span id="homePending">0</span></div>
         </div>
       </div>
-      <div style="margin-top:14px; position:relative; z-index:1;">
-        <button class="withdraw-btn" id="homeWithdrawBtn" style="width:100%; justify-content:center;">Withdraw <span>›</span></button>
+      <div class="card-bottom">
+        <button class="withdraw-link" id="homeWithdrawBtn">Withdraw <span>›</span></button>
+        <div class="visa-logo">VISA</div>
       </div>
     </div>
 
@@ -920,7 +991,6 @@
       <div class="section-head-title">✨ Recommended for you</div>
       <button class="section-head-link" id="personalizedBtn">🎯 Personalized ›</button>
     </div>
-    <!-- THIS IS WHERE THE TASKS WILL ALWAYS APPEAR (LOCKED IF LIMIT REACHED) -->
     <div id="homeTaskList"></div>
 
     <div class="section-head">
@@ -1011,37 +1081,44 @@
   </div>
 </section>
 
-<!-- WALLET -->
+<!-- WALLET (IMAGE 2) -->
 <section class="screen" id="screen-wallet">
   <div class="container">
-    <div class="balance-card">
-      <div class="balance-label">AVAILABLE BALANCE</div>
-      <div class="balance-amount"><small>KES</small><span id="walletBalance">0</span></div>
-      <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.25);font-size:12px;font-weight:700;">💵 Total earned: <span id="walletTotalEarned">KES 0</span></div>
-    </div>
-    
-    <div class="card" style="background:#FFF8E1;border-color:#FFE8A1;">
-      <div style="display:flex;justify-content:space-between;align-items:center;">
-        <div>
-          <div style="font-size:11px;font-weight:900;text-transform:uppercase;color:#8A6D3B;margin-bottom:6px;">⏳ PENDING</div>
-          <div style="font-size:26px;font-weight:900;color:#8A6D3B;" id="walletPending">KES 0</div>
-          <div style="font-size:11px;color:#8A6D3B;font-weight:600;margin-top:4px;">Awaiting admin approval</div>
-        </div>
-        <div style="width:46px;height:46px;border-radius:14px;background:#FFE8A1;color:#8A6D3B;display:grid;place-items:center;font-size:22px;">⏳</div>
+    <!-- NEW WALLET CARD DESIGN -->
+    <div class="wallet-card-top">
+      <div class="wallet-card-header">
+        <div class="wallet-card-label">AVAILABLE BALANCE</div>
+        <div class="wallet-card-mpesa"><span>M-PESA</span></div>
       </div>
+      <div class="wallet-card-balance">
+        <small>KES</small><span id="walletBalance">0</span>
+      </div>
+      <div class="wallet-card-total">💵 Total earned: <span id="walletTotalEarned">KES 0</span></div>
     </div>
 
-    <div class="btn-row" style="margin-bottom:14px;">
-      <button class="btn btn-mpesa" id="btnDeposit" style="flex-direction:column; padding:12px 10px; gap:4px; font-size:13px;">
-        <span>💰 Deposit</span>
-        <span style="font-size:10px; opacity:0.9;">via M-Pesa</span>
+    <!-- PENDING CARD -->
+    <div class="pending-card">
+      <div>
+        <div class="pending-label">⏳ PENDING</div>
+        <div class="pending-value" id="walletPending">KES 0</div>
+        <div class="pending-sub">Awaiting admin approval</div>
+      </div>
+      <div class="pending-icon">⏳</div>
+    </div>
+
+    <!-- LARGE MPESA BUTTONS -->
+    <div class="mpesa-btn-row">
+      <button class="mpesa-btn" id="btnDeposit">
+        <div class="mpesa-btn-icon">💰</div>
+        <span>Deposit via<br>M-Pesa (STK push)</span>
       </button>
-      <button class="btn btn-primary" id="btnWithdraw" style="flex-direction:column; padding:12px 10px; gap:4px; font-size:13px;">
-        <span>💸 Withdraw</span>
-        <span style="font-size:10px; opacity:0.9;">via M-Pesa</span>
+      <button class="mpesa-btn" id="btnWithdraw">
+        <div class="mpesa-btn-icon">💸</div>
+        <span>Withdraw via<br>M-Pesa (Agent/Paybill)</span>
       </button>
     </div>
 
+    <!-- RECENT TRANSACTIONS -->
     <div class="card">
       <div class="card-title">Recent Transactions</div>
       <div id="txList"></div>
