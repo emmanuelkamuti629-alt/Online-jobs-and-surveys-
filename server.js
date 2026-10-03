@@ -100,7 +100,7 @@ async function createNotification(userId, type, title, message, meta = {}) {
   try {
     await notificationsCol.insertOne({
       userId: new ObjectId(userId),
-      type, // 'task' | 'task_approved' | 'task_rejected' | 'withdrawal' | 'withdrawal_paid' | 'withdrawal_rejected' | 'login' | 'deposit' | 'subscription' | 'activation' | 'system'
+      type,
       title,
       message,
       meta,
@@ -111,7 +111,7 @@ async function createNotification(userId, type, title, message, meta = {}) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// SEED (unchanged - same tasks)
+// SEED
 // ═══════════════════════════════════════════════════════════════════════════
 const OWNER_NAMES = ['Sarah M.','James K.','Grace W.','David O.','Amina H.','Peter N.','Lucy A.','Brian C.','Faith M.','Kevin R.','Njeri K.','Otieno J.','Wanjiku S.','Hassan A.','Esther M.','Mercy W.','Kimani T.','Achieng O.','Mwangi D.','Zawadi L.'];
 const OWNER_AVATARS = ['👩‍💼','👨‍💼','🧑‍💻','👨‍🔬','👩‍🔬','🧑‍🎓','👨‍🏫','👩‍🏫','🧑‍🎨','👩‍💻','👨‍💻','🧑‍🔧','👨‍⚕️','👩‍⚕️','🧑‍🍳','🧑‍🌾','👩‍🎤','👨‍🎤','🧑‍🚀','👩‍✈️'];
@@ -257,11 +257,26 @@ function dailyLimit(u) {
   return TIERS[u.subscriptionTier]?.dailyLimit || 0;
 }
 function startOfToday() { const d = new Date(); d.setHours(0,0,0,0); return d; }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// UPDATED 24-HOUR ROLLING WINDOW RESET LOGIC
+// ═══════════════════════════════════════════════════════════════════════════
 function resetDailyTasks(u) {
-  const today = new Date().toISOString().slice(0,10);
-  if (u.lastTaskDate !== today) { u.tasksCompletedToday = 0; u.lastTaskDate = today; return true; }
+  if (!u.lastTaskDate) {
+    u.lastTaskDate = new Date(0).toISOString(); // start of time if never set
+  }
+  const now = Date.now();
+  const lastReset = new Date(u.lastTaskDate).getTime();
+  const cooldown = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+
+  if (now - lastReset > cooldown) {
+    u.tasksCompletedToday = 0;
+    u.lastTaskDate = new Date().toISOString(); // reset to now
+    return true;
+  }
   return false;
 }
+
 async function autoFailStalePayments() {
   const cutoff = new Date(Date.now() - PAYMENT_TIMEOUT_MS);
   await txnsCol.updateMany(
@@ -293,7 +308,8 @@ function publicUser(u) {
     hasWithdrawalPin: !!u.withdrawalPin,
     country: u.country || 'Kenya',
     county: u.county || null,
-    photo: u.photo || null
+    photo: u.photo || null,
+    lastTaskDate: u.lastTaskDate // IMPORTANT: Sent to frontend for countdown timer
   };
 }
 function auth(req, res, next) {
@@ -371,12 +387,11 @@ app.post('/api/register', async (req, res) => {
     const existing = await usersCol.findOne({ $or: [{ email: cleanEmail }, { username: cleanUsername }] });
     if (existing) return res.status(409).json({ error: 'Email or username already taken' });
     const hashed = await bcrypt.hash(password, 10);
-    const today = new Date().toISOString().slice(0, 10);
     const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.ip;
     const user = {
       username: cleanUsername, email: cleanEmail, phone: normalizedPhone,
       password: hashed, subscriptionTier: 'free', subscriptionExpiry: null,
-      tasksCompletedToday: 0, lastTaskDate: today,
+      tasksCompletedToday: 0, lastTaskDate: new Date(0).toISOString(), // Set to past so it resets immediately
       balance: 0, pendingBalance: 0, totalEarnings: 0,
       activationFeePaid: false, withdrawalPin: null,
       accountStatus: 'active', twoFactorEnabled: false,
@@ -731,7 +746,13 @@ app.post('/api/tasks/:id/complete', auth, async (req, res) => {
       answersCount: answers.length, createdAt: new Date()
     };
     const wRes = await walletCol.insertOne(wTxn);
-    await usersCol.updateOne({ _id: user._id }, { $inc: { tasksCompletedToday: 1, pendingBalance: reward, totalEarnings: reward } });
+    
+    // UPDATED: lastTaskDate is set to current time so the 24-hour countdown starts immediately
+    await usersCol.updateOne(
+      { _id: user._id },
+      { $inc: { tasksCompletedToday: 1, pendingBalance: reward, totalEarnings: reward }, $set: { lastTaskDate: new Date().toISOString() } }
+    );
+
     await historyCol.insertOne({
       userId: user._id, taskId: task.id, taskTitle: task.title,
       taskType: task.type, taskCategory: task.category, owner: task.owner,
@@ -833,9 +854,9 @@ app.post('/api/wallet/withdraw', auth, async (req, res) => {
       const pinOk = await bcrypt.compare(String(pin), user.withdrawalPin);
       if (!pinOk) return res.status(401).json({ error: 'Incorrect withdrawal PIN' });
     }
-    if ((user.balance || 0) < amount) return res.status(400).json({ error: 'Insufficient balance' });
+    if ((user.balance || 0) < amount) return res.status(400).json({ error: 'Insufficient funds. Please check your balance.' });
     const upd = await usersCol.updateOne({ _id: user._id, balance: { $gte: amount } }, { $inc: { balance: -amount } });
-    if (upd.modifiedCount === 0) return res.status(400).json({ error: 'Insufficient balance' });
+    if (upd.modifiedCount === 0) return res.status(400).json({ error: 'Insufficient funds. Please check your balance.' });
     await walletCol.insertOne({ userId: user._id, type: 'withdrawal', amount: -amount, phone: user.phone, status: 'pending', reference: `wd_${user._id}_${Date.now()}`, createdAt: new Date() });
     await createNotification(user._id, 'withdrawal', '💸 Withdrawal requested', `Your withdrawal of KES ${amount} has been submitted and is awaiting admin approval.`, { amount });
     res.json({ message: `Withdrawal of KES ${amount} requested. Admin will process it.`, amount, phone: user.phone });
@@ -908,7 +929,7 @@ app.post('/api/payhero/callback', async (req, res) => {
       if (!user) { await txnsCol.updateOne({ _id: txn._id }, { $set: { status: 'failed', reason: 'User not found' } }); return res.status(200).json({ status: 'received' }); }
       const base = isSubscriptionActive(user) && user.subscriptionTier === tier ? new Date(user.subscriptionExpiry) : new Date();
       const expiry = new Date(base); expiry.setDate(expiry.getDate() + SUBSCRIPTION_DAYS);
-      await usersCol.updateOne({ _id: user._id }, { $set: { subscriptionTier: tier, subscriptionExpiry: expiry, tasksCompletedToday: 0, lastTaskDate: new Date().toISOString().slice(0, 10) } });
+      await usersCol.updateOne({ _id: user._id }, { $set: { subscriptionTier: tier, subscriptionExpiry: expiry, tasksCompletedToday: 0, lastTaskDate: new Date().toISOString() } });
       await createNotification(user._id, 'subscription', `⭐ ${tier.charAt(0).toUpperCase()+tier.slice(1)} activated!`, `Your ${tier} plan is active until ${expiry.toLocaleDateString()}. Enjoy your new daily limit!`, { tier, amount: txn.amount });
     } else if (prefix === 'dep') {
       const amount = Number(txn.amount) || 0;
@@ -932,7 +953,7 @@ app.get('/api/tiers', (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// ADMIN (unchanged)
+// ADMIN
 // ═══════════════════════════════════════════════════════════════════════════
 app.post('/api/admin/login', async (req, res) => {
   try {
@@ -1033,7 +1054,7 @@ app.post('/api/admin/transactions/:id/mark-paid', adminAuth, async (req, res) =>
       if (!TIERS[tier]) return res.status(400).json({ error: 'Invalid tier' });
       const base = isSubscriptionActive(user) && user.subscriptionTier === tier ? new Date(user.subscriptionExpiry) : new Date();
       const expiry = new Date(base); expiry.setDate(expiry.getDate() + SUBSCRIPTION_DAYS);
-      await usersCol.updateOne({ _id: user._id }, { $set: { subscriptionTier: tier, subscriptionExpiry: expiry, tasksCompletedToday: 0, lastTaskDate: new Date().toISOString().slice(0, 10) } });
+      await usersCol.updateOne({ _id: user._id }, { $set: { subscriptionTier: tier, subscriptionExpiry: expiry, tasksCompletedToday: 0, lastTaskDate: new Date().toISOString() } });
       await createNotification(user._id, 'subscription', `⭐ ${tier} activated`, 'Your subscription was manually activated by admin.');
     } else if (prefix === 'dep') {
       const amount = Number(txn.amount) || 0;
