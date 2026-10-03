@@ -920,6 +920,7 @@
       <div class="section-head-title">✨ Recommended for you</div>
       <button class="section-head-link" id="personalizedBtn">🎯 Personalized ›</button>
     </div>
+    <!-- THIS IS WHERE THE TASKS WILL ALWAYS APPEAR (LOCKED IF LIMIT REACHED) -->
     <div id="homeTaskList"></div>
 
     <div class="section-head">
@@ -1658,7 +1659,6 @@
     $('customConfirmMsg').textContent = message;
     const modal = $('customConfirmModal');
     
-    // Clone buttons to remove old event listeners
     const okBtn = $('customConfirmOk');
     const cancelBtn = $('customConfirmCancel');
     const newOkBtn = okBtn.cloneNode(true);
@@ -2330,7 +2330,7 @@
     window.history.replaceState({ screen: 'home' }, '', '#home');
   }
 
-  // COUNTDOWN TIMER LOGIC (24 hours)
+  // COUNTDOWN TIMER LOGIC (24 hours rolling)
   function startCountdown() {
     if (timerInterval) clearInterval(timerInterval);
     
@@ -2394,23 +2394,31 @@
 
       if (limitReached) {
         $('freeTrialTimer').style.display = 'block';
-        $('homeTaskList').innerHTML = `<div class="card"><div class="empty"><div class="empty-icon">⏳</div><div class="empty-title">No more free tasks today</div><div class="empty-text">Upgrade to unlock more tasks or wait for the timer to reset.</div></div></div>`;
         startCountdown();
       } else {
         $('freeTrialTimer').style.display = 'none';
         if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
-
-        const data = await api(`/api/tasks?page=${page}&size=50&type=${currentType}`);
-        totalTaskCount = data.totalCount;
-        
-        // APPLY SORTING
-        const sortedTasks = sortTasks(data.tasks);
-        
-        const list = $('homeTaskList');
-        const html = sortedTasks.map(t => renderTaskCard(t)).join('');
-        list.innerHTML = html || `<div class="card"><div class="empty"><div class="empty-icon">📋</div><div class="empty-title">No tasks available</div></div></div>`;
-        attachTaskHandlers(list);
       }
+
+      // ALWAYS FETCH TASKS (they will be locked if limit is reached)
+      const data = await api(`/api/tasks?page=${page}&size=50&type=${currentType}`);
+      totalTaskCount = data.totalCount;
+      
+      const sortedTasks = sortTasks(data.tasks);
+      
+      const list = $('homeTaskList');
+      let html = sortedTasks.map(t => renderTaskCard(t)).join('');
+      
+      if (!html) {
+        html = `<div class="card"><div class="empty"><div class="empty-icon">📋</div><div class="empty-title">No tasks available</div></div></div>`;
+      } else if (limitReached) {
+        // Add a small note above the list if limit is reached
+        html = `<div style="font-size:12px; font-weight:700; color:var(--text-muted); margin-bottom:10px; text-align:center; padding:10px; background:var(--card-alt); border-radius:10px;">Free tasks used. Upgrade to unlock these tasks.</div>` + html;
+      }
+      
+      list.innerHTML = html;
+      attachTaskHandlers(list);
+      
     } catch (err) { console.error('Dashboard error:', err); }
   }
 
@@ -3060,4 +3068,4 @@
 })();
 </script>
 </body>
-                                                                                                                                                                                      </html>
+  </html>
