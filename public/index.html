@@ -1561,4 +1561,1230 @@
     $('drawerName').textContent = user.username || 'User';
     $('drawerHandle').textContent = '@' + (user.username || 'user');
     const tier = user.subscriptionTier || 'free';
-    const badge
+    const badge = $('drawerTier');
+    badge.textContent = tier.charAt(0).toUpperCase() + tier.slice(1);
+    badge.className = 'tier-badge-drawer ' + tier;
+    const headerAv = $('headerAvatar');
+    if (headerAv) {
+      if (user.photo) headerAv.innerHTML = `<img src="${user.photo}" alt="" />`;
+      else headerAv.textContent = (user.username || 'U').charAt(0).toUpperCase();
+    }
+    const greetAv = $('greetAvatar');
+    if (greetAv) {
+      if (user.photo) greetAv.innerHTML = `<img src="${user.photo}" alt="" />`;
+      else greetAv.textContent = (user.username || 'U').charAt(0).toUpperCase();
+    }
+    const hour = new Date().getHours();
+    const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+    $('greetTitle').textContent = greeting + ', ' + (user.username || 'there') + ' 👋';
+    const tierNames = { free: 'Free', classic: 'Classic', premium: 'Premium', golden: 'Golden' };
+    $('levelText').textContent = (tierNames[tier] || 'Free') + ' · Lv 1';
+    const bigName = $('profileBigName');
+    const bigHandle = $('profileBigHandle');
+    if (bigName) bigName.textContent = user.username || 'User';
+    if (bigHandle) bigHandle.textContent = '@' + (user.username || 'user');
+  }
+
+  document.querySelectorAll('.drawer-item[data-nav]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const name = btn.dataset.nav;
+      closeDrawer();
+      setTimeout(() => navigate(name), 200);
+    });
+  });
+  document.querySelectorAll('.nav-btn[data-nav]').forEach(btn => {
+    btn.addEventListener('click', () => navigate(btn.dataset.nav));
+  });
+  document.querySelectorAll('[data-nav]').forEach(el => {
+    if (el.classList.contains('drawer-item') || el.classList.contains('nav-btn')) return;
+    el.addEventListener('click', () => navigate(el.dataset.nav));
+  });
+  $('drawerUserCard').addEventListener('click', () => {
+    closeDrawer();
+    setTimeout(() => navigate('profile'), 200);
+  });
+  $('profileBtn').addEventListener('click', () => navigate('profile'));
+
+  $('drawerLogout').addEventListener('click', () => {
+    closeDrawer();
+    if (!confirm('Logout?')) return;
+    token = null; user = null;
+    localStorage.removeItem('jobpay_token'); localStorage.removeItem('jobpay_user');
+    $('headerRight').style.display = 'none';
+    $('bottomNav').style.display = 'none';
+    $('notifPanel').classList.remove('show');
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    $('screen-auth').classList.add('active');
+    setAuthTab('register');
+  });
+
+  // NOTIFICATIONS
+  function notifIconFor(type) {
+    const map = {
+      task: '📋', task_approved: '✅', task_rejected: '❌',
+      withdrawal: '💸', withdrawal_paid: '✅', withdrawal_rejected: '↩️',
+      deposit: '💰', subscription: '⭐', activation: '🔓',
+      login: '🔐', payment_failed: '❌', system: '🔔'
+    };
+    return map[type] || '🔔';
+  }
+  function updateNotifBadge(n) {
+    notifUnread = n || 0;
+    const badge = $('notifBadge');
+    const dbadge = $('drawerNotifBadge');
+    if (n > 0) {
+      const txt = n > 99 ? '99+' : String(n);
+      badge.textContent = txt; badge.classList.remove('hidden');
+      dbadge.textContent = txt; dbadge.classList.remove('hidden');
+    } else {
+      badge.classList.add('hidden'); dbadge.classList.add('hidden');
+    }
+  }
+  function timeAgoShort(d) {
+    const s = Math.floor((Date.now() - new Date(d)) / 1000);
+    if (s < 60) return `${s}s ago`;
+    if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+    if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+    if (s < 604800) return `${Math.floor(s / 86400)}d ago`;
+    return new Date(d).toLocaleDateString();
+  }
+  async function loadNotifications(silent = false) {
+    if (!token) return;
+    try {
+      const data = await api('/api/notifications?limit=50');
+      notifItems = data.notifications || [];
+      updateNotifBadge(data.unread || 0);
+      if (!silent) renderNotifications();
+    } catch {}
+  }
+  async function refreshUnreadCount() {
+    if (!token) return;
+    try { const res = await api('/api/notifications/unread-count'); updateNotifBadge(res.unread || 0); } catch {}
+  }
+  function renderNotifications() {
+    const el = $('notifBody');
+    if (!notifItems.length) {
+      el.innerHTML = `<div class="notif-empty"><div class="notif-empty-icon">🔔</div><div class="notif-empty-title">No notifications yet</div><div class="notif-empty-text">Activity on your account will appear here.</div></div>`;
+      return;
+    }
+    el.innerHTML = notifItems.map(n => `
+      <div class="notif-item ${n.read ? '' : 'unread'}" data-nid="${n.id}">
+        <div class="notif-icon">${notifIconFor(n.type)}</div>
+        <div class="notif-body-text">
+          <div class="notif-item-title">${n.title}</div>
+          <div class="notif-item-msg">${n.message}</div>
+          <div class="notif-item-time">${timeAgoShort(n.createdAt)}</div>
+        </div>
+      </div>
+    `).join('');
+    el.querySelectorAll('.notif-item').forEach(it => {
+      it.addEventListener('click', async () => {
+        const id = it.dataset.nid;
+        const n = notifItems.find(x => String(x.id) === String(id));
+        if (n && !n.read) {
+          n.read = true;
+          it.classList.remove('unread');
+          updateNotifBadge(Math.max(0, notifUnread - 1));
+          try { await api(`/api/notifications/${id}/read`, { method: 'POST' }); } catch {}
+        }
+      });
+    });
+  }
+  async function openNotifPanel() {
+    $('notifPanel').classList.add('show');
+    await loadNotifications(false);
+    setTimeout(async () => {
+      try {
+        await api('/api/notifications/read-all', { method: 'POST' });
+        updateNotifBadge(0);
+        notifItems.forEach(n => n.read = true);
+      } catch {}
+    }, 1500);
+  }
+  function closeNotifPanel() { $('notifPanel').classList.remove('show'); }
+  $('notifBtn').addEventListener('click', openNotifPanel);
+  $('notifBack').addEventListener('click', closeNotifPanel);
+  $('notifMarkRead').addEventListener('click', async () => {
+    try {
+      await api('/api/notifications/read-all', { method: 'POST' });
+      updateNotifBadge(0); notifItems.forEach(n => n.read = true); renderNotifications();
+    } catch {}
+  });
+  setInterval(() => { if (token) refreshUnreadCount(); }, 30000);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && token) refreshUnreadCount(); });
+
+  // SETTINGS HUB
+  function openSettings(section) {
+    document.querySelectorAll('.settings-panel').forEach(p => p.classList.remove('show'));
+    if (section === 'hub') { $('spHub').classList.add('show'); return; }
+    const map = { account: 'spAccount', security: 'spSecurity', notifications: 'spNotifications',
+      language: 'spLanguage', appearance: 'spAppearance', accessibility: 'spAccessibility',
+      privacy: 'spPrivacy', help: 'spHelp' };
+    const id = map[section];
+    if (!id) return;
+    $(id).classList.add('show');
+    if (section === 'account') loadAccountSettings();
+    if (section === 'security') { loadSecuritySettings(); loadLoginHistory(); }
+    if (section === 'appearance') applyAppearanceUI();
+    if (section === 'accessibility') applyAccessibilityUI();
+    if (section === 'notifications') applyNotificationsUI();
+    if (section === 'language') applyLanguageUI();
+    if (section === 'privacy') applyPrivacyUI();
+    if (section === 'help') loadTickets();
+  }
+  document.querySelectorAll('[data-settings]').forEach(row => {
+    row.addEventListener('click', () => openSettings(row.dataset.settings));
+  });
+  document.querySelectorAll('[data-close-panel]').forEach(b => {
+    b.addEventListener('click', () => {
+      const backToHub = b.hasAttribute('data-back-to-hub');
+      document.querySelectorAll('.settings-panel').forEach(p => p.classList.remove('show'));
+      if (backToHub) $('spHub').classList.add('show');
+    });
+  });
+
+  // ACCOUNT SETTINGS
+  function setProfilePhotoUI(photo) {
+    const preview = $('profilePhotoPreview');
+    const big = $('profilePhotoBig');
+    const html = photo ? `<img src="${photo}" alt="" />` : `<span>${(user?.username || 'U').charAt(0).toUpperCase()}</span>`;
+    if (preview) preview.innerHTML = html;
+    if (big) big.innerHTML = html;
+  }
+  async function loadAccountSettings() {
+    try {
+      const me = await api('/api/me'); user = me;
+      $('setUsername').value = me.username || '';
+      $('setEmail').value = me.email || '';
+      $('setPhone').value = me.phone || '';
+      setProfilePhotoUI(me.photo);
+    } catch (err) { console.error(err); }
+  }
+  $('uploadPhotoBtn').addEventListener('click', () => $('profilePhotoInput').click());
+  $('profilePhotoInput').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { alert('Please select an image file'); e.target.value = ''; return; }
+    if (file.size > 5 * 1024 * 1024) { alert('Image must be under 5MB'); e.target.value = ''; return; }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = async () => {
+        const canvas = document.createElement('canvas');
+        const MAX = 300;
+        let w = img.width, h = img.height;
+        if (w > h) { if (w > MAX) { h = h * MAX / w; w = MAX; } }
+        else { if (h > MAX) { w = w * MAX / h; h = MAX; } }
+        canvas.width = Math.round(w); canvas.height = Math.round(h);
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        try {
+          const res = await api('/api/user/photo', { method: 'POST', body: JSON.stringify({ photo: dataUrl }) });
+          user.photo = res.photo;
+          localStorage.setItem('jobpay_user', JSON.stringify(user));
+          setProfilePhotoUI(res.photo); updateDrawer();
+          showMsg($('acctSettingsMsg'), '✓ Profile photo updated', 'success');
+        } catch (err) { showMsg($('acctSettingsMsg'), err.message, 'error'); }
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  });
+  $('removePhotoBtn').addEventListener('click', async () => {
+    if (!user?.photo) { showMsg($('acctSettingsMsg'), 'No photo to remove', 'error'); return; }
+    if (!confirm('Remove your profile photo?')) return;
+    try {
+      await api('/api/user/photo', { method: 'DELETE' });
+      delete user.photo; localStorage.setItem('jobpay_user', JSON.stringify(user));
+      setProfilePhotoUI(null); updateDrawer();
+      showMsg($('acctSettingsMsg'), '✓ Photo removed', 'success');
+    } catch (err) { showMsg($('acctSettingsMsg'), err.message, 'error'); }
+  });
+  $('saveProfileBtn').addEventListener('click', async () => {
+    const btn = $('saveProfileBtn'); btn.disabled = true; btn.innerHTML = '<span class="loader"></span>';
+    try {
+      const res = await api('/api/user/profile', {
+        method: 'PUT', body: JSON.stringify({
+          username: $('setUsername').value.trim(),
+          email: $('setEmail').value.trim(),
+          phone: $('setPhone').value.trim()
+        })
+      });
+      user = res.user; localStorage.setItem('jobpay_user', JSON.stringify(user));
+      updateDrawer(); showMsg($('acctSettingsMsg'), '✓ Profile updated', 'success');
+    } catch (err) { showMsg($('acctSettingsMsg'), err.message, 'error'); }
+    finally { btn.disabled = false; btn.textContent = 'Save Changes'; }
+  });
+  $('editProfileBtn').addEventListener('click', () => openSettings('account'));
+
+  function openDanger(mode) {
+    $('dangerTitle').textContent = mode === 'delete' ? 'Delete Account Permanently' : 'Deactivate Account';
+    $('dangerSub').textContent = mode === 'delete' ? 'This cannot be undone.' : 'Your account will be hidden.';
+    $('dangerConfirmField').style.display = mode === 'delete' ? 'block' : 'none';
+    $('dangerConfirm').value = ''; $('dangerPw').value = '';
+    clearMsg($('dangerMsg'));
+    $('dangerConfirmBtn').dataset.mode = mode;
+    $('dangerModal').classList.add('show');
+  }
+  $('deactivateBtn').addEventListener('click', () => openDanger('deactivate'));
+  $('deleteAccountBtn').addEventListener('click', () => openDanger('delete'));
+  $('dangerConfirmBtn').addEventListener('click', async () => {
+    const mode = $('dangerConfirmBtn').dataset.mode;
+    const password = $('dangerPw').value;
+    if (!password) return showMsg($('dangerMsg'), 'Enter your password', 'error');
+    const body = { password };
+    if (mode === 'delete') {
+      body.confirm = $('dangerConfirm').value;
+      if (body.confirm !== 'DELETE') return showMsg($('dangerMsg'), 'Type DELETE to confirm', 'error');
+    }
+    const url = mode === 'delete' ? '/api/user/delete' : '/api/user/deactivate';
+    const btn = $('dangerConfirmBtn'); btn.disabled = true; btn.innerHTML = '<span class="loader"></span>';
+    try {
+      await api(url, { method: 'POST', body: JSON.stringify(body) });
+      alert(mode === 'delete' ? 'Account deleted.' : 'Account deactivated.');
+      token = null; user = null;
+      localStorage.removeItem('jobpay_token'); localStorage.removeItem('jobpay_user');
+      location.reload();
+    } catch (err) { showMsg($('dangerMsg'), err.message, 'error'); btn.disabled = false; btn.textContent = 'Confirm'; }
+  });
+
+  // SECURITY
+  async function loadSecuritySettings() {
+    try {
+      const me = await api('/api/me'); user = me;
+      $('twoFaToggle').checked = !!me.twoFactorEnabled;
+      $('twoFaStatus').textContent = me.twoFactorEnabled ? 'Enabled' : 'Disabled';
+      $('pinStatus').textContent = me.hasWithdrawalPin ? 'Set' : 'Not set';
+      $('setPinBtn').textContent = me.hasWithdrawalPin ? 'Change PIN' : 'Set PIN';
+    } catch (err) { console.error(err); }
+  }
+  $('changePwBtn').addEventListener('click', async () => {
+    const cur = $('curPw').value, nw = $('newPw').value, cf = $('confPw').value;
+    if (!cur || !nw || !cf) return showMsg($('secMsg'), 'All fields required', 'error');
+    if (nw !== cf) return showMsg($('secMsg'), 'New passwords do not match', 'error');
+    if (!(nw.length >= 8 && /[A-Z]/.test(nw) && /[a-z]/.test(nw) && /[0-9]/.test(nw)))
+      return showMsg($('secMsg'), 'Password must be 8+ chars with uppercase, lowercase, and a number', 'error');
+    const btn = $('changePwBtn'); btn.disabled = true; btn.innerHTML = '<span class="loader"></span>';
+    try {
+      await api('/api/user/change-password', { method: 'POST', body: JSON.stringify({ currentPassword: cur, newPassword: nw }) });
+      $('curPw').value = ''; $('newPw').value = ''; $('confPw').value = '';
+      showMsg($('secMsg'), '✓ Password changed successfully', 'success');
+    } catch (err) { showMsg($('secMsg'), err.message, 'error'); }
+    finally { btn.disabled = false; btn.textContent = 'Change Password'; }
+  });
+  $('twoFaToggle').addEventListener('change', async (e) => {
+    const enabled = e.target.checked;
+    try {
+      await api('/api/user/2fa', { method: 'POST', body: JSON.stringify({ enabled }) });
+      $('twoFaStatus').textContent = enabled ? 'Enabled' : 'Disabled';
+      showMsg($('secMsg'), enabled ? '✓ 2FA enabled' : '✓ 2FA disabled', 'success');
+    } catch (err) { e.target.checked = !enabled; showMsg($('secMsg'), err.message, 'error'); }
+  });
+  $('setPinBtn').addEventListener('click', () => {
+    $('newPinInput').value = ''; $('pinConfirmPw').value = '';
+    clearMsg($('pinModalMsg')); $('pinModal').classList.add('show');
+  });
+  $('confirmPinBtn').addEventListener('click', async () => {
+    const pin = $('newPinInput').value, pw = $('pinConfirmPw').value;
+    if (!/^\d{4,6}$/.test(pin)) return showMsg($('pinModalMsg'), 'PIN must be 4 to 6 digits', 'error');
+    if (!pw) return showMsg($('pinModalMsg'), 'Password required', 'error');
+    const btn = $('confirmPinBtn'); btn.disabled = true; btn.innerHTML = '<span class="loader"></span>';
+    try {
+      await api('/api/user/withdrawal-pin', { method: 'POST', body: JSON.stringify({ pin, password: pw }) });
+      showMsg($('pinModalMsg'), '✓ Withdrawal PIN saved', 'success');
+      setTimeout(() => { $('pinModal').classList.remove('show'); loadSecuritySettings(); }, 1200);
+    } catch (err) { showMsg($('pinModalMsg'), err.message, 'error'); }
+    finally { btn.disabled = false; btn.textContent = 'Save PIN'; }
+  });
+  async function loadLoginHistory() {
+    try {
+      const items = await api('/api/user/login-history');
+      const el = $('loginHistoryList');
+      if (!items.length) { el.innerHTML = '<div style="font-size:12.5px;color:var(--text-muted);font-weight:600;">No login history.</div>'; return; }
+      el.innerHTML = items.slice(0, 6).map(i => {
+        const date = new Date(i.at);
+        const dt = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const device = /android/i.test(i.ua || '') ? '📱 Android' :
+                       /iphone|ipad/i.test(i.ua || '') ? '📱 iOS' :
+                       /windows/i.test(i.ua || '') ? '💻 Windows' :
+                       /mac/i.test(i.ua || '') ? '💻 Mac' : '🌐 Device';
+        return `<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--divider);gap:10px;">
+          <div>
+            <div style="font-size:12.5px;font-weight:800;color:var(--text);">${device} ${i.success ? '' : '· ✕ Failed'}</div>
+            <div style="font-size:11px;color:var(--text-muted);font-weight:600;">${dt} · ${i.ip || '—'}</div>
+          </div>
+        </div>`;
+      }).join('');
+    } catch (err) { console.error(err); }
+  }
+
+  // APPEARANCE
+  function applyAppearanceUI() {
+    const themeEl = document.getElementById('theme' + prefs.theme.charAt(0).toUpperCase() + prefs.theme.slice(1));
+    if (themeEl) themeEl.checked = true;
+    const td = prefs.taskDisplay === 'compact' ? 'taskCompact' : 'taskComfort';
+    if ($(td)) $(td).checked = true;
+    const fsMap = { small: 'fsSmall', normal: 'fsNormal', large: 'fsLarge', xlarge: 'fsXLarge' };
+    if ($(fsMap[prefs.fontSize])) $(fsMap[prefs.fontSize]).checked = true;
+  }
+  document.querySelectorAll('input[name="theme"]').forEach(r => {
+    r.addEventListener('change', () => { prefs.theme = r.value; savePrefs(); applyPrefs(); });
+  });
+  document.querySelectorAll('input[name="taskDisplay"]').forEach(r => {
+    r.addEventListener('change', () => { prefs.taskDisplay = r.value; savePrefs(); });
+  });
+  document.querySelectorAll('input[name="fontSize"]').forEach(r => {
+    r.addEventListener('change', () => { prefs.fontSize = r.value; savePrefs(); applyPrefs(); });
+  });
+
+  // ACCESSIBILITY
+  function applyAccessibilityUI() {
+    $('accLargeText').checked = prefs.accLargeText;
+    $('accHighContrast').checked = prefs.accHighContrast;
+    $('accReduceAnim').checked = prefs.accReduceAnim;
+  }
+  $('accLargeText').addEventListener('change', e => { prefs.accLargeText = e.target.checked; savePrefs(); applyPrefs(); });
+  $('accHighContrast').addEventListener('change', e => { prefs.accHighContrast = e.target.checked; savePrefs(); applyPrefs(); });
+  $('accReduceAnim').addEventListener('change', e => { prefs.accReduceAnim = e.target.checked; savePrefs(); applyPrefs(); });
+
+  // NOTIFICATIONS SETTINGS
+  function applyNotificationsUI() {
+    document.querySelectorAll('[data-notif]').forEach(t => { t.checked = prefs.notif[t.dataset.notif] !== false; });
+  }
+  document.querySelectorAll('[data-notif]').forEach(t => {
+    t.addEventListener('change', () => { prefs.notif[t.dataset.notif] = t.checked; savePrefs(); });
+  });
+
+  // LANGUAGE
+  function applyLanguageUI() {
+    const el = document.getElementById(prefs.language === 'sw' ? 'langSw' : 'langEn');
+    if (el) el.checked = true;
+    $('locationJobsToggle').checked = prefs.locationJobs !== false;
+  }
+  document.querySelectorAll('input[name="lang"]').forEach(r => {
+    r.addEventListener('change', () => { prefs.language = r.value; savePrefs(); document.documentElement.lang = r.value; });
+  });
+  $('locationJobsToggle').addEventListener('change', e => { prefs.locationJobs = e.target.checked; savePrefs(); });
+
+  // PRIVACY
+  function applyPrivacyUI() {
+    const el = document.getElementById(prefs.profileVis === 'public' ? 'visPublic' : 'visPrivate');
+    if (el) el.checked = true;
+    $('privPersonalize').checked = prefs.privPersonalize !== false;
+    $('privAnalytics').checked = prefs.privAnalytics !== false;
+  }
+  document.querySelectorAll('input[name="profileVis"]').forEach(r => {
+    r.addEventListener('change', () => { prefs.profileVis = r.value; savePrefs(); });
+  });
+  $('privPersonalize').addEventListener('change', e => { prefs.privPersonalize = e.target.checked; savePrefs(); });
+  $('privAnalytics').addEventListener('change', e => { prefs.privAnalytics = e.target.checked; savePrefs(); });
+  $('downloadDataBtn').addEventListener('click', async () => {
+    try {
+      const [me, history, wallet] = await Promise.all([api('/api/me'), api('/api/history'), api('/api/wallet/history')]);
+      const data = { exportedAt: new Date().toISOString(), profile: { username: me.username, email: me.email, phone: me.phone, tier: me.subscriptionTier }, balance: { available: me.balance, pending: me.pendingBalance, totalEarned: me.totalEarnings }, tasks: history, transactions: wallet };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = `jobpay-data-${Date.now()}.json`; a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) { alert(err.message); }
+  });
+
+  // HELP
+  document.querySelectorAll('.faq-q').forEach(q => { q.addEventListener('click', () => q.parentElement.classList.toggle('open')); });
+  async function loadTickets() {
+    try {
+      const items = await api('/api/support/tickets');
+      const el = $('ticketsList');
+      if (!items.length) { el.innerHTML = '<div style="font-size:12.5px;color:var(--text-muted);font-weight:600;">No tickets yet.</div>'; return; }
+      el.innerHTML = items.map(t => `
+        <div class="ticket-item">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
+            <div>
+              <div class="ticket-num">#${t.ticketNumber}</div>
+              <div class="ticket-subj">${(t.subject || '').replace(/[<>&"]/g, '')}</div>
+            </div>
+            <span class="ticket-status ${t.status || 'open'}">${(t.status || 'open').toUpperCase()}</span>
+          </div>
+          <div class="ticket-msg">${(t.message || '').replace(/[<>&"]/g, '').slice(0, 140)}${(t.message || '').length > 140 ? '…' : ''}</div>
+        </div>
+      `).join('');
+    } catch (err) { console.error(err); }
+  }
+  $('submitTicketBtn').addEventListener('click', async () => {
+    const category = $('ticketCategory').value;
+    const subject = $('ticketSubject').value.trim();
+    const message = $('ticketMessage').value.trim();
+    if (!subject || !message) return showMsg($('ticketMsg'), 'Subject and message required', 'error');
+    const btn = $('submitTicketBtn'); btn.disabled = true; btn.innerHTML = '<span class="loader"></span>';
+    try {
+      await api('/api/support/ticket', { method: 'POST', body: JSON.stringify({ category, subject, message }) });
+      showMsg($('ticketMsg'), '✓ Ticket submitted. We\'ll reply soon.', 'success');
+      $('ticketSubject').value = ''; $('ticketMessage').value = '';
+      loadTickets();
+    } catch (err) { showMsg($('ticketMsg'), err.message, 'error'); }
+    finally { btn.disabled = false; btn.textContent = 'Submit Ticket'; }
+  });
+  $('msgContactSupport').addEventListener('click', () => openSettings('help'));
+
+  // PRICES
+  async function loadPublicPrices() {
+    try {
+      const res = await fetch('/api/prices?_=' + Date.now(), { cache: 'no-store' });
+      if (!res.ok) return;
+      const p = await res.json();
+      publicPrices = { classic: Number(p.classic) || 200, premium: Number(p.premium) || 350, golden: Number(p.golden) || 450 };
+      const setHTML = (id, html) => { const el = $(id); if (el) el.innerHTML = html; };
+      const setText = (id, txt) => { const el = $(id); if (el) el.textContent = txt; };
+      setHTML('tierPriceClassic', `KES ${publicPrices.classic} <span>/ week</span>`);
+      setHTML('tierPricePremium', `KES ${publicPrices.premium} <span>/ week</span>`);
+      setHTML('tierPriceGolden', `KES ${publicPrices.golden} <span>/ week</span>`);
+      setText('tierBtnClassic', `Upgrade – KES ${publicPrices.classic}`);
+      setText('tierBtnPremium', `Upgrade – KES ${publicPrices.premium}`);
+      setText('tierBtnGolden', `Upgrade – KES ${publicPrices.golden}`);
+    } catch (err) { console.error('Load prices error:', err); }
+  }
+
+  // AUTH
+  function attachToggle(btnId, inputId) {
+    $(btnId).addEventListener('click', () => {
+      const inp = $(inputId); const shown = inp.type === 'text';
+      inp.type = shown ? 'password' : 'text';
+      $(btnId).textContent = shown ? '👁' : '🙈';
+    });
+  }
+  attachToggle('togglePw1', 'authPassword');
+  attachToggle('togglePw2', 'authConfirm');
+  attachToggle('togglePwLogin', 'loginPassword');
+  $('authPassword').addEventListener('input', () => {
+    const v = $('authPassword').value;
+    const checks = { len: v.length >= 8, upper: /[A-Z]/.test(v), lower: /[a-z]/.test(v), num: /[0-9]/.test(v) };
+    document.querySelectorAll('#pwHint span').forEach(el => el.classList.toggle('ok', checks[el.dataset.req]));
+  });
+  $('authConfirm').addEventListener('input', () => {
+    const pw = $('authPassword').value, cf = $('authConfirm').value;
+    $('authConfirm').classList.toggle('error', cf.length > 0 && cf !== pw);
+    $('authConfirm').classList.toggle('valid', cf.length > 0 && cf === pw);
+  });
+  function setAuthTab(tab) {
+    const isLogin = tab === 'login';
+    $('tabRegister').classList.toggle('active', !isLogin);
+    $('tabLogin').classList.toggle('active', isLogin);
+    $('authRegisterForm').style.display = isLogin ? 'none' : 'block';
+    $('authLoginForm').style.display = isLogin ? 'block' : 'none';
+    clearMsg($('authMsg'));
+  }
+  $('tabRegister').addEventListener('click', () => setAuthTab('register'));
+  $('tabLogin').addEventListener('click', () => setAuthTab('login'));
+
+  async function register() {
+    const username = $('authUsername').value.trim();
+    const email = $('authEmail').value.trim();
+    const phone = $('authPhone').value.trim();
+    const password = $('authPassword').value;
+    const confirmPassword = $('authConfirm').value;
+    if (!username || !email || !phone || !password || !confirmPassword) return showMsg($('authMsg'), 'Please fill all fields', 'error');
+    if (password !== confirmPassword) return showMsg($('authMsg'), 'Passwords do not match', 'error');
+    if (!(password.length >= 8 && /[A-Z]/.test(password) && /[a-z]/.test(password) && /[0-9]/.test(password)))
+      return showMsg($('authMsg'), 'Password must be 8+ chars with uppercase, lowercase, and a number', 'error');
+    try {
+      $('btnRegister').disabled = true; $('btnRegister').innerHTML = '<span class="loader"></span>';
+      const data = await api('/api/register', { method: 'POST', body: JSON.stringify({ username, email, phone, password, confirmPassword }) });
+      token = data.token; user = data.user;
+      localStorage.setItem('jobpay_token', token); localStorage.setItem('jobpay_user', JSON.stringify(user));
+      enterApp();
+    } catch (err) { showMsg($('authMsg'), err.message, 'error'); }
+    finally { $('btnRegister').disabled = false; $('btnRegister').textContent = 'Create Account'; }
+  }
+  async function login() {
+    const email = $('loginEmail').value.trim();
+    const password = $('loginPassword').value;
+    if (!email || !password) return showMsg($('authMsg'), 'Enter email and password', 'error');
+    try {
+      $('btnLogin').disabled = true; $('btnLogin').innerHTML = '<span class="loader"></span>';
+      const data = await api('/api/login', { method: 'POST', body: JSON.stringify({ email, password }) });
+      token = data.token; user = data.user;
+      localStorage.setItem('jobpay_token', token); localStorage.setItem('jobpay_user', JSON.stringify(user));
+      enterApp();
+    } catch (err) { showMsg($('authMsg'), err.message, 'error'); }
+    finally { $('btnLogin').disabled = false; $('btnLogin').textContent = 'Login'; }
+  }
+  $('btnRegister').addEventListener('click', register);
+  $('btnLogin').addEventListener('click', login);
+
+  function enterApp() {
+    $('screen-auth').classList.remove('active');
+    $('headerRight').style.display = 'flex';
+    $('bottomNav').style.display = 'flex';
+    updateDrawer();
+    loadDashboard();
+    loadNotifications(true);
+    goTo('home');
+  }
+
+  // DASHBOARD
+  async function loadDashboard(page = 1, append = false) {
+    try {
+      if (!append) currentPage = 1;
+      const me = await api('/api/me');
+      user = me; localStorage.setItem('jobpay_user', JSON.stringify(me));
+      updateDrawer();
+      $('homeBalance').textContent = (me.balance || 0).toLocaleString();
+      $('qsTodayEarn').textContent = `KES ${(me.todayEarnings || me.totalEarnings || 0).toLocaleString()}`;
+      $('qsTasksDone').textContent = me.tasksCompletedToday || 0;
+      $('qsPending').textContent = `KES ${(me.pendingBalance || 0).toLocaleString()}`;
+      $('qsSuccess').textContent = '96%';
+
+      const data = await api(`/api/tasks?page=${page}&size=10&type=${currentType}`);
+      totalTaskCount = data.totalCount;
+      const list = $('homeTaskList');
+      const html = data.tasks.slice(0, 3).map(t => renderTaskCard(t)).join('');
+      list.innerHTML = html || `<div class="card"><div class="empty"><div class="empty-icon">📋</div><div class="empty-title">No tasks available</div></div></div>`;
+      attachTaskHandlers(list);
+    } catch (err) { console.error('Dashboard error:', err); }
+  }
+
+  async function loadFindJobs(page = 1, append = false) {
+    try {
+      if (!append) currentPage = 1;
+      const data = await api(`/api/tasks?page=${page}&size=50&type=${currentType}`);
+      totalTaskCount = data.totalCount;
+      $('findJobsCount').textContent = totalTaskCount.toLocaleString();
+      const list = $('findJobsList');
+      const html = data.tasks.map(t => renderTaskCard(t)).join('');
+      if (append) list.insertAdjacentHTML('beforeend', html);
+      else list.innerHTML = html || `<div class="card"><div class="empty"><div class="empty-icon">📋</div><div class="empty-title">No tasks</div></div></div>`;
+      const loaded = (page - 1) * 50 + data.tasks.length;
+      $('loadMoreBtn').style.display = loaded < totalTaskCount ? 'block' : 'none';
+      attachTaskHandlers(list);
+    } catch (err) { console.error(err); }
+  }
+  $('loadMoreBtn').addEventListener('click', () => { currentPage++; loadFindJobs(currentPage, true); });
+  document.querySelectorAll('#findJobsFilters .filter-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('#findJobsFilters .filter-chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active'); currentType = chip.dataset.type; loadFindJobs();
+    });
+  });
+
+  async function loadRecommended() {
+    try {
+      const data = await api('/api/tasks?page=1&size=10');
+      const list = $('recommendedList');
+      const html = data.tasks.map(t => renderTaskCard(t)).join('');
+      list.innerHTML = html || `<div class="card"><div class="empty"><div class="empty-icon">✨</div><div class="empty-title">No recommendations</div></div></div>`;
+      attachTaskHandlers(list);
+    } catch (err) { console.error(err); }
+  }
+  $('personalizedBtn').addEventListener('click', () => navigate('recommended'));
+
+  // TASK CARD
+  function renderTaskCard(t) {
+    const isLocked = t.status === 'locked';
+    const isCompleted = t.status === 'completed';
+    const cardCls = `task-card ${isLocked ? 'locked' : ''} ${isCompleted ? 'completed' : ''}`;
+    const catIcons = {
+      'Consumer Habits':'🛒','Mobile Banking':'🏦','Online Shopping':'🛍️','Health & Wellness':'💊',
+      'Travel Preferences':'✈️','Social Media':'📱','Food Delivery':'🍔','Streaming Services':'🎬',
+      'Smartphone Usage':'📱','Fitness Apps':'💪','Gaming Habits':'🎮','Remote Work':'💻',
+      'Electric Vehicles':'🚗','Crypto Adoption':'₿','Insurance Products':'🛡️','Retail Brands':'🏬',
+      'Coffee Culture':'☕','Fashion Trends':'👗','Real Estate':'🏠','Education Tech':'🎓',
+      'Pet Ownership':'🐾','Music Streaming':'🎵','Fitness Wearables':'⌚','Home Security':'🔒',
+      'Productivity Tools':'⚙️','Personal Finance':'💰','Digital Wallets':'📲','Beauty Products':'💄',
+      'Home Cooking':'🍳','Public Transport':'🚌','Airlines & Travel':'✈️','Online Learning':'📚',
+      'Subscription Services':'📺','Cloud Storage':'☁️','Smart Home Devices':'🏠','Wearables':'⌚'
+    };
+    const iconBg = {
+      'Consumer Habits':'#F3E5F5','Mobile Banking':'#E8F5E9','Online Shopping':'#E3F2FD','Health & Wellness':'#FCE4EC',
+      'Travel Preferences':'#E0F7FA','Social Media':'#E3F2FD','Food Delivery':'#FFF3E0','Streaming Services':'#EDE7F6',
+      'Smartphone Usage':'#E0F7FA','Fitness Apps':'#E8F5E9','Gaming Habits':'#EDE7F6','Remote Work':'#E3F2FD',
+      'Electric Vehicles':'#E0F7FA','Crypto Adoption':'#FFF8E1','Insurance Products':'#E8F5E9','Retail Brands':'#FCE4EC',
+      'Coffee Culture':'#FFF3E0','Fashion Trends':'#FCE4EC','Real Estate':'#E8F5E9','Education Tech':'#E3F2FD',
+      'Pet Ownership':'#FFF3E0','Music Streaming':'#EDE7F6','Fitness Wearables':'#E0F7FA','Home Security':'#F3E5F5',
+      'Productivity Tools':'#E3F2FD','Personal Finance':'#E8F5E9','Digital Wallets':'#E0F7FA','Beauty Products':'#FCE4EC',
+      'Home Cooking':'#FFF3E0','Public Transport':'#E8F5E9','Airlines & Travel':'#E0F7FA','Online Learning':'#EDE7F6',
+      'Subscription Services':'#FCE4EC','Cloud Storage':'#E3F2FD','Smart Home Devices':'#E0F7FA','Wearables':'#E8F5E9'
+    };
+    const icon = catIcons[t.category] || '📋';
+    const bg = iconBg[t.category] || '#E8F7E4';
+    return `
+      <div class="${cardCls}" data-task-id="${t.id}" data-status="${t.status}">
+        <div class="task-icon" style="background:${bg};color:#333;">${icon}</div>
+        <div class="task-body">
+          <div class="task-top-row"><span class="task-type-tag ${t.type}">${t.type}</span></div>
+          <div class="task-title">${t.title}</div>
+          <div class="task-desc">${t.description}</div>
+          <div class="task-meta-row">
+            <span>⏱ ${t.time}</span><span>❓ ${t.questions} questions</span>
+            <span>📊 ${t.difficulty}</span><span>📍 ${t.country}</span>
+          </div>
+        </div>
+        <div class="task-reward-block">
+          <div class="task-reward">KES ${t.reward}</div>
+          <div class="task-rating"><span class="star">★</span> 4.8 (1.2k)</div>
+          <div class="task-spots">87 spots left</div>
+        </div>
+        <div class="task-chevron">›</div>
+      </div>
+    `;
+  }
+  function attachTaskHandlers(container) {
+    container.querySelectorAll('.task-card').forEach(card => {
+      if (card.dataset.bound) return;
+      card.dataset.bound = '1';
+      card.addEventListener('click', () => {
+        const status = card.dataset.status;
+        const taskId = Number(card.dataset.taskId);
+        if (status === 'locked') return $('upgradeModal').classList.add('show');
+        if (status === 'completed') return;
+        startSurvey(taskId);
+      });
+    });
+  }
+
+  // SURVEY
+  async function startSurvey(taskId) {
+    try {
+      const data = await api(`/api/tasks/${taskId}`);
+      survey = { task: data.task, questions: data.questions, current: 0, answers: new Array(data.questions.length).fill(null) };
+      $('surveyTitle').textContent = data.task.title;
+      $('surveyOwner').textContent = `${data.task.owner.avatar}  ${data.task.owner.name} • ${data.task.owner.country}`;
+      $('surveyRewardChip').textContent = `KES ${data.task.reward}`;
+      $('surveyFooter').style.display = 'flex';
+      renderSurveyQuestion();
+      $('surveyModal').classList.add('show');
+    } catch (err) { alert(err.message); }
+  }
+  function renderSurveyQuestion() {
+    const { questions, current, answers } = survey;
+    const q = questions[current];
+    const pct = Math.round((current / questions.length) * 100);
+    $('surveyProgressBar').style.width = pct + '%';
+    $('surveyProgressText').textContent = `Question ${current + 1} of ${questions.length}`;
+    $('surveyProgressPct').textContent = pct + '%';
+    $('surveyBody').innerHTML = `
+      <div style="font-size:17px;font-weight:800;line-height:1.4;margin-bottom:20px;color:var(--text);">${q.question}</div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        ${q.options.map((opt, i) => `
+          <button class="survey-opt" data-i="${i}" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:12px;background:var(--card);border:1.5px solid ${answers[current] === i ? 'var(--green)' : 'var(--border)'};font-size:14px;font-weight:700;color:${answers[current] === i ? 'var(--green-dark)' : 'var(--text)'};cursor:pointer;text-align:left;font-family:inherit;">
+            <span style="width:22px;height:22px;border-radius:50%;border:2px solid ${answers[current] === i ? 'var(--green)' : 'var(--border)'};flex-shrink:0;display:grid;place-items:center;">
+              ${answers[current] === i ? '<span style="width:10px;height:10px;border-radius:50%;background:var(--green);"></span>' : ''}
+            </span>
+            <span>${opt}</span>
+          </button>
+        `).join('')}
+      </div>
+    `;
+    $('surveyBody').querySelectorAll('.survey-opt').forEach(btn => {
+      btn.addEventListener('click', () => { survey.answers[current] = Number(btn.dataset.i); renderSurveyQuestion(); });
+    });
+    $('surveyPrev').style.visibility = current === 0 ? 'hidden' : 'visible';
+    $('surveyNext').textContent = current === questions.length - 1 ? 'Finish & Submit' : 'Next';
+  }
+  $('surveyPrev').addEventListener('click', () => { if (survey.current > 0) { survey.current--; renderSurveyQuestion(); } });
+  $('surveyNext').addEventListener('click', async () => {
+    if (survey.answers[survey.current] == null) return alert('Please select an answer.');
+    if (survey.current < survey.questions.length - 1) { survey.current++; return renderSurveyQuestion(); }
+    const btn = $('surveyNext'); btn.disabled = true; btn.innerHTML = '<span class="loader"></span>';
+    try {
+      const res = await api(`/api/tasks/${survey.task.id}/complete`, { method: 'POST', body: JSON.stringify({ answers: survey.answers }) });
+      showSurveySuccess(res.reward);
+    } catch (err) { alert(err.message); btn.disabled = false; btn.textContent = 'Finish & Submit'; }
+  });
+  function sprinkleFlowers() {
+    const container = document.createElement('div'); container.className = 'flower-sprinkle';
+    document.body.appendChild(container);
+    const flowers = ['🌸','🌺','🌼','🌻','🌷','💐','🌹','🏵️','💮','🌾','🎉','✨'];
+    for (let i = 0; i < 45; i++) {
+      const f = document.createElement('div'); f.className = 'flower';
+      f.textContent = flowers[Math.floor(Math.random() * flowers.length)];
+      f.style.left = (Math.random() * 100) + '%';
+      f.style.fontSize = (16 + Math.random() * 26) + 'px';
+      f.style.animationDuration = (2.5 + Math.random() * 2.5) + 's';
+      f.style.animationDelay = (Math.random() * 1.8) + 's';
+      container.appendChild(f);
+    }
+    setTimeout(() => container.remove(), 5500);
+  }
+  function showSurveySuccess(reward) {
+    $('surveyProgressBar').style.width = '100%'; $('surveyProgressPct').textContent = '100%';
+    $('surveyProgressText').textContent = 'Completed';
+    $('surveyFooter').style.display = 'none';
+    $('surveyBody').innerHTML = `
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;text-align:center;">
+        <div class="success-icon">🎉</div>
+        <div class="success-title">Congratulations!</div>
+        <div style="font-size:15px;font-weight:800;color:var(--green-dark);margin:2px 0 6px;">You have completed the task!</div>
+        <div class="success-amount">KES ${reward}</div>
+        <div class="success-sub">Your reward is <strong>pending admin confirmation</strong>.<br>It will be added to your Available Balance once approved.</div>
+        <button class="btn btn-primary" id="successDone" style="width:100%;">Back to Tasks</button>
+      </div>
+    `;
+    sprinkleFlowers();
+    $('successDone').addEventListener('click', () => {
+      $('surveyModal').classList.remove('show');
+      $('surveyFooter').style.display = 'flex';
+      loadDashboard(); loadNotifications(true); goTo('home');
+    });
+  }
+  $('surveyClose').addEventListener('click', () => {
+    if (survey.current > 0 || survey.answers.some(a => a !== null)) { if (!confirm('Quit this survey?')) return; }
+    $('surveyModal').classList.remove('show'); $('surveyFooter').style.display = 'flex';
+  });
+
+  // WALLET
+  async function loadAccount() {
+    try {
+      const me = await api('/api/me'); user = me;
+      $('walletBalance').textContent = (me.balance || 0).toLocaleString();
+      $('walletTotalEarned').textContent = `KES ${(me.totalEarnings || 0).toLocaleString()}`;
+      $('walletPending').textContent = `KES ${(me.pendingBalance || 0).toLocaleString()}`;
+      const data = await api('/api/wallet/history');
+      const deposits = (data.paymentTransactions || []).filter(t => t.kind === 'deposit').map(t => ({ ...t, _type: 'deposit' }));
+      const withdrawals = (data.walletTransactions || []).filter(t => t.type === 'withdrawal').map(t => ({ ...t, _type: 'withdrawal' }));
+      const all = [...deposits, ...withdrawals].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      const list = $('txList');
+      if (!all.length) { list.innerHTML = `<div class="empty" style="padding:20px 0;"><div class="empty-text">No transactions yet.</div></div>`; return; }
+      list.innerHTML = all.slice(0, 10).map(tx => {
+        const d = new Date(tx.createdAt);
+        const date = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const ageMs = Date.now() - d.getTime();
+        let displayStatus = tx.status;
+        if (tx._type === 'deposit' && tx.status === 'pending' && ageMs > 5 * 60 * 1000) displayStatus = 'failed';
+        let label, amountCls, amountTxt;
+        if (tx._type === 'deposit') { label = '💳 Deposit'; amountCls = 'positive'; amountTxt = `+KES ${tx.amount.toLocaleString()}`; }
+        else { label = '💸 Withdrawal'; amountCls = 'negative'; amountTxt = `-KES ${Math.abs(tx.amount).toLocaleString()}`; }
+        const pillCls = { completed: 'success', failed: 'failed', pending: 'pending' }[displayStatus] || 'pending';
+        const pillLabel = { completed: '✓ Successful', failed: '✕ Failed', pending: '⏳ Pending' }[displayStatus] || displayStatus;
+        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid var(--divider);gap:10px;">
+          <div style="flex:1;display:flex;flex-direction:column;gap:4px;">
+            <div style="font-size:13.5px;font-weight:800;color:var(--text);">${label}</div>
+            <div style="font-size:11px;color:var(--text-muted);font-weight:600;">${date}</div>
+            <span class="hist-status ${pillCls}" style="align-self:flex-start;">${pillLabel}</span>
+          </div>
+          <div style="font-size:15px;font-weight:900;color:${amountCls === 'positive' ? 'var(--green)' : 'var(--red)'};white-space:nowrap;">${amountTxt}</div>
+        </div>`;
+      }).join('');
+    } catch (err) { console.error(err); }
+  }
+
+  // MY TASKS
+  async function loadMyTasks() {
+    try {
+      const list = await api('/api/history');
+      const el = $('myTasksList');
+      if (!list.length) {
+        el.innerHTML = `<div class="card"><div class="empty"><div class="empty-icon">📋</div><div class="empty-title">No tasks yet</div></div></div>`;
+        return;
+      }
+      el.innerHTML = list.map(h => {
+        const d = new Date(h.completedAt);
+        const date = d.toLocaleDateString() + ' • ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const stCls = { completed: 'success', failed: 'failed', pending: 'pending' }[h.status] || 'pending';
+        const stLbl = { completed: '✓ Confirmed', failed: '✕ Rejected', pending: '⏳ Pending' }[h.status] || h.status;
+        return `<div class="hist-card ${h.status === 'failed' ? 'failed' : h.status === 'pending' ? 'pending' : ''}">
+          <div class="hist-icon ${stCls}">${h.owner?.avatar || '📋'}</div>
+          <div class="hist-body">
+            <div class="hist-head">
+              <div class="hist-title">${h.taskTitle}</div>
+              <div class="hist-amount positive">+KES ${h.reward}</div>
+            </div>
+            <div class="hist-sub">${date} • ${h.answersCount} answers</div>
+            <div class="hist-status-row"><span class="hist-status ${stCls}">${stLbl}</span></div>
+            ${h.reason ? `<div class="hist-reason">Reason: ${h.reason}</div>` : ''}
+          </div>
+        </div>`;
+      }).join('');
+    } catch (err) { console.error(err); }
+  }
+
+  // ══════ HISTORY (shows everything with real failure reasons) ══════
+  async function loadHistory() {
+    try {
+      const [taskList, walletData] = await Promise.all([api('/api/history'), api('/api/wallet/history')]);
+      const entries = [];
+
+      // Tasks
+      (taskList || []).forEach(h => {
+        entries.push({
+          kind: 'task',
+          title: h.taskTitle,
+          owner: h.owner,
+          amount: h.reward,
+          status: h.status,
+          reason: h.reason || null,
+          reference: null,
+          at: new Date(h.completedAt),
+          meta: `${h.answersCount} answers`
+        });
+      });
+
+      // Payment transactions (subscriptions + deposits)
+      (walletData.paymentTransactions || []).forEach(t => {
+        const ageMs = Date.now() - new Date(t.createdAt).getTime();
+        let status = t.status;
+        // Auto-fail after 5 min if still pending
+        if (status === 'pending' && ageMs > 5 * 60 * 1000) status = 'failed';
+        const kind = t.kind === 'subscription' ? 'subscription' : t.kind === 'deposit' ? 'deposit' : 'other';
+        let title, amount;
+        if (kind === 'subscription') {
+          title = `${(t.tier || 'subscription').charAt(0).toUpperCase() + (t.tier || '').slice(1)} Subscription`;
+          amount = -t.amount;
+        } else if (kind === 'deposit') {
+          title = 'Deposit';
+          amount = t.amount;
+        } else {
+          title = kind;
+          amount = t.amount;
+        }
+        entries.push({
+          kind,
+          title,
+          amount,
+          status,
+          reason: t.reason || (status === 'pending' && ageMs > 5 * 60 * 1000 ? 'No M-Pesa response (timeout)' : null),
+          reference: t.reference,
+          mpesaRef: t.mpesaRef,
+          at: new Date(t.completedAt || t.createdAt),
+          meta: `M-Pesa: ${t.phone || '—'}`
+        });
+      });
+
+      // Wallet transactions (withdrawals + task rewards)
+      (walletData.walletTransactions || []).forEach(w => {
+        if (w.type === 'deposit') return; // Already handled above
+        let title, amount;
+        if (w.type === 'withdrawal') {
+          title = 'Withdrawal';
+          amount = w.amount;
+        } else if (w.type === 'task_reward') {
+          title = w.taskTitle || 'Task Reward';
+          amount = w.amount;
+        } else if (w.type === 'activation_fee') {
+          title = 'Activation Fee';
+          amount = w.amount;
+        } else {
+          title = w.type;
+          amount = w.amount;
+        }
+        entries.push({
+          kind: w.type === 'withdrawal' ? 'withdrawal' : 'task_reward',
+          title,
+          owner: w.owner,
+          amount,
+          status: w.status,
+          reason: w.reason || null,
+          reference: w.reference,
+          at: new Date(w.confirmedAt || w.createdAt),
+          meta: w.phone ? `M-Pesa: ${w.phone}` : ''
+        });
+      });
+
+      // Filter
+      let filtered = entries;
+      if (historyFilter === 'tasks') filtered = entries.filter(e => e.kind === 'task' || e.kind === 'task_reward');
+      else if (historyFilter === 'subscriptions') filtered = entries.filter(e => e.kind === 'subscription');
+      else if (historyFilter === 'deposits') filtered = entries.filter(e => e.kind === 'deposit');
+      else if (historyFilter === 'withdrawals') filtered = entries.filter(e => e.kind === 'withdrawal');
+
+      filtered.sort((a, b) => b.at - a.at);
+
+      const el = $('historyList');
+      if (!filtered.length) {
+        el.innerHTML = `<div class="card"><div class="empty"><div class="empty-icon">📜</div><div class="empty-title">No history yet</div><div class="empty-text">Your tasks, subscriptions, deposits and withdrawals will appear here.</div></div></div>`;
+        return;
+      }
+
+      el.innerHTML = filtered.slice(0, 100).map(e => {
+        const d = e.at;
+        const date = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        // Icon + classes
+        let icon = '📋', iconCls = 'pending', cardCls = '';
+        if (e.kind === 'task' || e.kind === 'task_reward') { icon = '📋'; }
+        else if (e.kind === 'subscription') { icon = '⭐'; iconCls = 'gold'; cardCls = 'upgrade'; }
+        else if (e.kind === 'deposit') { icon = '💳'; }
+        else if (e.kind === 'withdrawal') { icon = '💸'; iconCls = 'purple'; cardCls = 'withdrawal'; }
+
+        // Status classes
+        const statusLower = (e.status || '').toLowerCase();
+        if (statusLower === 'completed' || statusLower === 'success' || statusLower === 'approved') {
+          iconCls = 'success'; cardCls = e.kind === 'subscription' ? 'upgrade' : e.kind === 'withdrawal' ? 'withdrawal' : '';
+        } else if (statusLower === 'failed' || statusLower === 'rejected') {
+          iconCls = 'failed'; cardCls = 'failed';
+        } else if (statusLower === 'pending') {
+          iconCls = 'pending'; cardCls = 'pending';
+        }
+
+        // Status label + class for pill
+        let stCls = 'pending', stLbl = '⏳ Pending';
+        if (statusLower === 'completed' || statusLower === 'success' || statusLower === 'approved') {
+          stCls = 'success'; stLbl = '✓ Successful';
+        } else if (statusLower === 'failed' || statusLower === 'rejected') {
+          stCls = 'failed'; stLbl = '✕ Failed';
+        }
+
+        // Amount display
+        const amountNum = Number(e.amount) || 0;
+        const isPositive = amountNum >= 0;
+        const amountTxt = (isPositive ? '+' : '-') + 'KES ' + Math.abs(amountNum).toLocaleString();
+
+        // Special: subscription shows negative (money paid)
+        const finalAmount = e.kind === 'subscription' ? `-KES ${Math.abs(amountNum).toLocaleString()}`
+                          : e.kind === 'withdrawal' ? `-KES ${Math.abs(amountNum).toLocaleString()}`
+                          : `+KES ${Math.abs(amountNum).toLocaleString()}`;
+        const amountClass = (e.kind === 'subscription' || e.kind === 'withdrawal') ? 'negative' : 'positive';
+
+        return `
+          <div class="hist-card ${cardCls}">
+            <div class="hist-icon ${iconCls}">${e.owner?.avatar || icon}</div>
+            <div class="hist-body">
+              <div class="hist-head">
+                <div class="hist-title">${e.title}</div>
+                <div class="hist-amount ${amountClass}">${finalAmount}</div>
+              </div>
+              <div class="hist-sub">${date}${e.meta ? ' • ' + e.meta : ''}</div>
+              <div class="hist-status-row">
+                <span class="hist-status ${stCls}">${stLbl}</span>
+              </div>
+              ${e.reason ? `<div class="hist-reason">❌ ${e.reason}</div>` : ''}
+              ${e.mpesaRef ? `<div class="hist-ref">M-Pesa Ref: ${e.mpesaRef}</div>` : ''}
+              ${e.reference ? `<div class="hist-ref">Ref: ${e.reference}</div>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    } catch (err) { console.error(err); }
+  }
+  document.querySelectorAll('#historyFilters .filter-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('#historyFilters .filter-chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      historyFilter = chip.dataset.hfilter;
+      loadHistory();
+    });
+  });
+
+  // REFERRALS
+  async function loadReferrals() {
+    try {
+      const me = await api('/api/me'); user = me;
+      const refLink = `https://online-jobs-and-surveys.onrender.com/?ref=${me.username}`;
+      $('referralLink').value = refLink;
+      $('refCount').textContent = '0';
+      $('refEarned').textContent = 'KES 0';
+    } catch (err) { console.error(err); }
+  }
+  $('copyRefBtn').addEventListener('click', () => {
+    const inp = $('referralLink'); inp.select(); document.execCommand('copy');
+    alert('✓ Referral link copied!');
+  });
+  $('shareRefBtn').addEventListener('click', async () => {
+    const link = $('referralLink').value;
+    if (navigator.share) {
+      try { await navigator.share({ title: 'Join JobPay', text: 'Earn money completing surveys and tasks!', url: link }); } catch {}
+    } else { $('copyRefBtn').click(); }
+  });
+
+  // PROFILE
+  async function loadProfile() {
+    try {
+      const me = await api('/api/me'); user = me;
+      $('profileBigName').textContent = me.username || 'User';
+      $('profileBigHandle').textContent = '@' + (me.username || 'user');
+      setProfilePhotoUI(me.photo);
+      $('profileBody').innerHTML = `
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--divider);"><span style="color:var(--text-muted);font-weight:600;">Username</span><span style="font-weight:800;color:var(--text);">${me.username}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--divider);"><span style="color:var(--text-muted);font-weight:600;">Email</span><span style="font-weight:800;font-size:13px;color:var(--text);">${me.email}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--divider);"><span style="color:var(--text-muted);font-weight:600;">Phone</span><span style="font-weight:800;color:var(--text);">${me.phone || '—'}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--divider);"><span style="color:var(--text-muted);font-weight:600;">Plan</span><span style="font-weight:800;color:var(--green);text-transform:capitalize;">${me.subscriptionTier}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--divider);"><span style="color:var(--text-muted);font-weight:600;">Activation</span><span style="font-weight:800;color:${me.activationFeePaid ? 'var(--green)' : 'var(--red)'};">${me.activationFeePaid ? '✓ Paid' : '✗ Not paid'}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0;"><span style="color:var(--text-muted);font-weight:600;">Balance</span><span style="font-weight:800;color:var(--text);">KES ${(me.balance || 0).toLocaleString()}</span></div>
+      `;
+    } catch (err) { console.error(err); }
+  }
+
+  // SUBSCRIBE — activation ONLY on callback
+  document.querySelectorAll('.tier-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentSubscribeTier = btn.dataset.tier;
+      const names = { classic: 'Classic', premium: 'Premium', golden: 'Golden' };
+      $('subTierName').textContent = names[currentSubscribeTier];
+      $('subTierPrice').textContent = publicPrices[currentSubscribeTier];
+      $('subPhone').value = user?.phone || '';
+      clearMsg($('subModalMsg'));
+      $('subModalForm').style.display = 'block';
+      $('confirmSubscribe').disabled = false;
+      $('confirmSubscribe').textContent = 'Send STK Push';
+      $('subscribeModal').classList.add('show');
+    });
+  });
+  $('confirmSubscribe').addEventListener('click', async () => {
+    const phone = $('subPhone').value.trim();
+    if (!phone) return showMsg($('subModalMsg'), 'Please enter your M‑Pesa number', 'error');
+    const btn = $('confirmSubscribe');
+    btn.disabled = true; btn.innerHTML = '<span class="loader"></span>';
+    try {
+      const data = await api('/api/subscribe', { method: 'POST', body: JSON.stringify({ tier: currentSubscribeTier, phone }) });
+      showMsg($('subModalMsg'), `📲 STK push sent to ${data.phone}. Check your phone and enter your M‑Pesa PIN. Subscription activates only after payment confirmation.`, 'success');
+      btn.textContent = 'Waiting for payment confirmation…';
+      let attempts = 0;
+      const tier = currentSubscribeTier;
+      // Polling for callback-triggered activation
+      const poll = setInterval(async () => {
+        attempts++;
+        try {
+          const me = await api('/api/me');
+          if (me.subscriptionTier === tier && me.subscriptionExpiry) {
+            clearInterval(poll);
+            user = me; localStorage.setItem('jobpay_user', JSON.stringify(me));
+            updateDrawer();
+            showMsg($('subModalMsg'), `✅ ${tier.charAt(0).toUpperCase() + tier.slice(1)} activated! Valid for 7 days.`, 'success');
+            setTimeout(() => { $('subscribeModal').classList.remove('show'); loadDashboard(); loadNotifications(true); goTo('home'); }, 1500);
+            return;
+          }
+        } catch {}
+        if (attempts > 60) {
+          clearInterval(poll);
+          showMsg($('subModalMsg'), '⏳ Payment not confirmed yet. Your subscription will activate automatically once M-Pesa confirms. Check your history tab for status.', 'error');
+          btn.disabled = false; btn.textContent = 'Send STK Push';
+        }
+      }, 3000);
+    } catch (err) { showMsg($('subModalMsg'), err.message, 'error'); btn.disabled = false; btn.textContent = 'Send STK Push'; }
+  });
+
+  // DEPOSIT / WITHDRAW / ACTIVATION
+  $('btnDeposit').addEventListener('click', () => {
+    $('depositAmount').value = ''; $('depositPhone').value = user?.phone || '';
+    clearMsg($('depositModalMsg'));
+    $('confirmDeposit').disabled = false; $('confirmDeposit').textContent = 'Send STK to this number';
+    $('depositModal').classList.add('show');
+  });
+  $('qaDeposit').addEventListener('click', () => $('btnDeposit').click());
+  $('confirmDeposit').addEventListener('click', async () => {
+    const amount = Number($('depositAmount').value) || 0;
+    const phone = $('depositPhone').value.trim();
+    if (!phone) return showMsg($('depositModalMsg'), 'Enter M‑Pesa number', 'error');
+    if (amount < 50) return showMsg($('depositModalMsg'), 'Minimum KES 50', 'error');
+    const btn = $('confirmDeposit'); btn.disabled = true; btn.innerHTML = '<span class="loader"></span>';
+    try {
+      const res = await api('/api/wallet/deposit', { method: 'POST', body: JSON.stringify({ amount, phone }) });
+      showMsg($('depositModalMsg'), `📲 STK sent to ${res.phone}. Approve KES ${res.amount}.`, 'success');
+      btn.textContent = 'Waiting…';
+      const startBal = user.balance || 0;
+      let attempts = 0;
+      const poll = setInterval(async () => {
+        attempts++;
+        try {
+          const me = await api('/api/me');
+          if (me.balance > startBal) {
+            clearInterval(poll); user = me;
+            showMsg($('depositModalMsg'), `✅ Deposit successful!`, 'success');
+            setTimeout(() => { $('depositModal').classList.remove('show'); loadAccount(); loadNotifications(true); }, 1500);
+            return;
+          }
+        } catch {}
+        if (attempts > 60) { clearInterval(poll); showMsg($('depositModalMsg'), '⏳ Payment not received.', 'error'); btn.disabled = false; btn.textContent = 'Send STK to this number'; }
+      }, 3000);
+    } catch (err) { showMsg($('depositModalMsg'), err.message, 'error'); btn.disabled = false; btn.textContent = 'Send STK to this number'; }
+  });
+
+  $('btnWithdraw').addEventListener('click', () => {
+    if (user?.activationFeePaid !== true) {
+      if ((user?.balance || 0) < 200) { alert('You need at least KES 200 to withdraw.'); return; }
+      $('activationPhone').value = user?.phone || '';
+      clearMsg($('activationModalMsg'));
+      $('confirmActivation').disabled = false; $('confirmActivation').textContent = 'Pay KES 499 Activation Fee';
+      $('activationModal').classList.add('show'); return;
+    }
+    $('withdrawAmount').value = ''; clearMsg($('withdrawModalMsg'));
+    $('confirmWithdraw').disabled = false; $('confirmWithdraw').textContent = 'Withdraw to M‑Pesa';
+    $('withdrawPinField').style.display = user?.hasWithdrawalPin ? 'block' : 'none';
+    $('withdrawPin').value = '';
+    $('withdrawModal').classList.add('show');
+  });
+  $('qaWithdraw').addEventListener('click', () => $('btnWithdraw').click());
+  $('homeWithdrawBtn').addEventListener('click', () => $('btnWithdraw').click());
+
+  $('confirmActivation').addEventListener('click', async () => {
+    const phone = $('activationPhone').value.trim();
+    if (!phone) return showMsg($('activationModalMsg'), 'Enter M‑Pesa number', 'error');
+    const btn = $('confirmActivation'); btn.disabled = true; btn.innerHTML = '<span class="loader"></span>';
+    try {
+      const res = await api('/api/wallet/pay-activation', { method: 'POST', body: JSON.stringify({ phone }) });
+      showMsg($('activationModalMsg'), `📲 STK sent to ${res.phone}. Pay KES ${res.amount}.`, 'success');
+      btn.textContent = 'Waiting…';
+      let attempts = 0;
+      const poll = setInterval(async () => {
+        attempts++;
+        try {
+          const me = await api('/api/me');
+          if (me.activationFeePaid === true) {
+            clearInterval(poll); user = me; localStorage.setItem('jobpay_user', JSON.stringify(me));
+            showMsg($('activationModalMsg'), '✅ Account activated!', 'success');
+            setTimeout(() => { $('activationModal').classList.remove('show'); $('withdrawAmount').value = ''; clearMsg($('withdrawModalMsg')); $('confirmWithdraw').disabled = false; $('confirmWithdraw').textContent = 'Withdraw to M‑Pesa'; $('withdrawModal').classList.add('show'); }, 1500);
+            return;
+          }
+        } catch {}
+        if (attempts > 60) { clearInterval(poll); showMsg($('activationModalMsg'), '⏳ Not received.', 'error'); btn.disabled = false; btn.textContent = 'Pay KES 499 Activation Fee'; }
+      }, 3000);
+    } catch (err) { showMsg($('activationModalMsg'), err.message, 'error'); btn.disabled = false; btn.textContent = 'Pay KES 499 Activation Fee'; }
+  });
+
+  $('confirmWithdraw').addEventListener('click', async () => {
+    const amount = Number($('withdrawAmount').value) || 0;
+    const pin = $('withdrawPin').value;
+    if (amount < 200) return showMsg($('withdrawModalMsg'), 'Minimum KES 200', 'error');
+    if (amount > (user.balance || 0)) return showMsg($('withdrawModalMsg'), 'Insufficient balance', 'error');
+    if (user?.hasWithdrawalPin && !pin) return showMsg($('withdrawModalMsg'), 'Enter your withdrawal PIN', 'error');
+    const btn = $('confirmWithdraw'); btn.disabled = true; btn.innerHTML = '<span class="loader"></span>';
+    try {
+      const res = await api('/api/wallet/withdraw', { method: 'POST', body: JSON.stringify({ amount, pin }) });
+      showMsg($('withdrawModalMsg'), `✅ ${res.message}`, 'success');
+      setTimeout(() => { $('withdrawModal').classList.remove('show'); loadAccount(); loadNotifications(true); }, 1800);
+    } catch (err) {
+      if (err.code === 'ACTIVATION_REQUIRED') {
+        $('withdrawModal').classList.remove('show');
+        $('activationPhone').value = user?.phone || ''; clearMsg($('activationModalMsg'));
+        $('confirmActivation').disabled = false; $('confirmActivation').textContent = 'Pay KES 499 Activation Fee';
+        $('activationModal').classList.add('show'); return;
+      }
+      showMsg($('withdrawModalMsg'), err.message, 'error');
+      btn.disabled = false; btn.textContent = 'Withdraw to M‑Pesa';
+    }
+  });
+
+  document.querySelectorAll('.quick-amt').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const modal = btn.closest('.modal');
+      const inp = modal.querySelector('input.amount-input');
+      if (inp) inp.value = btn.dataset.amt;
+    });
+  });
+
+  document.querySelectorAll('[data-close]').forEach(btn => {
+    btn.addEventListener('click', () => $(btn.dataset.close).classList.remove('show'));
+  });
+  document.querySelectorAll('.modal-backdrop').forEach(m => {
+    m.addEventListener('click', e => { if (e.target === m) m.classList.remove('show'); });
+  });
+  $('upgradeFromModal').addEventListener('click', () => {
+    $('upgradeModal').classList.remove('show');
+    navigate('subscribe');
+  });
+
+  // INIT
+  loadPublicPrices();
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') loadPublicPrices(); });
+  setInterval(() => { if ($('screen-subscribe')?.classList.contains('active')) loadPublicPrices(); }, 15000);
+
+  if (token && user) { enterApp(); }
+  else {
+    $('screen-auth').classList.add('active');
+    $('headerRight').style.display = 'none';
+    $('bottomNav').style.display = 'none';
+  }
+})();
+</script>
+</body>
+  </html>
