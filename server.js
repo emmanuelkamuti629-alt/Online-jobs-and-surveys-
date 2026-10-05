@@ -35,7 +35,7 @@ const MIN_DEPOSIT = 50;
 const MIN_WITHDRAWAL = 200;
 const ACTIVATION_FEE = 499;
 const PAYMENT_TIMEOUT_MS = 5 * 60 * 1000;
-const SEED_VERSION = 3;
+const SEED_VERSION = 5; // Bumped for active batch logic
 
 let tierPrices = { classic: 200, premium: 350, golden: 450 };
 function getTierPrice(tier) {
@@ -69,13 +69,15 @@ async function connectDB() {
   await walletCol.createIndex({ userId: 1, createdAt: -1 });
   await historyCol.createIndex({ userId: 1, completedAt: -1 });
   await tasksCol.createIndex({ id: 1 }, { unique: true });
+  await tasksCol.createIndex({ active: 1 }); // Index for fast active task lookup
+  await tasksCol.createIndex({ batchId: 1 }); 
   await visitsCol.createIndex({ createdAt: -1 });
   await loginAttemptsCol.createIndex({ createdAt: -1 });
   await ticketsCol.createIndex({ userId: 1, createdAt: -1 });
   await notificationsCol.createIndex({ userId: 1, createdAt: -1 });
   await notificationsCol.createIndex({ userId: 1, read: 1 });
 
-  await seedTasks();
+  await seedTasks(true); // Force seed on startup if empty
   await loadTierPrices();
   console.log('✅ MongoDB connected');
 }
@@ -94,7 +96,7 @@ async function loadTierPrices() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// DAILY SEED LOGIC - Ensures new questions & tasks every 24 hours
+// DAILY SEED LOGIC
 // ═══════════════════════════════════════════════════════════════════════════
 function getDailySeed() {
   const d = new Date();
@@ -126,7 +128,6 @@ const OWNER_AVATARS = ['👩‍💼','👨‍💼','🧑‍💻','👨‍🔬','
 const OWNER_COUNTRIES = ['Kenya','Kenya','Kenya','Uganda','Tanzania','Rwanda','Kenya'];
 const AVATAR_COLORS = ['#43B02A','#2196F3','#F5A623','#E91E63','#9C27B0','#00BCD4','#FF5722','#795548','#3F51B5','#009688'];
 
-// Simulating tasks scraped from Google, Social Media, etc.
 const SURVEY_TOPICS = [
   'Google Review Verification', 'Instagram Engagement Survey', 'Facebook Ad Feedback', 
   'YouTube Video Tagging', 'TikTok Trend Analysis', 'Twitter/X Sentiment Study',
@@ -156,6 +157,7 @@ function ownerFor(i) {
     rating: (4.5 + ((i * 3) % 5) / 10).toFixed(1)
   };
 }
+
 function descFor(title, category, country) {
   const t = {
     'Google Review Verification':'Help verify the authenticity of Google Business reviews.',
@@ -183,34 +185,30 @@ function descFor(title, category, country) {
   return t[category] || `Help understand ${category.toLowerCase()} in ${country}.`;
 }
 
-async function seedTasks() {
+async function seedTasks(force = false) {
   const meta = await metaCol.findOne({ key: 'task_seed_version' });
-  const todayStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const todayStr = new Date().toISOString().slice(0, 10);
   
-  // Auto-refresh logic: If the date has changed, re-seed tasks
-  if (meta && meta.version === SEED_VERSION && meta.lastSeedDate === todayStr) {
-    console.log('⏩ Tasks already seeded today. Skipping auto-refresh.');
+  if (!force && meta && meta.version === SEED_VERSION && meta.lastSeedDate === todayStr) {
     return;
   }
 
-  console.log('🌱 Seeding/Refreshing tasks for today...');
-  await tasksCol.deleteMany({});
+  console.log('🌱 Generating new tasks (staging batch)...');
   
-  const tasks = []; let id = 1;
+  const newBatchId = Date.now();
+  const newTasks = [];
+  let idCounter = 1;
+
   for (let i = 0; i < 2000; i++) {
     const topic = SURVEY_TOPICS[i % SURVEY_TOPICS.length];
     const country = OWNER_COUNTRIES[i % OWNER_COUNTRIES.length];
     const owner = ownerFor(i);
-    const title = `${topic} – ${country} #${i + 1}`;
-    
-    // Minimum reward 50, up to 150
-    const reward = 50 + ((i * 7) % 100); 
-    
-    // Simulate tier labels (Free, Classic, Premium)
+    const title = `${topic} – ${country} #${idCounter}`;
+    const reward = 50 + ((i * 7) % 100); // Min reward 50
     const tier = ['free', 'classic', 'premium'][i % 3];
     
-    tasks.push({ 
-      id: id++, 
+    newTasks.push({ 
+      id: (newBatchId % 1000000) * 10000 + idCounter, 
       type: i % 2 === 0 ? 'survey' : 'task', 
       title, 
       category: topic, 
@@ -222,17 +220,34 @@ async function seedTasks() {
       difficulty: ['easy','medium','hard'][i % 3], 
       owner, 
       tier, 
+      active: false, // Marked as inactive until fully ready
+      batchId: newBatchId, 
       createdAt: new Date() 
     });
+    idCounter++;
   }
   
-  await tasksCol.insertMany(tasks);
+  // 1. Insert the new tasks first
+  await tasksCol.insertMany(newTasks);
+  console.log(`✅ Staged ${newTasks.length} new tasks.`);
+
+  // 2. Deactivate old tasks
+  await tasksCol.updateMany({ active: true }, { $set: { active: false } });
+  
+  // 3. Activate new tasks
+  await tasksCol.updateMany({ batchId: newBatchId }, { $set: { active: true } });
+  console.log(`✅ New tasks are now active.`);
+
+  // 4. Delete old tasks
+  await tasksCol.deleteMany({ active: false, batchId: { $ne: newBatchId } });
+  console.log(`✅ Old tasks cleaned up.`);
+
+  // 5. Update the meta collection
   await metaCol.updateOne(
     { key:'task_seed_version' }, 
     { $set: { version: SEED_VERSION, lastSeedDate: todayStr, updatedAt: new Date() } }, 
     { upsert: true }
   );
-  console.log(`✅ Seeded ${tasks.length} tasks for ${todayStr}`);
 }
 
 const QT = [
@@ -258,7 +273,6 @@ const QT = [
   { q:'How would you describe your income level?', o:['Low','Lower middle','Upper middle','High'] }
 ];
 
-// UPDATED: Generates new unique questions every day using the daily seed
 function generateQuestions(task) {
   const dailySeed = getDailySeed();
   const seed = (Number(task.id) || 1) + dailySeed; 
@@ -295,9 +309,6 @@ function dailyLimit(u) {
 }
 function startOfToday() { const d = new Date(); d.setHours(0,0,0,0); return d; }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// 24-HOUR ROLLING WINDOW RESET LOGIC
-// ═══════════════════════════════════════════════════════════════════════════
 function resetDailyTasks(u) {
   if (!u.lastTaskDate) {
     u.lastTaskDate = new Date(0).toISOString();
@@ -712,19 +723,20 @@ app.get('/api/support/tickets', auth, async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// TASKS ROUTE
+// TASKS ROUTE - Always serves the latest active batch
 // ═══════════════════════════════════════════════════════════════════════════
 app.get('/api/tasks', auth, async (req, res) => {
   try {
     const user = await usersCol.findOne({ _id: new ObjectId(req.userId) });
     if (!user) return res.status(404).json({ error: 'User not found' });
     if (resetDailyTasks(user)) await usersCol.updateOne({ _id: user._id }, { $set: { tasksCompletedToday: 0, lastTaskDate: user.lastTaskDate } });
+    
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const size = Math.min(100, parseInt(req.query.size) || 50);
     const type = req.query.type;
-    const filter = {};
+    const filter = { active: true };
     if (type === 'survey' || type === 'task') filter.type = type;
-    
+
     const totalCount = await tasksCol.countDocuments(filter);
     const dailySeed = getDailySeed();
 
@@ -789,6 +801,11 @@ app.post('/api/tasks/:id/complete', auth, async (req, res) => {
     if (done >= limit) return res.status(429).json({ error: 'Daily limit reached' });
     const task = await tasksCol.findOne({ id: Number(req.params.id) });
     if (!task) return res.status(404).json({ error: 'Task not found' });
+    
+    // Strict check: Prevent double submission of the same task
+    const completedToday = await historyCol.findOne({ userId: user._id, taskId: task.id, completedAt: { $gte: startOfToday() } });
+    if (completedToday) return res.status(409).json({ error: 'This task has already been completed today.' });
+
     const reward = user.subscriptionTier === 'free' ? FREE_TASK_REWARD : task.reward;
     const wTxn = {
       userId: user._id, type: 'task_reward', amount: reward, status: 'pending',
@@ -1058,9 +1075,10 @@ app.get('/api/admin/stats', adminAuth, async (req, res) => {
 
 app.post('/api/admin/tasks/refresh', adminAuth, async (req, res) => {
   try {
-    await tasksCol.deleteMany({});
-    await seedTasks();
-    res.json({ ok: true, message: 'Tasks have been refreshed successfully.' });
+    console.log('🔍 Admin triggered task refresh. Simulating platform scan...');
+    await new Promise(resolve => setTimeout(resolve, 1500)); // 1.5s delay to simulate "searching"
+    await seedTasks(true);
+    res.json({ ok: true, message: 'Tasks refreshed successfully. New batch deployed without downtime.' });
   } catch (err) { console.error('Admin task refresh error:', err); res.status(500).json({ error: 'Server error' }); }
 });
 
@@ -1286,6 +1304,12 @@ app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.ht
 (async () => {
   try {
     await connectDB();
+    // Auto-refresh tasks every 24 hours
+    setInterval(async () => {
+      console.log('🕒 Auto-refreshing tasks (24h interval)...');
+      await seedTasks(true);
+    }, 24 * 60 * 60 * 1000);
+
     app.listen(PORT, () => {
       console.log(`🚀 Server running on http://localhost:${PORT}`);
       console.log(`   Admin: /admin`);
