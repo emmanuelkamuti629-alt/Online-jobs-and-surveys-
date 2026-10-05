@@ -94,11 +94,10 @@ async function loadTierPrices() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// DAILY SEED LOGIC - Ensures new questions & tasks every day
+// DAILY SEED LOGIC - Ensures new questions & tasks every 24 hours
 // ═══════════════════════════════════════════════════════════════════════════
 function getDailySeed() {
   const d = new Date();
-  // Returns a number like 20231025 (YYYYMMDD)
   return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
 }
 
@@ -120,14 +119,33 @@ async function createNotification(userId, type, title, message, meta = {}) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// SEED
+// SEED (Simulating scraping from various platforms)
 // ═══════════════════════════════════════════════════════════════════════════
 const OWNER_NAMES = ['Sarah M.','James K.','Grace W.','David O.','Amina H.','Peter N.','Lucy A.','Brian C.','Faith M.','Kevin R.','Njeri K.','Otieno J.','Wanjiku S.','Hassan A.','Esther M.','Mercy W.','Kimani T.','Achieng O.','Mwangi D.','Zawadi L.'];
 const OWNER_AVATARS = ['👩‍💼','👨‍💼','🧑‍💻','👨‍🔬','👩‍🔬','🧑‍🎓','👨‍🏫','👩‍🏫','🧑‍🎨','👩‍💻','👨‍💻','🧑‍🔧','👨‍⚕️','👩‍⚕️','🧑‍🍳','🧑‍🌾','👩‍🎤','👨‍🎤','🧑‍🚀','👩‍✈️'];
 const OWNER_COUNTRIES = ['Kenya','Kenya','Kenya','Uganda','Tanzania','Rwanda','Kenya'];
 const AVATAR_COLORS = ['#43B02A','#2196F3','#F5A623','#E91E63','#9C27B0','#00BCD4','#FF5722','#795548','#3F51B5','#009688'];
-const SURVEY_TOPICS = ['Consumer Habits','Mobile Banking','Online Shopping','Health & Wellness','Travel Preferences','Social Media','Food Delivery','Streaming Services','Smartphone Usage','Fitness Apps','Gaming Habits','Remote Work','Electric Vehicles','Crypto Adoption','Insurance Products','Retail Brands','Coffee Culture','Fashion Trends','Real Estate','Education Tech','Pet Ownership','Music Streaming','Fitness Wearables','Home Security','Productivity Tools','Personal Finance','Digital Wallets','Beauty Products','Home Cooking','Public Transport','Airlines & Travel','Online Learning','Subscription Services','Cloud Storage','Smart Home Devices','Wearables'];
-const TASK_TITLES = ['Verify Product Reviews','Data Entry – Contact List','Image Categorisation','Transcribe Short Audio','Proofread Blog Post','Rate Product Images','Check Website Links','Translate Short Phrases','Tag Images by Category','Verify Business Listings','Classify Customer Reviews','Short Video Transcription','Fill Spreadsheet Data','Compare Prices Online','Rate Website UX','Moderate Comments','Label Sentences for AI','Record Voice Sample','Photograph Receipt','Answer Quick Poll','Map Local Business','Correct OCR Text','Verify News Article','Collect Email Signups'];
+
+// Simulating tasks scraped from Google, Social Media, etc.
+const SURVEY_TOPICS = [
+  'Google Review Verification', 'Instagram Engagement Survey', 'Facebook Ad Feedback', 
+  'YouTube Video Tagging', 'TikTok Trend Analysis', 'Twitter/X Sentiment Study',
+  'LinkedIn Professional Survey', 'WhatsApp Business Feedback', 'Google Maps Location Check',
+  'Amazon Product Review Validation', 'Netflix Content Preference', 'Spotify Playlist Curation',
+  'Uber Ride Experience', 'Airbnb Host Feedback', 'eBay Seller Rating', 
+  'Shopify Store UX Test', 'Reddit Community Poll', 'Pinterest Board Categorization',
+  'Snapchat Filter Feedback', 'Discord Server Moderation', 'Twitch Streamer Interaction'
+];
+
+const TASK_TITLES = [
+  'Verify Google Business Listing', 'Check Website Search Ranking', 'Transcribe YouTube Short',
+  'Label Instagram Reels', 'Rate Facebook Marketplace Item', 'Proofread Social Media Post',
+  'Categorize TikTok Comments', 'Translate X/Twitter Post', 'Moderate Discord Chat',
+  'Review LinkedIn Job Post', 'Test Mobile App UX', 'Compare Flight Prices',
+  'Verify Hotel Reviews', 'Check E-commerce Prices', 'Validate News Article',
+  'Tag Images for AI Training', 'Record Voice Sample for AI', 'Answer Quick Poll',
+  'Map Local Business Location', 'Correct OCR Text from Receipt'
+];
 
 function ownerFor(i) {
   return {
@@ -140,74 +158,81 @@ function ownerFor(i) {
 }
 function descFor(title, category, country) {
   const t = {
-    'Consumer Habits':'Share your shopping habits and product preferences.',
-    'Mobile Banking':'Tell us how you use mobile money and digital wallets.',
-    'Online Shopping':'Help retailers understand what makes you buy online.',
-    'Health & Wellness':'Answer questions about health routines and wellness spending.',
-    'Travel Preferences':'Share how and where you like to travel.',
-    'Social Media':'Help us understand which apps you use and why.',
-    'Food Delivery':'Tell us about your favourite delivery apps and habits.',
-    'Streaming Services':'Give feedback on streaming platforms.',
-    'Smartphone Usage':'Share how you use your phone.',
-    'Fitness Apps':'Tell us about your workout habits.',
-    'Gaming Habits':'Answer questions about gaming platforms and spending.',
-    'Remote Work':'Share your experience with remote work tools.',
-    'Electric Vehicles':'Give your opinion on EVs and adoption.',
-    'Crypto Adoption':'Share your views on cryptocurrencies.',
-    'Insurance Products':'Help insurers understand what coverage matters.',
-    'Retail Brands':'Rate your favourite retail brands.',
-    'Coffee Culture':'Tell us about your coffee habits.',
-    'Fashion Trends':'Share your fashion preferences.',
-    'Real Estate':'Answer questions about housing and property.',
-    'Education Tech':'Give feedback on online learning platforms.',
-    'Pet Ownership':'Tell us about your pets and products you buy.',
-    'Music Streaming':'Share your music habits.',
-    'Fitness Wearables':'Give feedback on smartwatches.',
-    'Home Security':'Answer questions about home security.',
-    'Productivity Tools':'Tell us which apps help you get things done.',
-    'Personal Finance':'Share how you budget, save, and invest.',
-    'Digital Wallets':'Rate your digital wallet experience.',
-    'Beauty Products':'Answer questions about skincare and makeup.',
-    'Home Cooking':'Share your cooking habits.',
-    'Public Transport':'Rate your public transport experience.',
-    'Airlines & Travel':'Give feedback on airlines and hotels.',
-    'Online Learning':'Share your online learning experience.',
-    'Subscription Services':'Tell us which subscriptions you pay for.',
-    'Cloud Storage':'Answer questions about cloud storage.',
-    'Smart Home Devices':'Share your smart home setup.',
-    'Wearables':'Tell us about your wearable devices.'
+    'Google Review Verification':'Help verify the authenticity of Google Business reviews.',
+    'Instagram Engagement Survey':'Share your thoughts on Instagram engagement.',
+    'Facebook Ad Feedback':'Give feedback on Facebook ad campaigns.',
+    'YouTube Video Tagging':'Tag videos correctly for AI training.',
+    'TikTok Trend Analysis':'Analyze current TikTok trends.',
+    'Twitter/X Sentiment Study':'Rate the sentiment of recent X/Twitter posts.',
+    'LinkedIn Professional Survey':'Answer questions about professional networking.',
+    'WhatsApp Business Feedback':'Share your experience with WhatsApp Business.',
+    'Google Maps Location Check':'Verify if a location is accurate on Google Maps.',
+    'Amazon Product Review Validation':'Help validate Amazon product reviews.',
+    'Netflix Content Preference':'Tell us what you like to watch on Netflix.',
+    'Spotify Playlist Curation':'Help categorize songs for Spotify playlists.',
+    'Uber Ride Experience':'Rate your recent Uber ride experience.',
+    'Airbnb Host Feedback':'Give feedback on your Airbnb stay.',
+    'eBay Seller Rating':'Rate an eBay seller based on their profile.',
+    'Shopify Store UX Test':'Test a Shopify store and give UX feedback.',
+    'Reddit Community Poll':'Participate in a Reddit community poll.',
+    'Pinterest Board Categorization':'Categorize images for Pinterest boards.',
+    'Snapchat Filter Feedback':'Give feedback on a new Snapchat filter.',
+    'Discord Server Moderation':'Help moderate a Discord server.',
+    'Twitch Streamer Interaction':'Engage with a Twitch streamer\'s content.'
   };
   return t[category] || `Help understand ${category.toLowerCase()} in ${country}.`;
 }
+
 async function seedTasks() {
   const meta = await metaCol.findOne({ key: 'task_seed_version' });
-  if (meta && meta.version === SEED_VERSION) return;
-  console.log('🌱 Seeding tasks...');
+  const todayStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  
+  // Auto-refresh logic: If the date has changed, re-seed tasks
+  if (meta && meta.version === SEED_VERSION && meta.lastSeedDate === todayStr) {
+    console.log('⏩ Tasks already seeded today. Skipping auto-refresh.');
+    return;
+  }
+
+  console.log('🌱 Seeding/Refreshing tasks for today...');
   await tasksCol.deleteMany({});
+  
   const tasks = []; let id = 1;
-  for (let i = 0; i < 1200; i++) {
+  for (let i = 0; i < 2000; i++) {
     const topic = SURVEY_TOPICS[i % SURVEY_TOPICS.length];
     const country = OWNER_COUNTRIES[i % OWNER_COUNTRIES.length];
     const owner = ownerFor(i);
-    const title = `${topic} Survey – ${country} #${i + 1}`;
-    tasks.push({ id: id++, type:'survey', title, category:topic, country,
-      description: descFor(title, topic, country), reward: 21 + ((i * 7) % 40),
-      time: `${3 + (i % 5)} min`, questions: 10 + (i % 11),
-      difficulty: ['easy','medium','hard'][i % 3], owner, createdAt: new Date() });
+    const title = `${topic} – ${country} #${i + 1}`;
+    
+    // Minimum reward 50, up to 150
+    const reward = 50 + ((i * 7) % 100); 
+    
+    // Simulate tier labels (Free, Classic, Premium)
+    const tier = ['free', 'classic', 'premium'][i % 3];
+    
+    tasks.push({ 
+      id: id++, 
+      type: i % 2 === 0 ? 'survey' : 'task', 
+      title, 
+      category: topic, 
+      country,
+      description: descFor(title, topic, country), 
+      reward: reward,
+      time: `${3 + (i % 7)} min`, 
+      questions: 10 + (i % 11),
+      difficulty: ['easy','medium','hard'][i % 3], 
+      owner, 
+      tier, 
+      createdAt: new Date() 
+    });
   }
-  for (let i = 0; i < 1000; i++) {
-    const title = TASK_TITLES[i % TASK_TITLES.length];
-    const owner = ownerFor(i + 500);
-    tasks.push({ id: id++, type:'task', title: `${title} #${i + 1}`,
-      category:'Micro‑task', country: owner.country,
-      description: `${title}. Quick, focused work.`,
-      reward: 21 + ((i * 5) % 35), time: `${2 + (i % 6)} min`,
-      questions: 10 + (i % 6), difficulty: ['easy','medium','hard'][i % 3],
-      owner, createdAt: new Date() });
-  }
+  
   await tasksCol.insertMany(tasks);
-  await metaCol.updateOne({ key:'task_seed_version' }, { $set:{ version:SEED_VERSION, updatedAt:new Date() } }, { upsert:true });
-  console.log(`✅ Seeded ${tasks.length} tasks`);
+  await metaCol.updateOne(
+    { key:'task_seed_version' }, 
+    { $set: { version: SEED_VERSION, lastSeedDate: todayStr, updatedAt: new Date() } }, 
+    { upsert: true }
+  );
+  console.log(`✅ Seeded ${tasks.length} tasks for ${todayStr}`);
 }
 
 const QT = [
@@ -687,7 +712,7 @@ app.get('/api/support/tickets', auth, async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// UPDATED TASKS ROUTE - Simulates new tasks every day using daily seed
+// TASKS ROUTE
 // ═══════════════════════════════════════════════════════════════════════════
 app.get('/api/tasks', auth, async (req, res) => {
   try {
@@ -703,8 +728,6 @@ app.get('/api/tasks', auth, async (req, res) => {
     const totalCount = await tasksCol.countDocuments(filter);
     const dailySeed = getDailySeed();
 
-    // Use aggregation to dynamically shuffle tasks daily
-    // This ensures users see different tasks at the top of their list every day
     const tasks = await tasksCol.aggregate([
       { $match: filter },
       { $addFields: { dailyOrder: { $mod: [ { $add: ["$id", dailySeed] }, 10000 ] } } },
@@ -729,7 +752,7 @@ app.get('/api/tasks', auth, async (req, res) => {
         category: t.category, country: t.country,
         reward: user.subscriptionTier === 'free' && status !== 'locked' ? FREE_TASK_REWARD : t.reward,
         time: t.time, questions: t.questions, difficulty: t.difficulty,
-        owner: t.owner, status
+        owner: t.owner, status, tier: t.tier
       };
     });
     res.json({ tier: user.subscriptionTier, dailyLimit: limit, tasksCompletedToday: done, tasksRemaining: remaining, page, size, totalCount, tasks: shaped });
@@ -750,7 +773,7 @@ app.get('/api/tasks/:id', auth, async (req, res) => {
     if (done >= limit) return res.status(403).json({ error: 'Daily limit reached' });
     const questions = generateQuestions(task);
     const reward = user.subscriptionTier === 'free' ? FREE_TASK_REWARD : task.reward;
-    res.json({ task: { id: task.id, type: task.type, title: task.title, description: task.description, category: task.category, country: task.country, time: task.time, difficulty: task.difficulty, owner: task.owner, reward }, questions });
+    res.json({ task: { id: task.id, type: task.type, title: task.title, description: task.description, category: task.category, country: task.country, time: task.time, difficulty: task.difficulty, owner: task.owner, reward, tier: task.tier }, questions });
   } catch (err) { res.status(500).json({ error: 'Server error' }); }
 });
 
@@ -1031,6 +1054,14 @@ app.get('/api/admin/stats', adminAuth, async (req, res) => {
       pending: { rewards: pendingRewardsCount, rewardsAmount: pendingRewardsAgg[0]?.total || 0, withdrawals: pendingWithdrawalsCount, activations: activationsCount }
     });
   } catch (err) { res.status(500).json({ error: 'Server error' }); }
+});
+
+app.post('/api/admin/tasks/refresh', adminAuth, async (req, res) => {
+  try {
+    await tasksCol.deleteMany({});
+    await seedTasks();
+    res.json({ ok: true, message: 'Tasks have been refreshed successfully.' });
+  } catch (err) { console.error('Admin task refresh error:', err); res.status(500).json({ error: 'Server error' }); }
 });
 
 app.get('/api/admin/users', adminAuth, async (req, res) => {
