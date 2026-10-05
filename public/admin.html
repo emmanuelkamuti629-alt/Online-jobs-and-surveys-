@@ -251,6 +251,7 @@
       <button class="tab" data-tab="txns">💳 Transactions</button>
       <button class="tab" data-tab="pending">⏳ Pending Rewards</button>
       <button class="tab" data-tab="withdrawals">💸 Pending Withdrawals</button>
+      <button class="tab" data-tab="tasks">📋 Manage Tasks</button>
       <button class="tab" data-tab="visits">👀 Site Visits</button>
       <button class="tab" data-tab="logins">🔐 Login Attempts</button>
       <button class="tab" data-tab="settings">⚙️ Pricing</button>
@@ -370,6 +371,23 @@
             </thead>
             <tbody id="wdrBody"></tbody>
           </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ MANAGE TASKS ═══ -->
+    <div class="tab-pane" id="pane-tasks">
+      <div class="table-card">
+        <div class="table-head">
+          <div class="table-title">Task Management</div>
+        </div>
+        <div style="padding:22px; max-width:520px;">
+          <div class="msg" id="taskMsg"></div>
+          <p style="font-size:13px; color:var(--gray-500); margin-bottom:16px; font-weight:600; line-height:1.6;">
+            Tasks are automatically refreshed every 24 hours. You can manually force a refresh here if needed.
+            This will clear all existing tasks and generate a fresh batch of surveys and micro-tasks.
+          </p>
+          <button class="btn btn-primary" id="refreshTasksBtn">🔄 Refresh Tasks Now</button>
         </div>
       </div>
     </div>
@@ -861,6 +879,27 @@
     } catch (err) { console.error(err); }
   }
 
+  // ── MANAGE TASKS ──
+  $('refreshTasksBtn').addEventListener('click', async () => {
+    if (!confirm('Are you sure you want to refresh tasks? This will delete all existing tasks and generate new ones.')) return;
+    const btn = $('refreshTasksBtn');
+    btn.disabled = true; btn.textContent = 'Refreshing...';
+    try {
+      const res = await api('/api/admin/tasks/refresh', { method: 'POST' });
+      const msg = $('taskMsg');
+      msg.textContent = '✓ ' + (res.message || 'Tasks refreshed successfully!');
+      msg.className = 'msg show success';
+      setTimeout(() => msg.classList.remove('show'), 3000);
+      loadStats();
+    } catch (err) {
+      const msg = $('taskMsg');
+      msg.textContent = err.message;
+      msg.className = 'msg show error';
+    } finally {
+      btn.disabled = false; btn.textContent = '🔄 Refresh Tasks Now';
+    }
+  });
+
   // ── PRICING SETTINGS ──
   async function loadPrices() {
     try {
@@ -918,6 +957,7 @@
       if (t.dataset.tab === 'txns') loadTxns();
       if (t.dataset.tab === 'pending') loadPending();
       if (t.dataset.tab === 'withdrawals') loadWithdrawals();
+      if (t.dataset.tab === 'tasks') { /* loaded via static content */ }
       if (t.dataset.tab === 'visits') loadVisits();
       if (t.dataset.tab === 'logins') loadLogins();
       if (t.dataset.tab === 'settings') loadPrices();
