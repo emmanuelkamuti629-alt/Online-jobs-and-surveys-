@@ -376,6 +376,14 @@
   .task-type-tag.task   { background:var(--green-light); color:var(--green-dark); }
   body.theme-dark .task-type-tag.survey { background:rgba(33,150,243,0.18); color:#90CAF9; }
   body.theme-dark .task-type-tag.task   { background:rgba(67,176,42,0.18); color:#A5D6A7; }
+  /* Tier specific tags */
+  .task-type-tag.free { background:#E8F7E4; color:#2E7D1E; }
+  .task-type-tag.classic { background:#E3F2FD; color:#0D47A1; }
+  .task-type-tag.premium { background:#FFF8E1; color:#8D6E00; }
+  body.theme-dark .task-type-tag.free { background:rgba(67,176,42,0.2); color:#A5D6A7; }
+  body.theme-dark .task-type-tag.classic { background:rgba(33,150,243,0.2); color:#90CAF9; }
+  body.theme-dark .task-type-tag.premium { background:rgba(212,175,55,0.2); color:#FFD54F; }
+
   .task-title { font-size:13.5px; font-weight:800; color:var(--text); line-height:1.3; margin-bottom:4px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
   .task-desc { font-size:11.5px; color:var(--text-muted); font-weight:600; line-height:1.4; margin-bottom:6px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
   .task-meta-row { display:flex; flex-wrap:wrap; gap:10px; font-size:10.5px; color:var(--text-muted); font-weight:700; }
@@ -991,6 +999,7 @@
       <div class="section-head-title">✨ Recommended for you</div>
       <button class="section-head-link" id="personalizedBtn">🎯 Personalized ›</button>
     </div>
+    <!-- THIS IS WHERE THE TASKS WILL ALWAYS APPEAR (LOCKED IF LIMIT REACHED) -->
     <div id="homeTaskList"></div>
 
     <div class="section-head">
@@ -2543,29 +2552,32 @@
     const isCompleted = t.status === 'completed';
     const cardCls = `task-card ${isLocked ? 'locked' : ''} ${isCompleted ? 'completed' : ''}`;
     const catIcons = {
-      'Consumer Habits':'🛒','Mobile Banking':'🏦','Online Shopping':'🛍️','Health & Wellness':'💊',
-      'Travel Preferences':'✈️','Social Media':'📱','Food Delivery':'🍔','Streaming Services':'🎬',
-      'Smartphone Usage':'📱','Fitness Apps':'💪','Gaming Habits':'🎮','Remote Work':'💻',
-      'Electric Vehicles':'🚗','Crypto Adoption':'₿','Insurance Products':'🛡️','Retail Brands':'🏬',
-      'Coffee Culture':'☕','Fashion Trends':'👗','Real Estate':'🏠','Education Tech':'🎓',
-      'Pet Ownership':'🐾','Music Streaming':'🎵','Fitness Wearables':'⌚','Home Security':'🔒',
-      'Productivity Tools':'⚙️','Personal Finance':'💰','Digital Wallets':'📲','Beauty Products':'💄',
-      'Home Cooking':'🍳','Public Transport':'🚌','Airlines & Travel':'✈️','Online Learning':'📚',
-      'Subscription Services':'📺','Cloud Storage':'☁️','Smart Home Devices':'🏠','Wearables':'⌚'
+      'Google Review Verification':'🔍','Instagram Engagement Survey':'📸','Facebook Ad Feedback':'📘',
+      'YouTube Video Tagging':'▶️','TikTok Trend Analysis':'🎵','Twitter/X Sentiment Study':'🐦',
+      'LinkedIn Professional Survey':'💼','WhatsApp Business Feedback':'💬','Google Maps Location Check':'📍',
+      'Amazon Product Review Validation':'📦','Netflix Content Preference':'🎬','Spotify Playlist Curation':'🎧',
+      'Uber Ride Experience':'🚗','Airbnb Host Feedback':'🏠','eBay Seller Rating':'🛒',
+      'Shopify Store UX Test':'🛍️','Reddit Community Poll':'👽','Pinterest Board Categorization':'📌',
+      'Snapchat Filter Feedback':'👻','Discord Server Moderation':'🎮','Twitch Streamer Interaction':'🎥'
     };
     const iconBg = {
-      'Consumer Habits':'#F3E5F5','Mobile Banking':'#E8F5E9','Online Shopping':'#E3F2FD','Health & Wellness':'#FCE4EC',
-      'Travel Preferences':'#E0F7FA','Social Media':'#E3F2FD','Food Delivery':'#FFF3E0','Streaming Services':'#EDE7F6',
-      'Smartphone Usage':'#E0F7FA','Fitness Apps':'#E8F5E9','Gaming Habits':'#EDE7F6','Remote Work':'#E3F2FD',
-      'Electric Vehicles':'#E0F7FA','Crypto Adoption':'#FFF8E1','Insurance Products':'#E8F5E9','Retail Brands':'#FCE4EC',
-      'Coffee Culture':'#FFF3E0','Fashion Trends':'#FCE4EC','Real Estate':'#E8F5E9','Education Tech':'#E3F2FD',
-      'Pet Ownership':'#FFF3E0','Music Streaming':'#EDE7F6','Fitness Wearables':'#E0F7FA','Home Security':'#F3E5F5',
-      'Productivity Tools':'#E3F2FD','Personal Finance':'#E8F5E9','Digital Wallets':'#E0F7FA','Beauty Products':'#FCE4EC',
-      'Home Cooking':'#FFF3E0','Public Transport':'#E8F5E9','Airlines & Travel':'#E0F7FA','Online Learning':'#EDE7F6',
-      'Subscription Services':'#FCE4EC','Cloud Storage':'#E3F2FD','Smart Home Devices':'#E0F7FA','Wearables':'#E8F5E9'
+      'Google Review Verification':'#E3F2FD','Instagram Engagement Survey':'#FCE4EC','Facebook Ad Feedback':'#E3F2FD',
+      'YouTube Video Tagging':'#FFEBEE','TikTok Trend Analysis':'#FFF3E0','Twitter/X Sentiment Study':'#E0F7FA',
+      'LinkedIn Professional Survey':'#E8F5E9','WhatsApp Business Feedback':'#E8F5E9','Google Maps Location Check':'#FFF8E1',
+      'Amazon Product Review Validation':'#FFF3E0','Netflix Content Preference':'#FCE4EC','Spotify Playlist Curation':'#E8F5E9',
+      'Uber Ride Experience':'#E0F7FA','Airbnb Host Feedback':'#FCE4EC','eBay Seller Rating':'#E3F2FD',
+      'Shopify Store UX Test':'#E8F5E9','Reddit Community Poll':'#FFF3E0','Pinterest Board Categorization':'#FCE4EC',
+      'Snapchat Filter Feedback':'#FFF8E1','Discord Server Moderation':'#EDE7F6','Twitch Streamer Interaction':'#EDE7F6'
     };
     const icon = catIcons[t.category] || '📋';
     const bg = iconBg[t.category] || '#E8F7E4';
+    
+    // Tier Label logic
+    let tierLabel = 'Free';
+    let tierClass = 'free';
+    if (t.tier === 'classic') { tierLabel = 'Classic'; tierClass = 'classic'; }
+    else if (t.tier === 'premium') { tierLabel = 'Premium'; tierClass = 'premium'; }
+
     return `
       <div class="${cardCls}" data-task-id="${t.id}" data-status="${t.status}">
         <div class="task-icon" style="background:${bg};color:#333;">
@@ -2574,7 +2586,10 @@
           ${isCompleted ? '<div class="completed-badge">✓</div>' : ''}
         </div>
         <div class="task-body">
-          <div class="task-top-row"><span class="task-type-tag ${t.type}">${t.type}</span></div>
+          <div class="task-top-row">
+            <span class="task-type-tag ${t.type}">${t.type}</span>
+            <span class="task-type-tag ${tierClass}">${tierLabel}</span>
+          </div>
           <div class="task-title">${t.title}</div>
           <div class="task-desc">${t.description}</div>
           <div class="task-meta-row">
@@ -2643,6 +2658,9 @@
     });
     $('surveyPrev').style.visibility = current === 0 ? 'hidden' : 'visible';
     $('surveyNext').textContent = current === questions.length - 1 ? 'Finish & Submit' : 'Next';
+    
+    // Fix for Next button not clickable: Ensure it's enabled
+    $('surveyNext').disabled = false;
   }
   $('surveyPrev').addEventListener('click', () => { if (survey.current > 0) { survey.current--; renderSurveyQuestion(); } });
   $('surveyNext').addEventListener('click', async () => {
@@ -3145,4 +3163,4 @@
 })();
 </script>
 </body>
-  </html>
+                                                                                        </html>
