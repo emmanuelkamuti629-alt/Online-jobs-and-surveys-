@@ -35,7 +35,7 @@ const MIN_DEPOSIT = 50;
 const MIN_WITHDRAWAL = 200;
 const ACTIVATION_FEE = 499;
 const PAYMENT_TIMEOUT_MS = 5 * 60 * 1000;
-const SEED_VERSION = 5; // Bumped for active batch logic
+const SEED_VERSION = 6; // Bumped for instant swap logic
 
 let tierPrices = { classic: 200, premium: 350, golden: 450 };
 function getTierPrice(tier) {
@@ -69,7 +69,6 @@ async function connectDB() {
   await walletCol.createIndex({ userId: 1, createdAt: -1 });
   await historyCol.createIndex({ userId: 1, completedAt: -1 });
   await tasksCol.createIndex({ id: 1 }, { unique: true });
-  await tasksCol.createIndex({ active: 1 }); // Index for fast active task lookup
   await tasksCol.createIndex({ batchId: 1 }); 
   await visitsCol.createIndex({ createdAt: -1 });
   await loginAttemptsCol.createIndex({ createdAt: -1 });
@@ -77,7 +76,13 @@ async function connectDB() {
   await notificationsCol.createIndex({ userId: 1, createdAt: -1 });
   await notificationsCol.createIndex({ userId: 1, read: 1 });
 
-  await seedTasks(true); // Force seed on startup if empty
+  // Initialize maintenance mode setting if not exists
+  const maint = await settingsCol.findOne({ key: 'maintenance_mode' });
+  if (!maint) {
+    await settingsCol.insertOne({ key: 'maintenance_mode', enabled: false, updatedAt: new Date() });
+  }
+
+  await seedTasks(true); 
   await loadTierPrices();
   console.log('✅ MongoDB connected');
 }
@@ -193,7 +198,7 @@ async function seedTasks(force = false) {
     return;
   }
 
-  console.log('🌱 Generating new tasks (staging batch)...');
+  console.log('🌱 Generating new tasks (instant swap)...');
   
   const newBatchId = Date.now();
   const newTasks = [];
@@ -220,7 +225,6 @@ async function seedTasks(force = false) {
       difficulty: ['easy','medium','hard'][i % 3], 
       owner, 
       tier, 
-      active: false, // Marked as inactive until fully ready
       batchId: newBatchId, 
       createdAt: new Date() 
     });
@@ -229,25 +233,20 @@ async function seedTasks(force = false) {
   
   // 1. Insert the new tasks first
   await tasksCol.insertMany(newTasks);
-  console.log(`✅ Staged ${newTasks.length} new tasks.`);
+  console.log(`✅ Inserted ${newTasks.length} new tasks (batch: ${newBatchId})`);
 
-  // 2. Deactivate old tasks
-  await tasksCol.updateMany({ active: true }, { $set: { active: false } });
-  
-  // 3. Activate new tasks
-  await tasksCol.updateMany({ batchId: newBatchId }, { $set: { active: true } });
-  console.log(`✅ New tasks are now active.`);
+  // 2. Only after the new tasks are safely saved, delete the old ones
+  await tasksCol.deleteMany({ batchId: { $ne: newBatchId } });
+  console.log(`✅ Deleted old tasks.`);
 
-  // 4. Delete old tasks
-  await tasksCol.deleteMany({ active: false, batchId: { $ne: newBatchId } });
-  console.log(`✅ Old tasks cleaned up.`);
-
-  // 5. Update the meta collection
+  // 3. Update the meta collection
   await metaCol.updateOne(
     { key:'task_seed_version' }, 
     { $set: { version: SEED_VERSION, lastSeedDate: todayStr, updatedAt: new Date() } }, 
     { upsert: true }
   );
+  
+  console.log(`✅ Task refresh complete for ${todayStr}`);
 }
 
 const QT = [
@@ -403,16 +402,29 @@ function mapPayHeroFailureReason(resultCode, resultDesc) {
   return map[code] || resultDesc || `Transaction failed (code ${code})`;
 }
 
-app.use((req, res, next) => {
-  const isPage = req.method === 'GET' && !req.path.startsWith('/api/') && !req.path.startsWith('/socket.io')
-    && !/\.(js|css|png|jpg|jpeg|svg|ico|webp|woff2?|ttf|map)$/i.test(req.path);
-  if (!isPage) return next();
-  const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.ip || 'unknown';
-  const ua = req.headers['user-agent'] || '';
-  const ref = req.headers['referer'] || req.headers['referrer'] || '';
-  visitsCol.insertOne({ ip, path: req.path, ua, referrer: ref,
-    country: req.headers['cf-ipcountry'] || req.headers['x-vercel-ip-country'] || null,
-    method: req.method, createdAt: new Date() }).catch(() => {});
+// ═══════════════════════════════════════════════════════════════════════════
+// MAINTENANCE MODE MIDDLEWARE
+// ═══════════════════════════════════════════════════════════════════════════
+app.use(async (req, res, next) => {
+  const isPage = req.method === 'GET' && !req.path.startsWith('/api/') && !req.path.startsWith('/socket.io') && !/\.(js|css|png|jpg|jpeg|svg|ico|webp|woff2?|ttf|map)$/i.test(req.path);
+  if (isPage) {
+    const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.ip || 'unknown';
+    const ua = req.headers['user-agent'] || '';
+    const ref = req.headers['referer'] || req.headers['referrer'] || '';
+    visitsCol.insertOne({ ip, path: req.path, ua, referrer: ref,
+      country: req.headers['cf-ipcountry'] || req.headers['x-vercel-ip-country'] || null,
+      method: req.method, createdAt: new Date() }).catch(() => {});
+  }
+
+  // Block non-admin API routes if maintenance is enabled
+  if (req.path.startsWith('/api/') && !req.path.startsWith('/api/admin') && !req.path.startsWith('/api/login') && !req.path.startsWith('/api/register') && !req.path.startsWith('/api/me') && !req.path.startsWith('/api/prices')) {
+    try {
+      const setting = await settingsCol.findOne({ key: 'maintenance_mode' });
+      if (setting && setting.enabled === true) {
+        return res.status(503).json({ error: 'MAINTENANCE', message: 'System is undergoing maintenance. Please try again later.' });
+      }
+    } catch (e) {}
+  }
   next();
 });
 
@@ -734,8 +746,16 @@ app.get('/api/tasks', auth, async (req, res) => {
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const size = Math.min(100, parseInt(req.query.size) || 50);
     const type = req.query.type;
-    const filter = { active: true };
+    const filter = {};
     if (type === 'survey' || type === 'task') filter.type = type;
+
+    // Fetch the latest batch ID
+    const latestBatch = await tasksCol.find({}).sort({ batchId: -1 }).limit(1).toArray();
+    if (latestBatch.length > 0) {
+      filter.batchId = latestBatch[0].batchId;
+    } else {
+      return res.json({ tier: user.subscriptionTier, dailyLimit: dailyLimit(user), tasksCompletedToday: user.tasksCompletedToday || 0, tasksRemaining: 0, page, size, totalCount: 0, tasks: [] });
+    }
 
     const totalCount = await tasksCol.countDocuments(filter);
     const dailySeed = getDailySeed();
@@ -1073,12 +1093,31 @@ app.get('/api/admin/stats', adminAuth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Server error' }); }
 });
 
+app.get('/api/admin/settings/maintenance', adminAuth, async (req, res) => {
+  try {
+    const setting = await settingsCol.findOne({ key: 'maintenance_mode' });
+    res.json({ enabled: setting ? setting.enabled === true : false });
+  } catch (err) { res.status(500).json({ error: 'Server error' }); }
+});
+
+app.put('/api/admin/settings/maintenance', adminAuth, async (req, res) => {
+  try {
+    const { enabled } = req.body || {};
+    await settingsCol.updateOne(
+      { key: 'maintenance_mode' },
+      { $set: { enabled: !!enabled, updatedAt: new Date() } },
+      { upsert: true }
+    );
+    res.json({ ok: true, enabled: !!enabled });
+  } catch (err) { res.status(500).json({ error: 'Server error' }); }
+});
+
 app.post('/api/admin/tasks/refresh', adminAuth, async (req, res) => {
   try {
     console.log('🔍 Admin triggered task refresh. Simulating platform scan...');
     await new Promise(resolve => setTimeout(resolve, 1500)); // 1.5s delay to simulate "searching"
     await seedTasks(true);
-    res.json({ ok: true, message: 'Tasks refreshed successfully. New batch deployed without downtime.' });
+    res.json({ ok: true, message: 'Tasks refreshed successfully. New batch deployed instantly.' });
   } catch (err) { console.error('Admin task refresh error:', err); res.status(500).json({ error: 'Server error' }); }
 });
 
