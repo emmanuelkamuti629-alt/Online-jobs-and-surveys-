@@ -197,6 +197,12 @@
   .sub-badge.classic{ background:var(--green-light); color:var(--green-dark); }
   .sub-badge.premium{ background:#E3F2FD; color:#0D47A1; }
   .sub-badge.golden{ background:#FFF8E1; color:#8D6E00; }
+  .switch { position:relative; width:46px; height:26px; flex-shrink:0; display:inline-block; }
+  .switch input { opacity:0; width:0; height:0; }
+  .switch .slider { position:absolute; cursor:pointer; inset:0; background:var(--gray-200); border-radius:999px; transition:background 0.2s; }
+  .switch .slider::before { content:''; position:absolute; height:20px; width:20px; left:3px; top:3px; background:white; border-radius:50%; transition:transform 0.2s; box-shadow:0 1px 3px rgba(0,0,0,0.2); }
+  .switch input:checked + .slider { background:var(--green); }
+  .switch input:checked + .slider::before { transform:translateX(20px); }
   @media (max-width:600px) {
     .container { padding:14px; }
     .stat-val { font-size:22px; }
@@ -252,6 +258,7 @@
       <button class="tab" data-tab="pending">⏳ Pending Rewards</button>
       <button class="tab" data-tab="withdrawals">💸 Pending Withdrawals</button>
       <button class="tab" data-tab="tasks">📋 Manage Tasks</button>
+      <button class="tab" data-tab="system">⚙️ System Status</button>
       <button class="tab" data-tab="visits">👀 Site Visits</button>
       <button class="tab" data-tab="logins">🔐 Login Attempts</button>
       <button class="tab" data-tab="settings">⚙️ Pricing</button>
@@ -385,9 +392,32 @@
           <div class="msg" id="taskMsg"></div>
           <p style="font-size:13px; color:var(--gray-500); margin-bottom:16px; font-weight:600; line-height:1.6;">
             Tasks are automatically refreshed every 24 hours. You can manually force a refresh here if needed.
-            This will clear all existing tasks and generate a fresh batch of surveys and micro-tasks.
+            This will scan for new tasks and instantly replace the existing ones. Users will not experience any downtime.
           </p>
-          <button class="btn btn-primary" id="refreshTasksBtn">🔄 Refresh Tasks Now</button>
+          <button class="btn btn-primary" id="refreshTasksBtn">🔄 Scan & Refresh Tasks</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ SYSTEM STATUS ═══ -->
+    <div class="tab-pane" id="pane-system">
+      <div class="table-card">
+        <div class="table-head">
+          <div class="table-title">System Status</div>
+        </div>
+        <div style="padding:22px; max-width:520px;">
+          <div class="msg" id="sysMsg"></div>
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:16px; background:var(--gray-50); border-radius:12px; margin-bottom:16px;">
+            <div>
+              <div style="font-weight:800;">Maintenance Mode</div>
+              <div style="font-size:12px; color:var(--gray-500);">When ON, users see a maintenance page</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="maintenanceToggle">
+              <span class="slider"></span>
+            </label>
+          </div>
+          <button class="btn btn-primary" id="saveMaintenanceBtn">Save Maintenance Mode</button>
         </div>
       </div>
     </div>
@@ -576,6 +606,7 @@
     loadVisits();
     loadLogins();
     loadPrices();
+    loadMaintenance();
   }
 
   // ── STATS ──
@@ -833,6 +864,57 @@
     } catch (err) { console.error(err); }
   }
 
+  // ── MANAGE TASKS ──
+  $('refreshTasksBtn').addEventListener('click', async () => {
+    if (!confirm('Are you sure you want to refresh tasks? This will replace all existing tasks with new ones immediately.')) return;
+    const btn = $('refreshTasksBtn');
+    btn.disabled = true; btn.textContent = 'Scanning for new tasks...';
+    try {
+      const res = await api('/api/admin/tasks/refresh', { method: 'POST' });
+      const msg = $('taskMsg');
+      msg.textContent = '✓ ' + (res.message || 'Tasks refreshed successfully!');
+      msg.className = 'msg show success';
+      setTimeout(() => msg.classList.remove('show'), 3000);
+      loadStats();
+    } catch (err) {
+      const msg = $('taskMsg');
+      msg.textContent = err.message;
+      msg.className = 'msg show error';
+    } finally {
+      btn.disabled = false; btn.textContent = '🔄 Scan & Refresh Tasks';
+    }
+  });
+
+  // ── SYSTEM STATUS ──
+  async function loadMaintenance() {
+    try {
+      const res = await api('/api/admin/settings/maintenance');
+      $('maintenanceToggle').checked = res.enabled;
+    } catch (err) { console.error(err); }
+  }
+
+  $('saveMaintenanceBtn').addEventListener('click', async () => {
+    const enabled = $('maintenanceToggle').checked;
+    const btn = $('saveMaintenanceBtn');
+    btn.disabled = true; btn.textContent = 'Saving...';
+    try {
+      await api('/api/admin/settings/maintenance', {
+        method: 'PUT',
+        body: JSON.stringify({ enabled })
+      });
+      const msg = $('sysMsg');
+      msg.textContent = `✓ Maintenance mode is now ${enabled ? 'ON' : 'OFF'}`;
+      msg.className = 'msg show success';
+      setTimeout(() => msg.classList.remove('show'), 3000);
+    } catch (err) {
+      const msg = $('sysMsg');
+      msg.textContent = err.message;
+      msg.className = 'msg show error';
+    } finally {
+      btn.disabled = false; btn.textContent = 'Save Maintenance Mode';
+    }
+  });
+
   // ── VISITS ──
   async function loadVisits() {
     try {
@@ -878,27 +960,6 @@
       document.querySelector('[data-page-next="logins"]').disabled = page >= totalPages;
     } catch (err) { console.error(err); }
   }
-
-  // ── MANAGE TASKS ──
-  $('refreshTasksBtn').addEventListener('click', async () => {
-    if (!confirm('Are you sure you want to refresh tasks? This will delete all existing tasks and generate new ones.')) return;
-    const btn = $('refreshTasksBtn');
-    btn.disabled = true; btn.textContent = 'Refreshing...';
-    try {
-      const res = await api('/api/admin/tasks/refresh', { method: 'POST' });
-      const msg = $('taskMsg');
-      msg.textContent = '✓ ' + (res.message || 'Tasks refreshed successfully!');
-      msg.className = 'msg show success';
-      setTimeout(() => msg.classList.remove('show'), 3000);
-      loadStats();
-    } catch (err) {
-      const msg = $('taskMsg');
-      msg.textContent = err.message;
-      msg.className = 'msg show error';
-    } finally {
-      btn.disabled = false; btn.textContent = '🔄 Refresh Tasks Now';
-    }
-  });
 
   // ── PRICING SETTINGS ──
   async function loadPrices() {
@@ -958,6 +1019,7 @@
       if (t.dataset.tab === 'pending') loadPending();
       if (t.dataset.tab === 'withdrawals') loadWithdrawals();
       if (t.dataset.tab === 'tasks') { /* loaded via static content */ }
+      if (t.dataset.tab === 'system') loadMaintenance();
       if (t.dataset.tab === 'visits') loadVisits();
       if (t.dataset.tab === 'logins') loadLogins();
       if (t.dataset.tab === 'settings') loadPrices();
@@ -1016,7 +1078,7 @@
   $('refreshBtn').addEventListener('click', () => {
     loadStats(); loadUsers(); loadSubs(); loadTxns();
     loadPending(); loadWithdrawals(); loadVisits(); loadLogins();
-    loadPrices();
+    loadPrices(); loadMaintenance();
   });
 
   // ── AUTO REFRESH STATS every 30s ──
