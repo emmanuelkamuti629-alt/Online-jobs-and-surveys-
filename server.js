@@ -1,1222 +1,694 @@
-require('dotenv').config();
+// =============================================================================
+//  JobPay — server.js
+//  Single source of truth for: minimum deposits, minimum withdrawals,
+//  activation fee, referral bonus, free tier, quick-amount buttons,
+//  tier limits, tier prices. All editable via env vars or APP_CONFIG below.
+// =============================================================================
+
 const express = require('express');
-const { MongoClient, ObjectId } = require('mongodb');
-const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const axios = require('axios');
-const cors = require('cors');
+const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const path = require('path');
 
-// ═══════════════════════════════════════════════════════════════════════════
-// TASK / SURVEY CONTENT  →  lives in tasks.js
-// ═══════════════════════════════════════════════════════════════════════════
-const {
-  seedTasks: seedTasksRaw,
-  generateQuestions,
-  getDailySeed,
-  getCurrentWindow,
-  advanceWindow
-} = require('./tasks');
-
 const app = express();
-app.set('trust proxy', 1);
-app.use(cors());
-app.use(express.json({ limit: '2mb' }));
-
 const PORT = process.env.PORT || 3000;
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
-const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
+const JWT_SECRET = process.env.JWT_SECRET || 'jobpay-dev-secret-change-me';
+const PUBLIC_DIR = path.join(__dirname, 'public');
 
-const PAYHERO_BASIC_AUTH_TOKEN = process.env.PAYHERO_BASIC_AUTH_TOKEN?.trim();
-const PAYHERO_CHANNEL_ID = parseInt(process.env.PAYHERO_CHANNEL_ID, 10);
-const PAYHERO_BASE_URL = 'https://backend.payhero.co.ke/api/v2';
-const PAYHERO_CALLBACK_URL = process.env.PAYHERO_CALLBACK_URL || '';
+app.use(express.json({ limit: '10mb' }));
+app.use(express.static(PUBLIC_DIR));
 
-const TIERS = {
-  free:    { name:'Free',    dailyLimit:2,  price:0,   label:'2 free tasks / day' },
-  classic: { name:'Classic', dailyLimit:10, price:200, label:'10 tasks / day' },
-  premium: { name:'Premium', dailyLimit:20, price:350, label:'20 tasks / day' },
-  golden:  { name:'Golden',  dailyLimit:50, price:450, label:'50+ tasks / day' }
+// =============================================================================
+//  CONFIG — single source of truth for the whole UI
+//  Override any value with an env var (e.g. MIN_WITHDRAWAL=250 npm start)
+// =============================================================================
+const APP_CONFIG = {
+  currency: 'KES',
+
+  // Wallet limits
+  minDeposit:    Number(process.env.MIN_DEPOSIT)    || 50,
+  maxDeposit:    Number(process.env.MAX_DEPOSIT)    || 150000,
+  minWithdrawal: Number(process.env.MIN_WITHDRAWAL) || 200,
+  maxWithdrawal: Number(process.env.MAX_WITHDRAWAL) || 50000,
+
+  // Fees & bonuses
+  activationFee: Number(process.env.ACTIVATION_FEE) || 499,
+  referralBonus: Number(process.env.REFERRAL_BONUS) || 50,
+
+  // Free tier
+  freeDailyTasks:        Number(process.env.FREE_DAILY_TASKS)  || 2,
+  freeTaskReward:        Number(process.env.FREE_TASK_REWARD)  || 21,
+  freeTaskCooldownHours: 24,
+
+  // Quick-amount buttons in deposit / withdraw modals
+  depositQuickAmounts:    [50, 100, 200, 500, 1000, 2000, 5000],
+  withdrawalQuickAmounts: [200, 300, 500, 1000, 2000, 5000],
+
+  // Subscription tiers
+  tierLimits: { free: 2, classic: 10, premium: 20, golden: 50 },
+  tierPrices: { classic: 200, premium: 350, golden: 450 },
+
+  withdrawalPinRequired: true,
+  supportEmail: 'support@jobpay.co.ke',
 };
-const SUBSCRIPTION_DAYS = 7;
-const FREE_TASK_REWARD  = 21;
-const MIN_DEPOSIT       = 1000;
-const MIN_WITHDRAWAL    = 3499;
-const ACTIVATION_FEE    = 499;
-const PAYMENT_TIMEOUT_MS = 5 * 60 * 1000;
 
-let tierPrices = { classic: 200, premium: 350, golden: 450 };
-function getTierPrice(tier) {
-  if (tier === 'free') return 0;
-  return tierPrices[tier] ?? TIERS[tier]?.price ?? 0;
-}
+// =============================================================================
+//  IN-MEMORY DATA STORE  (swap for SQLite / Postgres in production)
+// =============================================================================
+const users           = new Map();   // id → user
+const usersByEmail    = new Map();   // email → id
+const tasks           = new Map();   // id → task
+const taskCompletions = new Map();   // userId → Set(taskId)
+const walletTx        = [];          // wallet transactions
+const payTx           = [];          // payment (M-Pesa) transactions
+const notifications   = [];          // notifications
+const tickets         = [];          // support tickets
+const loginHistory    = [];          // login history
 
-let db, usersCol, txnsCol, tasksCol, walletCol, historyCol, metaCol,
-    visitsCol, loginAttemptsCol, settingsCol, ticketsCol, notificationsCol;
+let userIdSeq   = 1;
+let taskIdSeq   = 1;
+let txIdSeq     = 1;
+let notifIdSeq  = 1;
+let ticketIdSeq = 1;
 
-// Wrapper so the rest of this file can keep calling seedTasks(true) / seedTasks(false)
-const seedTasks = (force = false) => seedTasksRaw({ tasksCol, metaCol }, force);
+// =============================================================================
+//  SEED TASKS
+// =============================================================================
+const TASK_TEMPLATES = [
+  { category:'Google Review Verification',        title:'Verify Local Business Reviews',        type:'survey', tier:'free',    reward:21, time:'4 min',  questions:5,  difficulty:'Easy',   avatar:'🔍' },
+  { category:'Instagram Engagement Survey',       title:'Rate Instagram Ad Engagement',        type:'survey', tier:'free',    reward:21, time:'5 min',  questions:6,  difficulty:'Easy',   avatar:'📸' },
+  { category:'Facebook Ad Feedback',              title:'Facebook Ad Creative Feedback',       type:'survey', tier:'free',    reward:21, time:'4 min',  questions:5,  difficulty:'Easy',   avatar:'📘' },
+  { category:'YouTube Video Tagging',             title:'Tag YouTube Video Categories',        type:'task',   tier:'free',    reward:21, time:'3 min',  questions:4,  difficulty:'Easy',   avatar:'▶️' },
+  { category:'TikTok Trend Analysis',             title:'Analyze Trending TikTok Sounds',      type:'task',   tier:'free',    reward:21, time:'6 min',  questions:6,  difficulty:'Medium', avatar:'🎵' },
+  { category:'Twitter/X Sentiment Study',         title:'Classify Tweet Sentiment',            type:'task',   tier:'classic', reward:35, time:'6 min',  questions:6,  difficulty:'Medium', avatar:'🐦' },
+  { category:'LinkedIn Professional Survey',      title:'LinkedIn Career Insights Survey',     type:'survey', tier:'classic', reward:40, time:'8 min',  questions:8,  difficulty:'Medium', avatar:'💼' },
+  { category:'WhatsApp Business Feedback',        title:'WhatsApp Business Feature Test',      type:'survey', tier:'classic', reward:38, time:'7 min',  questions:7,  difficulty:'Medium', avatar:'💬' },
+  { category:'Google Maps Location Check',        title:'Verify Business Location',            type:'task',   tier:'classic', reward:35, time:'5 min',  questions:5,  difficulty:'Easy',   avatar:'📍' },
+  { category:'Amazon Product Review Validation',  title:'Validate Amazon Reviews',             type:'task',   tier:'premium', reward:55, time:'8 min',  questions:8,  difficulty:'Medium', avatar:'📦' },
+  { category:'Netflix Content Preference',        title:'Netflix Watch Preference Survey',     type:'survey', tier:'premium', reward:60, time:'10 min', questions:9,  difficulty:'Medium', avatar:'🎬' },
+  { category:'Spotify Playlist Curation',         title:'Curate Spotify Playlist Tags',        type:'task',   tier:'premium', reward:50, time:'7 min',  questions:6,  difficulty:'Easy',   avatar:'🎧' },
+  { category:'Uber Ride Experience',              title:'Uber Ride Experience Survey',         type:'survey', tier:'premium', reward:58, time:'9 min',  questions:8,  difficulty:'Medium', avatar:'🚗' },
+  { category:'Airbnb Host Feedback',              title:'Airbnb Host Quality Feedback',        type:'survey', tier:'golden',  reward:75, time:'12 min', questions:10, difficulty:'Hard',   avatar:'🏠' },
+  { category:'eBay Seller Rating',                title:'Rate eBay Seller Performance',        type:'task',   tier:'golden',  reward:70, time:'10 min', questions:8,  difficulty:'Medium', avatar:'🛒' },
+  { category:'Shopify Store UX Test',             title:'Shopify Store UX Test',               type:'task',   tier:'golden',  reward:80, time:'12 min', questions:10, difficulty:'Hard',   avatar:'🛍️' },
+  { category:'Reddit Community Poll',             title:'Reddit Community Opinion Poll',       type:'survey', tier:'golden',  reward:65, time:'9 min',  questions:7,  difficulty:'Medium', avatar:'👽' },
+  { category:'Pinterest Board Categorization',    title:'Categorize Pinterest Boards',         type:'task',   tier:'classic', reward:35, time:'5 min',  questions:5,  difficulty:'Easy',   avatar:'📌' },
+  { category:'Snapchat Filter Feedback',          title:'Snapchat Filter Feedback Survey',     type:'survey', tier:'classic', reward:38, time:'6 min',  questions:6,  difficulty:'Easy',   avatar:'👻' },
+  { category:'Discord Server Moderation',         title:'Discord Community Moderation Task',   type:'task',   tier:'premium', reward:52, time:'8 min',  questions:7,  difficulty:'Medium', avatar:'🎮' },
+  { category:'Twitch Streamer Interaction',       title:'Twitch Streamer Engagement Study',    type:'survey', tier:'premium', reward:55, time:'9 min',  questions:8,  difficulty:'Medium', avatar:'🎥' },
+];
 
-async function connectDB() {
-  if (!process.env.MONGODB_URI) throw new Error('MONGODB_URI is not set');
-  const client = new MongoClient(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 10000 });
-  await client.connect();
-  db = client.db('payhero_jobs');
-  usersCol         = db.collection('users');
-  txnsCol          = db.collection('transactions');
-  tasksCol         = db.collection('tasks');
-  walletCol        = db.collection('wallet_transactions');
-  historyCol       = db.collection('task_history');
-  metaCol          = db.collection('meta');
-  visitsCol        = db.collection('site_visits');
-  loginAttemptsCol = db.collection('login_attempts');
-  settingsCol      = db.collection('settings');
-  ticketsCol       = db.collection('support_tickets');
-  notificationsCol = db.collection('notifications');
-
-  await usersCol.createIndex({ email: 1 }, { unique: true });
-  await usersCol.createIndex({ username: 1 }, { unique: true });
-  await txnsCol.createIndex({ reference: 1 }, { unique: true });
-  await walletCol.createIndex({ userId: 1, createdAt: -1 });
-  await historyCol.createIndex({ userId: 1, completedAt: -1 });
-  await tasksCol.createIndex({ id: 1 }, { unique: true });
-  await tasksCol.createIndex({ slot: 1 });
-  await visitsCol.createIndex({ createdAt: -1 });
-  await loginAttemptsCol.createIndex({ createdAt: -1 });
-  await ticketsCol.createIndex({ userId: 1, createdAt: -1 });
-  await notificationsCol.createIndex({ userId: 1, createdAt: -1 });
-  await notificationsCol.createIndex({ userId: 1, read: 1 });
-
-  // Initialize maintenance mode setting if not exists
-  const maint = await settingsCol.findOne({ key: 'maintenance_mode' });
-  if (!maint) {
-    await settingsCol.insertOne({ key: 'maintenance_mode', enabled: false, updatedAt: new Date() });
-  }
-
-  await seedTasks(true);
-  await loadTierPrices();
-  console.log('✅ MongoDB connected');
-}
-
-async function loadTierPrices() {
-  const doc = await settingsCol.findOne({ key: 'tier_prices' });
-  if (doc) {
-    tierPrices = {
-      classic: Number(doc.classic) || 200,
-      premium: Number(doc.premium) || 350,
-      golden:  Number(doc.golden)  || 450
-    };
-  } else {
-    await settingsCol.insertOne({ key: 'tier_prices', classic: 200, premium: 350, golden: 450, updatedAt: new Date() });
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// NOTIFICATIONS
-// ═══════════════════════════════════════════════════════════════════════════
-async function createNotification(userId, type, title, message, meta = {}) {
-  try {
-    await notificationsCol.insertOne({
-      userId: new ObjectId(userId),
-      type,
-      title,
-      message,
-      meta,
-      read: false,
-      createdAt: new Date()
+function seedTasks() {
+  TASK_TEMPLATES.forEach(t => {
+    const id = taskIdSeq++;
+    tasks.set(id, {
+      id,
+      title: t.title,
+      description: `Share your thoughts on ${t.title.toLowerCase()}. Your response helps real companies improve.`,
+      category: t.category,
+      type: t.type,
+      tier: t.tier,
+      reward: t.reward,
+      time: t.time,
+      questions: t.questions,
+      difficulty: t.difficulty,
+      country: 'Kenya',
+      owner: { avatar: t.avatar, name: 'JobPay Partner', country: 'Kenya' },
     });
-  } catch (err) { console.error('Notification error:', err.message); }
+  });
+}
+seedTasks();
+
+function generateQuestions(count) {
+  const base = [
+    { question: 'How often do you use this product or service?', options: ['Daily', 'Weekly', 'Monthly', 'Rarely', 'Never'] },
+    { question: 'How satisfied are you overall?',                options: ['Very satisfied', 'Satisfied', 'Neutral', 'Dissatisfied', 'Very dissatisfied'] },
+    { question: 'Would you recommend it to a friend?',           options: ['Definitely', 'Probably', 'Maybe', 'Probably not', 'Definitely not'] },
+    { question: 'How easy was it to use?',                       options: ['Very easy', 'Easy', 'Neutral', 'Difficult', 'Very difficult'] },
+    { question: 'How does it compare to alternatives?',          options: ['Much better', 'Better', 'About the same', 'Worse', 'Much worse'] },
+    { question: 'What matters most to you?',                     options: ['Price', 'Quality', 'Convenience', 'Customer service', 'Brand trust'] },
+    { question: 'How likely are you to use it again?',           options: ['Very likely', 'Likely', 'Neutral', 'Unlikely', 'Very unlikely'] },
+    { question: 'Which feature is most useful?',                 options: ['Speed', 'Reliability', 'Design', 'Support', 'Value'] },
+    { question: 'How would you rate the value for money?',       options: ['Excellent', 'Good', 'Fair', 'Poor', 'Very poor'] },
+    { question: 'Any final thoughts?',                           options: ['Love it', 'Like it', 'Neutral', 'Not for me', 'Prefer alternatives'] },
+  ];
+  return base.slice(0, count);
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// HELPERS
-// ═══════════════════════════════════════════════════════════════════════════
-function normalizePhone(phone) {
-  let p = String(phone || '').replace(/\D/g, '');
-  if (p.startsWith('254')) return p;
-  if (p.startsWith('0')) return '254' + p.slice(1);
-  if ((p.startsWith('7') || p.startsWith('1')) && p.length === 9) return '254' + p;
-  return p;
-}
-function isValidEmail(e) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(e||'').trim()); }
-function isValidKenyanPhone(p) { return /^254(7|1)\d{8}$/.test(p); }
-function isStrongPassword(pw) { return typeof pw === 'string' && pw.length >= 8 && /[A-Z]/.test(pw) && /[a-z]/.test(pw) && /[0-9]/.test(pw); }
-function isSubscriptionActive(u) {
-  if (!u) return false;
-  if (u.subscriptionTier === 'free') return true;
-  if (!u.subscriptionExpiry) return false;
-  return new Date(u.subscriptionExpiry) > new Date();
-}
-function dailyLimit(u) {
-  if (u.subscriptionTier === 'free') return TIERS.free.dailyLimit;
-  if (!isSubscriptionActive(u)) return 0;
-  return TIERS[u.subscriptionTier]?.dailyLimit || 0;
-}
-function startOfToday() { const d = new Date(); d.setHours(0,0,0,0); return d; }
+// =============================================================================
+//  HELPERS
+// =============================================================================
+const hashPassword   = (pw) => bcrypt.hashSync(pw, 10);
+const verifyPassword = (pw, hash) => bcrypt.compareSync(pw, hash);
+const signToken      = (u) => jwt.sign({ uid: u.id }, JWT_SECRET, { expiresIn: '30d' });
 
-function resetDailyTasks(u) {
-  if (!u.lastTaskDate) {
-    u.lastTaskDate = new Date(0).toISOString();
+function auth(req, res, next) {
+  const h = req.headers.authorization || '';
+  const token = h.startsWith('Bearer ') ? h.slice(7) : null;
+  if (!token) return res.status(401).json({ error: 'Not authenticated' });
+  try {
+    const payload = jwt.verify(token, JWT_SECRET);
+    const user = users.get(payload.uid);
+    if (!user) return res.status(401).json({ error: 'User not found' });
+    req.user = user;
+    next();
+  } catch {
+    res.status(401).json({ error: 'Invalid or expired token' });
   }
-  const now = Date.now();
-  const lastReset = new Date(u.lastTaskDate).getTime();
-  const cooldown = 24 * 60 * 60 * 1000;
-
-  if (now - lastReset > cooldown) {
-    u.tasksCompletedToday = 0;
-    u.lastTaskDate = new Date().toISOString();
-    return true;
-  }
-  return false;
 }
 
-async function autoFailStalePayments() {
-  const cutoff = new Date(Date.now() - PAYMENT_TIMEOUT_MS);
-  await txnsCol.updateMany(
-    { status: 'pending', createdAt: { $lt: cutoff }, mpesaRef: { $in: [null, undefined, ''] } },
-    { $set: { status: 'failed', reason: 'No M‑Pesa response (timeout)' } }
-  );
-}
 function publicUser(u) {
-  const active = isSubscriptionActive(u);
-  const limit = dailyLimit(u);
-  const done = u.tasksCompletedToday || 0;
   return {
-    id: u._id,
+    id: u.id,
     username: u.username,
     email: u.email,
     phone: u.phone,
-    subscriptionTier: u.subscriptionTier,
-    subscriptionActive: active,
-    subscriptionExpiry: u.subscriptionExpiry,
-    dailyLimit: limit,
-    tasksCompletedToday: done,
-    tasksRemaining: Math.max(0, limit - done),
-    balance: u.balance || 0,
-    pendingBalance: u.pendingBalance || 0,
-    totalEarnings: u.totalEarnings || 0,
-    activationFeePaid: u.activationFeePaid === true,
-    accountStatus: u.accountStatus || 'active',
-    twoFactorEnabled: u.twoFactorEnabled === true,
-    hasWithdrawalPin: !!u.withdrawalPin,
-    country: u.country || 'Kenya',
-    county: u.county || null,
     photo: u.photo || null,
-    lastTaskDate: u.lastTaskDate
+    balance: u.balance,
+    pendingBalance: u.pendingBalance,
+    totalEarnings: u.totalEarnings,
+    todayEarnings: u.todayEarnings || 0,
+    tasksCompletedToday: u.tasksCompletedToday || 0,
+    dailyLimit: APP_CONFIG.tierLimits[u.subscriptionTier] || APP_CONFIG.tierLimits.free,
+    subscriptionTier: u.subscriptionTier,
+    subscriptionExpiry: u.subscriptionExpiry,
+    activationFeePaid: u.activationFeePaid,
+    hasWithdrawalPin: !!u.withdrawalPin,
+    twoFactorEnabled: !!u.twoFactorEnabled,
+    lastTaskDate: u.lastTaskDate,
+    createdAt: u.createdAt,
   };
 }
-function auth(req, res, next) {
-  const h = req.headers.authorization;
-  if (!h || !h.startsWith('Bearer ')) return res.status(401).json({ error: 'No token provided' });
-  try { const p = jwt.verify(h.split(' ')[1], JWT_SECRET); req.userId = p.userId; next(); }
-  catch { return res.status(401).json({ error: 'Invalid or expired token' }); }
-}
-function adminAuth(req, res, next) {
-  const h = req.headers.authorization;
-  if (!h || !h.startsWith('Bearer ')) return res.status(401).json({ error: 'Admin token required' });
-  try {
-    const p = jwt.verify(h.split(' ')[1], JWT_SECRET);
-    if (!p.admin) return res.status(403).json({ error: 'Not an admin token' });
-    req.admin = true; next();
-  } catch { return res.status(401).json({ error: 'Invalid admin token' }); }
+
+function pushNotif(userId, type, title, message) {
+  const n = { id: notifIdSeq++, userId, type, title, message, read: false, createdAt: new Date().toISOString() };
+  notifications.push(n);
+  return n;
 }
 
-function payheroAuthHeader() {
-  const t = PAYHERO_BASIC_AUTH_TOKEN || '';
-  return t.startsWith('Basic ') ? t : `Basic ${t}`;
-}
-async function sendPayHeroStk({ amount, phone, reference }) {
-  if (!PAYHERO_BASIC_AUTH_TOKEN) return { ok: false, data: null, message: 'PayHero token not configured' };
-  if (!PAYHERO_CHANNEL_ID)       return { ok: false, data: null, message: 'PayHero channel not configured' };
-  if (!PAYHERO_CALLBACK_URL)     return { ok: false, data: null, message: 'PayHero callback URL not configured' };
-  const payload = { amount: Number(amount), phone_number: phone, channel_id: PAYHERO_CHANNEL_ID, provider: 'm-pesa', external_reference: reference, callback_url: PAYHERO_CALLBACK_URL };
-  try {
-    const r = await axios.post(`${PAYHERO_BASE_URL}/payments`, payload, {
-      headers: { 'Content-Type': 'application/json', 'Authorization': payheroAuthHeader() },
-      timeout: 30000, validateStatus: () => true
-    });
-    const ok = r.status >= 200 && r.status < 300 && (r.data?.success === true || r.data?.status === true);
-    if (!ok) return { ok: false, data: r.data, message: r.data?.message || r.data?.error || `STK push rejected (HTTP ${r.status})` };
-    return { ok: true, data: r.data, message: 'STK push sent' };
-  } catch (err) {
-    return { ok: false, data: err.response?.data || null, message: err.response?.data?.message || err.message };
-  }
-}
-function mapPayHeroFailureReason(resultCode, resultDesc) {
-  const code = String(resultCode);
-  const map = { '1':'Insufficient funds in your M‑Pesa account','1001':'Another M‑Pesa transaction in progress','1019':'Transaction expired — no PIN entered','1032':'You cancelled the payment prompt','1037':'No response from your phone','1050':'Not enough money in your M‑Pesa account','2001':'Wrong M‑Pesa PIN','2002':'M‑Pesa PIN could not be verified','9999':'M‑Pesa service temporarily unavailable' };
-  return map[code] || resultDesc || `Transaction failed (code ${code})`;
+function recordLogin(userId, req, success = true) {
+  loginHistory.push({
+    id: crypto.randomBytes(6).toString('hex'),
+    userId,
+    at: new Date().toISOString(),
+    ip: (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString().split(',')[0].trim() || '—',
+    ua: req.headers['user-agent'] || '',
+    success,
+  });
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// MAINTENANCE MODE MIDDLEWARE
-// ═══════════════════════════════════════════════════════════════════════════
-app.use(async (req, res, next) => {
-  const isPage = req.method === 'GET' && !req.path.startsWith('/api/') && !req.path.startsWith('/socket.io') && !/\.(js|css|png|jpg|jpeg|svg|ico|webp|woff2?|ttf|map)$/i.test(req.path);
-  if (isPage) {
-    const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.ip || 'unknown';
-    const ua = req.headers['user-agent'] || '';
-    const ref = req.headers['referer'] || req.headers['referrer'] || '';
-    visitsCol.insertOne({ ip, path: req.path, ua, referrer: ref,
-      country: req.headers['cf-ipcountry'] || req.headers['x-vercel-ip-country'] || null,
-      method: req.method, createdAt: new Date() }).catch(() => {});
-  }
+function normalizePhone(p) {
+  if (!p) return '';
+  let s = String(p).replace(/\D/g, '');
+  if (s.startsWith('0')) s = '254' + s.slice(1);
+  if (!s.startsWith('254')) s = '254' + s;
+  return '+' + s;
+}
+const mpesaRef = () => 'MP' + crypto.randomBytes(5).toString('hex').toUpperCase();
 
-  if (req.path.startsWith('/api/') && !req.path.startsWith('/api/admin') && !req.path.startsWith('/api/login') && !req.path.startsWith('/api/register') && !req.path.startsWith('/api/me') && !req.path.startsWith('/api/prices')) {
-    try {
-      const setting = await settingsCol.findOne({ key: 'maintenance_mode' });
-      if (setting && setting.enabled === true) {
-        return res.status(503).json({ error: 'MAINTENANCE', message: 'System is undergoing maintenance. Please try again later.' });
-      }
-    } catch (e) {}
-  }
-  next();
+// =============================================================================
+//  ROUTES — CONFIG
+// =============================================================================
+app.get('/api/config', (req, res) => {
+  res.set('Cache-Control', 'no-store, max-age=0');
+  res.json({ ...APP_CONFIG, prices: { ...APP_CONFIG.tierPrices } });
+});
+app.get('/api/prices', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json({ ...APP_CONFIG.tierPrices });
 });
 
-app.use(express.static(path.join(__dirname, 'public')));
-
-app.get('/healthz', (req, res) => res.json({ ok: true, uptime: process.uptime() }));
-app.get('/api/prices', (req, res) => res.json(tierPrices));
-
-app.post('/api/register', async (req, res) => {
+// =============================================================================
+//  ROUTES — AUTH
+// =============================================================================
+app.post('/api/register', (req, res) => {
   try {
-    const { username, email, password, confirmPassword, phone } = req.body || {};
-    if (!username || !email || !password || !phone) return res.status(400).json({ error: 'All fields are required' });
-    if (password !== confirmPassword) return res.status(400).json({ error: 'Passwords do not match' });
-    if (!isStrongPassword(password)) return res.status(400).json({ error: 'Password must be 8+ characters with uppercase, lowercase, and a number' });
-    if (!isValidEmail(email)) return res.status(400).json({ error: 'Invalid email address' });
-    const normalizedPhone = normalizePhone(phone);
-    if (!isValidKenyanPhone(normalizedPhone)) return res.status(400).json({ error: 'Enter a valid Kenyan M‑Pesa number' });
-    const cleanUsername = String(username).trim();
-    const cleanEmail = String(email).trim().toLowerCase();
-    const existing = await usersCol.findOne({ $or: [{ email: cleanEmail }, { username: cleanUsername }] });
-    if (existing) return res.status(409).json({ error: 'Email or username already taken' });
-    const hashed = await bcrypt.hash(password, 10);
-    const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.ip;
+    const { username, email, phone, password, confirmPassword } = req.body || {};
+    if (!username || !email || !phone || !password) return res.status(400).json({ error: 'All fields are required' });
+    if (password !== confirmPassword)              return res.status(400).json({ error: 'Passwords do not match' });
+    if (!(password.length >= 8 && /[A-Z]/.test(password) && /[a-z]/.test(password) && /[0-9]/.test(password)))
+      return res.status(400).json({ error: 'Password must be 8+ chars with uppercase, lowercase, and a number' });
+    if (usersByEmail.has(email.toLowerCase())) return res.status(400).json({ error: 'Email already registered' });
+
+    const id = userIdSeq++;
     const user = {
-      username: cleanUsername, email: cleanEmail, phone: normalizedPhone,
-      password: hashed, subscriptionTier: 'free', subscriptionExpiry: null,
-      tasksCompletedToday: 0, lastTaskDate: new Date(0).toISOString(),
-      balance: 0, pendingBalance: 0, totalEarnings: 0,
-      activationFeePaid: false, withdrawalPin: null,
-      accountStatus: 'active', twoFactorEnabled: false,
-      country: 'Kenya', county: null, language: 'en',
-      signupIp: ip, signupUa: req.headers['user-agent'] || '', createdAt: new Date()
+      id, username,
+      email: email.toLowerCase(),
+      phone: normalizePhone(phone),
+      passwordHash: hashPassword(password),
+      photo: null,
+      balance: 0, pendingBalance: 0, totalEarnings: 0, todayEarnings: 0,
+      tasksCompletedToday: 0,
+      subscriptionTier: 'free', subscriptionExpiry: null,
+      activationFeePaid: false,
+      withdrawalPin: null, twoFactorEnabled: false,
+      lastTaskDate: null,
+      createdAt: new Date().toISOString(),
     };
-    const result = await usersCol.insertOne(user);
-    const token = jwt.sign({ userId: String(result.insertedId) }, JWT_SECRET, { expiresIn: '7d' });
-    user._id = result.insertedId;
-    await createNotification(result.insertedId, 'system', 'Welcome to JobPay 🎉', 'Your account is ready. Complete 2 free tasks today to start earning!');
-    res.status(201).json({ token, user: publicUser(user) });
-  } catch (err) { console.error('Register error:', err); res.status(500).json({ error: 'Server error' }); }
+    users.set(id, user);
+    usersByEmail.set(user.email, id);
+    taskCompletions.set(id, new Set());
+
+    pushNotif(id, 'system', 'Welcome to JobPay! 🎉',
+      `You get ${APP_CONFIG.freeDailyTasks} free tasks every day. Complete them to start earning.`);
+    recordLogin(id, req, true);
+
+    res.json({ token: signToken(user), user: publicUser(user) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Registration failed' });
+  }
 });
 
-app.post('/api/login', async (req, res) => {
-  const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.ip;
-  const ua = req.headers['user-agent'] || '';
+app.post('/api/login', (req, res) => {
   try {
     const { email, password } = req.body || {};
-    if (!email || !password) return res.status(400).json({ error: 'Email and password are required' });
-    const user = await usersCol.findOne({ email: String(email).trim().toLowerCase() });
-    if (!user) {
-      await loginAttemptsCol.insertOne({ email: String(email).trim().toLowerCase(), ip, ua, success: false, reason: 'User not found', createdAt: new Date() });
-      return res.status(401).json({ error: 'Invalid credentials' });
+    if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
+    const id = usersByEmail.get(email.toLowerCase());
+    const user = id ? users.get(id) : null;
+    if (!user || !verifyPassword(password, user.passwordHash)) {
+      if (user) recordLogin(user.id, req, false);
+      return res.status(400).json({ error: 'Invalid email or password' });
     }
-    const ok = await bcrypt.compare(password, user.password);
-    if (!ok) {
-      await loginAttemptsCol.insertOne({ email: user.email, userId: user._id, ip, ua, success: false, reason: 'Wrong password', createdAt: new Date() });
-      return res.status(401).json({ error: 'Invalid credentials' });
+    recordLogin(user.id, req, true);
+    res.json({ token: signToken(user), user: publicUser(user) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Login failed' });
+  }
+});
+
+// =============================================================================
+//  ROUTES — ME
+// =============================================================================
+app.get('/api/me', auth, (req, res) => res.json(publicUser(req.user)));
+
+// =============================================================================
+//  ROUTES — TASKS
+// =============================================================================
+function userTaskStatus(user, taskId) {
+  const completed = taskCompletions.get(user.id) || new Set();
+  if (completed.has(taskId)) return 'completed';
+  const tier  = user.subscriptionTier || 'free';
+  const limit = APP_CONFIG.tierLimits[tier] || APP_CONFIG.tierLimits.free;
+  if ((user.tasksCompletedToday || 0) >= limit) return 'locked';
+  const task = tasks.get(taskId);
+  if (!task) return 'locked';
+  const rank = { free: 0, classic: 1, premium: 2, golden: 3 };
+  if ((rank[task.tier] || 0) > (rank[tier] || 0)) return 'locked';
+  return 'unlocked';
+}
+
+app.get('/api/tasks', auth, (req, res) => {
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const size = Math.min(100, parseInt(req.query.size) || 50);
+  const type = (req.query.type || '').trim();
+  let list = Array.from(tasks.values());
+  if (type) list = list.filter(t => t.type === type);
+  const totalCount = list.length;
+  const start = (page - 1) * size;
+  const slice = list.slice(start, start + size).map(t => ({
+    ...t,
+    status: userTaskStatus(req.user, t.id),
+  }));
+  res.json({ tasks: slice, totalCount });
+});
+
+app.get('/api/tasks/:id', auth, (req, res) => {
+  const id = Number(req.params.id);
+  const task = tasks.get(id);
+  if (!task) return res.status(404).json({ error: 'Task not found' });
+  const status = userTaskStatus(req.user, id);
+  if (status === 'locked')    return res.status(403).json({ error: 'Task locked. Complete or upgrade to unlock.' });
+  if (status === 'completed') return res.status(400).json({ error: 'Task already completed' });
+  res.json({ task: { ...task, status }, questions: generateQuestions(task.questions) });
+});
+
+app.post('/api/tasks/:id/complete', auth, (req, res) => {
+  const id = Number(req.params.id);
+  const task = tasks.get(id);
+  if (!task) return res.status(404).json({ error: 'Task not found' });
+  const { answers } = req.body || {};
+  if (!Array.isArray(answers)) return res.status(400).json({ error: 'Answers required' });
+  if (userTaskStatus(req.user, id) !== 'unlocked') return res.status(400).json({ error: 'Task is not available' });
+
+  const user = req.user;
+  const reward = task.tier === 'free' ? APP_CONFIG.freeTaskReward : task.reward;
+
+  user.pendingBalance = (user.pendingBalance || 0) + reward;
+  user.tasksCompletedToday = (user.tasksCompletedToday || 0) + 1;
+  user.lastTaskDate = new Date().toISOString();
+
+  const completed = taskCompletions.get(user.id) || new Set();
+  completed.add(id);
+  taskCompletions.set(user.id, completed);
+
+  const now = new Date().toISOString();
+  const wtx = {
+    id: txIdSeq++,
+    userId: user.id,
+    type: 'task_reward',
+    amount: reward,
+    status: 'pending',
+    taskTitle: task.title,
+    owner: task.owner,
+    createdAt: now,
+    confirmedAt: null,
+    reference: 'TSK' + crypto.randomBytes(5).toString('hex').toUpperCase(),
+  };
+  walletTx.push(wtx);
+
+  pushNotif(user.id, 'task', 'Task submitted ⏳',
+    `Your submission "${task.title}" is awaiting confirmation. Reward: KES ${reward}.`);
+
+  // Demo: auto-approve after 20 seconds
+  setTimeout(() => {
+    const u = users.get(user.id);
+    if (!u) return;
+    u.pendingBalance = Math.max(0, (u.pendingBalance || 0) - reward);
+    u.balance        = (u.balance || 0) + reward;
+    u.totalEarnings  = (u.totalEarnings || 0) + reward;
+    u.todayEarnings  = (u.todayEarnings || 0) + reward;
+    wtx.status = 'completed';
+    wtx.confirmedAt = new Date().toISOString();
+    pushNotif(u.id, 'task_approved', 'Task approved ✅',
+      `"${task.title}" was approved. KES ${reward} credited.`);
+  }, 20000);
+
+  res.json({ reward, message: 'Submitted. Awaiting admin confirmation.' });
+});
+
+// =============================================================================
+//  ROUTES — HISTORY
+// =============================================================================
+app.get('/api/history', auth, (req, res) => {
+  const list = walletTx
+    .filter(t => t.userId === req.user.id && t.type === 'task_reward')
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .map(t => ({
+      id: t.id,
+      taskTitle: t.taskTitle,
+      owner: t.owner,
+      reward: t.amount,
+      status: t.status === 'completed' ? 'completed' : t.status === 'failed' ? 'failed' : 'pending',
+      reason: t.reason || null,
+      completedAt: t.confirmedAt || t.createdAt,
+      answersCount: 5,
+    }));
+  res.json(list);
+});
+
+app.get('/api/wallet/history', auth, (req, res) => {
+  const uid = req.user.id;
+  res.json({
+    paymentTransactions: payTx.filter(t => t.userId === uid).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)),
+    walletTransactions:  walletTx.filter(t => t.userId === uid).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)),
+  });
+});
+
+// =============================================================================
+//  ROUTES — WALLET
+// =============================================================================
+app.post('/api/wallet/deposit', auth, (req, res) => {
+  const { amount, phone } = req.body || {};
+  const amt = Number(amount);
+  if (!amt || amt < APP_CONFIG.minDeposit)
+    return res.status(400).json({ error: `Minimum deposit is ${APP_CONFIG.currency} ${APP_CONFIG.minDeposit}` });
+  if (amt > APP_CONFIG.maxDeposit)
+    return res.status(400).json({ error: `Maximum deposit is ${APP_CONFIG.currency} ${APP_CONFIG.maxDeposit}` });
+
+  const normPhone = normalizePhone(phone || req.user.phone);
+  const tx = {
+    id: txIdSeq++,
+    userId: req.user.id,
+    kind: 'deposit',
+    amount: amt,
+    status: 'pending',
+    phone: normPhone,
+    reference: 'DEP' + crypto.randomBytes(5).toString('hex').toUpperCase(),
+    mpesaRef: null,
+    createdAt: new Date().toISOString(),
+    completedAt: null,
+  };
+  payTx.push(tx);
+
+  setTimeout(() => {
+    tx.status = 'completed';
+    tx.completedAt = new Date().toISOString();
+    tx.mpesaRef = mpesaRef();
+    const u = users.get(req.user.id);
+    if (u) {
+      u.balance = (u.balance || 0) + amt;
+      walletTx.push({
+        id: txIdSeq++, userId: u.id, type: 'deposit', amount: amt, status: 'completed',
+        phone: normPhone, reference: tx.reference, mpesaRef: tx.mpesaRef,
+        createdAt: tx.createdAt, confirmedAt: tx.completedAt,
+      });
+      pushNotif(u.id, 'deposit', 'Deposit received 💰', `KES ${amt} has been added to your wallet.`);
     }
-    await loginAttemptsCol.insertOne({ email: user.email, userId: user._id, ip, ua, success: true, createdAt: new Date() });
-    await usersCol.updateOne({ _id: user._id }, { $set: { lastLoginAt: new Date(), lastLoginIp: ip } });
-    if (resetDailyTasks(user)) await usersCol.updateOne({ _id: user._id }, { $set: { tasksCompletedToday: 0, lastTaskDate: user.lastTaskDate } });
-    const device = /android/i.test(ua) ? 'Android' : /iphone|ipad/i.test(ua) ? 'iOS' : /windows/i.test(ua) ? 'Windows' : /mac/i.test(ua) ? 'Mac' : 'Unknown device';
-    await createNotification(user._id, 'login', 'New login to your account', `We noticed a login from ${device} · IP ${ip}. If this wasn't you, secure your account immediately.`);
-    const token = jwt.sign({ userId: String(user._id) }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({ token, user: publicUser(user) });
-  } catch (err) { console.error('Login error:', err); res.status(500).json({ error: 'Server error' }); }
+  }, 6000);
+
+  res.json({ phone: normPhone, amount: amt, message: 'STK push sent' });
 });
 
-app.get('/api/me', auth, async (req, res) => {
-  try {
-    const user = await usersCol.findOne({ _id: new ObjectId(req.userId) });
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    if (resetDailyTasks(user)) await usersCol.updateOne({ _id: user._id }, { $set: { tasksCompletedToday: 0, lastTaskDate: user.lastTaskDate } });
-    res.json(publicUser(user));
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
-});
+app.post('/api/wallet/pay-activation', auth, (req, res) => {
+  if (req.user.activationFeePaid) return res.json({ phone: req.user.phone, amount: 0, message: 'Already activated' });
+  const normPhone = normalizePhone(req.body?.phone || req.user.phone);
+  const tx = {
+    id: txIdSeq++,
+    userId: req.user.id,
+    kind: 'activation',
+    amount: APP_CONFIG.activationFee,
+    status: 'pending',
+    phone: normPhone,
+    reference: 'ACT' + crypto.randomBytes(5).toString('hex').toUpperCase(),
+    createdAt: new Date().toISOString(),
+  };
+  payTx.push(tx);
 
-// ═══════════════════════════════════════════════════════════════════════════
-// NOTIFICATIONS ENDPOINTS
-// ═══════════════════════════════════════════════════════════════════════════
-app.get('/api/notifications', auth, async (req, res) => {
-  try {
-    const userId = new ObjectId(req.userId);
-    const limit = Math.min(100, parseInt(req.query.limit) || 50);
-    const items = await notificationsCol
-      .find({ userId })
-      .sort({ createdAt: -1 })
-      .limit(limit)
-      .toArray();
-    const unread = await notificationsCol.countDocuments({ userId, read: false });
-    res.json({
-      unread,
-      total: items.length,
-      notifications: items.map(n => ({
-        id: n._id,
-        type: n.type,
-        title: n.title,
-        message: n.message,
-        meta: n.meta || {},
-        read: n.read === true,
-        createdAt: n.createdAt
-      }))
-    });
-  } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
-});
-
-app.get('/api/notifications/unread-count', auth, async (req, res) => {
-  try {
-    const unread = await notificationsCol.countDocuments({ userId: new ObjectId(req.userId), read: false });
-    res.json({ unread });
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
-});
-
-app.post('/api/notifications/read-all', auth, async (req, res) => {
-  try {
-    await notificationsCol.updateMany(
-      { userId: new ObjectId(req.userId), read: false },
-      { $set: { read: true, readAt: new Date() } }
-    );
-    res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
-});
-
-app.post('/api/notifications/:id/read', auth, async (req, res) => {
-  try {
-    await notificationsCol.updateOne(
-      { _id: new ObjectId(req.params.id), userId: new ObjectId(req.userId) },
-      { $set: { read: true, readAt: new Date() } }
-    );
-    res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
-});
-
-app.delete('/api/notifications', auth, async (req, res) => {
-  try {
-    await notificationsCol.deleteMany({ userId: new ObjectId(req.userId) });
-    res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
-});
-
-// ═══════════════════════════════════════════════════════════════════════════
-// USER SETTINGS
-// ═══════════════════════════════════════════════════════════════════════════
-app.put('/api/user/profile', auth, async (req, res) => {
-  try {
-    const user = await usersCol.findOne({ _id: new ObjectId(req.userId) });
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    const { username, email, phone } = req.body || {};
-    const updates = {};
-    if (username && username !== user.username) {
-      const clean = String(username).trim();
-      if (clean.length < 3) return res.status(400).json({ error: 'Username must be 3+ characters' });
-      const exists = await usersCol.findOne({ username: clean, _id: { $ne: user._id } });
-      if (exists) return res.status(409).json({ error: 'Username already taken' });
-      updates.username = clean;
+  setTimeout(() => {
+    tx.status = 'completed';
+    tx.completedAt = new Date().toISOString();
+    tx.mpesaRef = mpesaRef();
+    const u = users.get(req.user.id);
+    if (u) {
+      u.activationFeePaid = true;
+      walletTx.push({
+        id: txIdSeq++, userId: u.id, type: 'activation_fee', amount: -APP_CONFIG.activationFee,
+        status: 'completed', phone: normPhone, reference: tx.reference,
+        createdAt: tx.createdAt, confirmedAt: tx.completedAt,
+      });
+      pushNotif(u.id, 'activation', 'Account activated 🔓', 'Withdrawals are now unlocked.');
     }
-    if (email && email !== user.email) {
-      if (!isValidEmail(email)) return res.status(400).json({ error: 'Invalid email' });
-      const clean = String(email).trim().toLowerCase();
-      const exists = await usersCol.findOne({ email: clean, _id: { $ne: user._id } });
-      if (exists) return res.status(409).json({ error: 'Email already in use' });
-      updates.email = clean;
+  }, 6000);
+
+  res.json({ phone: normPhone, amount: APP_CONFIG.activationFee });
+});
+
+app.post('/api/wallet/withdraw', auth, (req, res) => {
+  const { amount, pin } = req.body || {};
+  const amt  = Number(amount);
+  const user = req.user;
+
+  if (!user.activationFeePaid) return res.status(403).json({ error: 'Account not activated', code: 'ACTIVATION_REQUIRED' });
+  if (!amt || amt < APP_CONFIG.minWithdrawal)
+    return res.status(400).json({ error: `Minimum withdrawal is ${APP_CONFIG.currency} ${APP_CONFIG.minWithdrawal}` });
+  if (amt > APP_CONFIG.maxWithdrawal)
+    return res.status(400).json({ error: `Maximum withdrawal is ${APP_CONFIG.currency} ${APP_CONFIG.maxWithdrawal}` });
+  if (amt > user.balance) return res.status(400).json({ error: 'Insufficient funds' });
+  if (user.withdrawalPin && !pin)                    return res.status(400).json({ error: 'Withdrawal PIN required' });
+  if (user.withdrawalPin && pin !== user.withdrawalPin) return res.status(400).json({ error: 'Incorrect withdrawal PIN' });
+
+  user.balance -= amt;
+  const tx = {
+    id: txIdSeq++, userId: user.id, type: 'withdrawal', amount: amt, status: 'pending',
+    phone: user.phone,
+    reference: 'WDR' + crypto.randomBytes(5).toString('hex').toUpperCase(),
+    createdAt: new Date().toISOString(),
+    confirmedAt: null,
+  };
+  walletTx.push(tx);
+
+  setTimeout(() => {
+    tx.status = 'completed';
+    tx.confirmedAt = new Date().toISOString();
+    tx.mpesaRef = mpesaRef();
+    pushNotif(user.id, 'withdrawal_paid', 'Withdrawal paid 💸',
+      `KES ${amt} sent to ${user.phone}. Ref: ${tx.mpesaRef}`);
+  }, 15000);
+
+  pushNotif(user.id, 'withdrawal', 'Withdrawal requested ⏳',
+    `KES ${amt} is on its way to ${user.phone}.`);
+
+  res.json({ message: `Withdrawal of KES ${amt} submitted`, reference: tx.reference });
+});
+
+// =============================================================================
+//  ROUTES — SUBSCRIBE
+// =============================================================================
+app.post('/api/subscribe', auth, (req, res) => {
+  const { tier, phone } = req.body || {};
+  if (!['classic', 'premium', 'golden'].includes(tier)) return res.status(400).json({ error: 'Invalid tier' });
+  const price = APP_CONFIG.tierPrices[tier];
+  const normPhone = normalizePhone(phone || req.user.phone);
+
+  const tx = {
+    id: txIdSeq++, userId: req.user.id, kind: 'subscription', tier, amount: price,
+    status: 'pending', phone: normPhone,
+    reference: 'SUB' + crypto.randomBytes(5).toString('hex').toUpperCase(),
+    createdAt: new Date().toISOString(),
+  };
+  payTx.push(tx);
+
+  setTimeout(() => {
+    tx.status = 'completed';
+    tx.completedAt = new Date().toISOString();
+    tx.mpesaRef = mpesaRef();
+    const u = users.get(req.user.id);
+    if (u) {
+      u.subscriptionTier = tier;
+      u.subscriptionExpiry = new Date(Date.now() + 7 * 86400000).toISOString();
+      u.tasksCompletedToday = 0;
+      walletTx.push({
+        id: txIdSeq++, userId: u.id, type: 'subscription', amount: -price, status: 'completed',
+        tier, phone: normPhone, reference: tx.reference,
+        createdAt: tx.createdAt, confirmedAt: tx.completedAt,
+      });
+      pushNotif(u.id, 'subscription', `${tier} activated ⭐`,
+        `Your ${tier} plan is active for 7 days. Daily limit: ${APP_CONFIG.tierLimits[tier]} tasks.`);
     }
-    if (phone) {
-      const normalized = normalizePhone(phone);
-      if (!isValidKenyanPhone(normalized)) return res.status(400).json({ error: 'Invalid M‑Pesa number' });
-      if (normalized !== user.phone) {
-        const exists = await usersCol.findOne({ phone: normalized, _id: { $ne: user._id } });
-        if (exists) return res.status(409).json({ error: 'Phone already in use' });
-        updates.phone = normalized;
-      }
-    }
-    if (Object.keys(updates).length === 0) return res.json({ ok: true, user: publicUser(user) });
-    updates.profileUpdatedAt = new Date();
-    await usersCol.updateOne({ _id: user._id }, { $set: updates });
-    await createNotification(user._id, 'system', 'Profile updated', 'Your account details were successfully updated.');
-    const updated = await usersCol.findOne({ _id: user._id });
-    res.json({ ok: true, user: publicUser(updated) });
-  } catch (err) { console.error('Profile update error:', err); res.status(500).json({ error: 'Server error' }); }
+  }, 6000);
+
+  res.json({ phone: normPhone, amount: price, message: 'STK push sent' });
 });
 
-app.post('/api/user/photo', auth, async (req, res) => {
-  try {
-    const { photo } = req.body || {};
-    if (!photo || typeof photo !== 'string') return res.status(400).json({ error: 'Photo data required' });
-    if (!photo.startsWith('data:image/')) return res.status(400).json({ error: 'Invalid image format' });
-    if (photo.length > 400000) return res.status(413).json({ error: 'Photo too large (max ~300KB).' });
-    const user = await usersCol.findOne({ _id: new ObjectId(req.userId) });
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    await usersCol.updateOne({ _id: user._id }, { $set: { photo, photoUpdatedAt: new Date() } });
-    await createNotification(user._id, 'system', 'Profile photo updated', 'Your new profile photo is live.');
-    res.json({ ok: true, photo });
-  } catch (err) { console.error('Photo save error:', err); res.status(500).json({ error: 'Server error' }); }
+// =============================================================================
+//  ROUTES — USER
+// =============================================================================
+app.post('/api/user/photo', auth, (req, res) => {
+  const { photo } = req.body || {};
+  if (!photo || typeof photo !== 'string') return res.status(400).json({ error: 'Photo required' });
+  req.user.photo = photo;
+  res.json({ photo });
+});
+app.delete('/api/user/photo', auth, (req, res) => {
+  req.user.photo = null;
+  res.json({ ok: true });
+});
+app.put('/api/user/profile', auth, (req, res) => {
+  const { username, email, phone } = req.body || {};
+  if (username) req.user.username = username;
+  if (email && email.toLowerCase() !== req.user.email) {
+    if (usersByEmail.has(email.toLowerCase())) return res.status(400).json({ error: 'Email in use' });
+    usersByEmail.delete(req.user.email);
+    req.user.email = email.toLowerCase();
+    usersByEmail.set(req.user.email, req.user.id);
+  }
+  if (phone) req.user.phone = normalizePhone(phone);
+  res.json({ user: publicUser(req.user) });
+});
+app.post('/api/user/change-password', auth, (req, res) => {
+  const { currentPassword, newPassword } = req.body || {};
+  if (!currentPassword || !newPassword) return res.status(400).json({ error: 'All fields required' });
+  if (!verifyPassword(currentPassword, req.user.passwordHash)) return res.status(400).json({ error: 'Current password is incorrect' });
+  if (!(newPassword.length >= 8 && /[A-Z]/.test(newPassword) && /[a-z]/.test(newPassword) && /[0-9]/.test(newPassword)))
+    return res.status(400).json({ error: 'Password must be 8+ chars with uppercase, lowercase, and a number' });
+  req.user.passwordHash = hashPassword(newPassword);
+  res.json({ ok: true });
+});
+app.post('/api/user/2fa', auth, (req, res) => {
+  req.user.twoFactorEnabled = !!req.body.enabled;
+  res.json({ ok: true });
+});
+app.post('/api/user/withdrawal-pin', auth, (req, res) => {
+  const { pin, password } = req.body || {};
+  if (!/^\d{4,6}$/.test(pin)) return res.status(400).json({ error: 'PIN must be 4-6 digits' });
+  if (!verifyPassword(password, req.user.passwordHash)) return res.status(400).json({ error: 'Password incorrect' });
+  req.user.withdrawalPin = pin;
+  res.json({ ok: true });
+});
+app.get('/api/user/login-history', auth, (req, res) => {
+  const items = loginHistory
+    .filter(l => l.userId === req.user.id)
+    .sort((a, b) => new Date(b.at) - new Date(a.at));
+  res.json(items);
+});
+app.post('/api/user/deactivate', auth, (req, res) => {
+  const { password } = req.body || {};
+  if (!verifyPassword(password, req.user.passwordHash)) return res.status(400).json({ error: 'Password incorrect' });
+  req.user.deactivated = true;
+  res.json({ ok: true });
+});
+app.post('/api/user/delete', auth, (req, res) => {
+  const { password, confirm } = req.body || {};
+  if (confirm !== 'DELETE') return res.status(400).json({ error: 'Confirmation required' });
+  if (!verifyPassword(password, req.user.passwordHash)) return res.status(400).json({ error: 'Password incorrect' });
+  usersByEmail.delete(req.user.email);
+  users.delete(req.user.id);
+  res.json({ ok: true });
 });
 
-app.delete('/api/user/photo', auth, async (req, res) => {
-  try {
-    const user = await usersCol.findOne({ _id: new ObjectId(req.userId) });
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    await usersCol.updateOne({ _id: user._id }, { $unset: { photo: '' } });
-    res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
+// =============================================================================
+//  ROUTES — SUPPORT
+// =============================================================================
+app.get('/api/support/tickets', auth, (req, res) => {
+  const list = tickets
+    .filter(t => t.userId === req.user.id)
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  res.json(list);
+});
+app.post('/api/support/ticket', auth, (req, res) => {
+  const { category, subject, message } = req.body || {};
+  if (!subject || !message) return res.status(400).json({ error: 'Subject and message required' });
+  const t = {
+    id: ticketIdSeq++,
+    ticketNumber: 'TK' + String(ticketIdSeq).padStart(5, '0'),
+    userId: req.user.id,
+    category: category || 'other',
+    subject, message,
+    status: 'open',
+    createdAt: new Date().toISOString(),
+  };
+  tickets.push(t);
+  pushNotif(req.user.id, 'system', 'Ticket submitted',
+    `Ticket ${t.ticketNumber} received. We'll get back to you soon.`);
+  res.json(t);
 });
 
-app.post('/api/user/change-password', auth, async (req, res) => {
-  try {
-    const { currentPassword, newPassword } = req.body || {};
-    if (!currentPassword || !newPassword) return res.status(400).json({ error: 'Both passwords required' });
-    if (!isStrongPassword(newPassword)) return res.status(400).json({ error: 'New password must be 8+ chars with uppercase, lowercase, and a number' });
-    const user = await usersCol.findOne({ _id: new ObjectId(req.userId) });
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    const ok = await bcrypt.compare(currentPassword, user.password);
-    if (!ok) return res.status(401).json({ error: 'Current password is incorrect' });
-    const hashed = await bcrypt.hash(newPassword, 10);
-    await usersCol.updateOne({ _id: user._id }, { $set: { password: hashed, passwordChangedAt: new Date() } });
-    await createNotification(user._id, 'system', 'Password changed', 'Your password was successfully changed. If this wasn\'t you, contact support immediately.');
-    res.json({ ok: true, message: 'Password changed successfully' });
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
+// =============================================================================
+//  ROUTES — NOTIFICATIONS
+// =============================================================================
+app.get('/api/notifications', auth, (req, res) => {
+  const list = notifications
+    .filter(n => n.userId === req.user.id)
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .slice(0, 50);
+  const unread = notifications.filter(n => n.userId === req.user.id && !n.read).length;
+  res.json({ notifications: list, unread });
+});
+app.get('/api/notifications/unread-count', auth, (req, res) => {
+  const unread = notifications.filter(n => n.userId === req.user.id && !n.read).length;
+  res.json({ unread });
+});
+app.post('/api/notifications/:id/read', auth, (req, res) => {
+  const n = notifications.find(x => String(x.id) === req.params.id && x.userId === req.user.id);
+  if (n) n.read = true;
+  res.json({ ok: true });
+});
+app.post('/api/notifications/read-all', auth, (req, res) => {
+  notifications.forEach(n => { if (n.userId === req.user.id) n.read = true; });
+  res.json({ ok: true });
 });
 
-app.post('/api/user/withdrawal-pin', auth, async (req, res) => {
-  try {
-    const { pin, password } = req.body || {};
-    if (!pin || !/^\d{4,6}$/.test(String(pin))) return res.status(400).json({ error: 'PIN must be 4 to 6 digits' });
-    if (!password) return res.status(400).json({ error: 'Account password required' });
-    const user = await usersCol.findOne({ _id: new ObjectId(req.userId) });
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    const ok = await bcrypt.compare(password, user.password);
-    if (!ok) return res.status(401).json({ error: 'Wrong password' });
-    const pinHash = await bcrypt.hash(String(pin), 10);
-    await usersCol.updateOne({ _id: user._id }, { $set: { withdrawalPin: pinHash, pinSetAt: new Date() } });
-    await createNotification(user._id, 'system', 'Withdrawal PIN set', 'Your withdrawal PIN has been set. Keep it safe.');
-    res.json({ ok: true, message: 'Withdrawal PIN set' });
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
+// =============================================================================
+//  SPA FALLBACK
+// =============================================================================
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api/')) return next();
+  res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
 });
 
-app.post('/api/user/2fa', auth, async (req, res) => {
-  try {
-    const { enabled } = req.body || {};
-    const user = await usersCol.findOne({ _id: new ObjectId(req.userId) });
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    await usersCol.updateOne({ _id: user._id }, { $set: { twoFactorEnabled: !!enabled } });
-    await createNotification(user._id, 'system', enabled ? '2FA enabled' : '2FA disabled', enabled ? 'Your account is now protected with 2FA.' : 'Two-factor authentication has been disabled.');
-    res.json({ ok: true, twoFactorEnabled: !!enabled });
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
+app.listen(PORT, () => {
+  console.log(`✅ JobPay running → http://localhost:${PORT}`);
 });
-
-app.post('/api/user/deactivate', auth, async (req, res) => {
-  try {
-    const { password } = req.body || {};
-    if (!password) return res.status(400).json({ error: 'Password required' });
-    const user = await usersCol.findOne({ _id: new ObjectId(req.userId) });
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    const ok = await bcrypt.compare(password, user.password);
-    if (!ok) return res.status(401).json({ error: 'Wrong password' });
-    await usersCol.updateOne({ _id: user._id }, { $set: { accountStatus: 'deactivated', deactivatedAt: new Date() } });
-    res.json({ ok: true, message: 'Account deactivated' });
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
-});
-
-app.post('/api/user/delete', auth, async (req, res) => {
-  try {
-    const { password, confirm } = req.body || {};
-    if (!password) return res.status(400).json({ error: 'Password required' });
-    if (confirm !== 'DELETE') return res.status(400).json({ error: 'Type DELETE to confirm' });
-    const user = await usersCol.findOne({ _id: new ObjectId(req.userId) });
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    const ok = await bcrypt.compare(password, user.password);
-    if (!ok) return res.status(401).json({ error: 'Wrong password' });
-    await usersCol.updateOne({ _id: user._id }, {
-      $set: {
-        username: `deleted_${user._id}`, email: `deleted_${user._id}@deleted.local`,
-        phone: null, password: await bcrypt.hash(crypto.randomBytes(32).toString('hex'), 10),
-        accountStatus: 'deleted', deletedAt: new Date(), balance: 0, pendingBalance: 0, photo: null
-      }
-    });
-    res.json({ ok: true, message: 'Account deleted' });
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
-});
-
-app.get('/api/user/login-history', auth, async (req, res) => {
-  try {
-    const user = await usersCol.findOne({ _id: new ObjectId(req.userId) });
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    const attempts = await loginAttemptsCol.find({ userId: user._id }).sort({ createdAt: -1 }).limit(10).toArray();
-    res.json(attempts.map(a => ({ ip: a.ip, ua: a.ua, success: a.success, at: a.createdAt })));
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
-});
-
-app.post('/api/support/ticket', auth, async (req, res) => {
-  try {
-    const { category, subject, message } = req.body || {};
-    if (!subject || !message) return res.status(400).json({ error: 'Subject and message required' });
-    const user = await usersCol.findOne({ _id: new ObjectId(req.userId) });
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    const ticketNumber = `JP-${Date.now().toString().slice(-6)}`;
-    const doc = { ticketNumber, userId: user._id, username: user.username, category: category || 'general', subject, message, status: 'open', replies: [], createdAt: new Date() };
-    const r = await ticketsCol.insertOne(doc);
-    await createNotification(user._id, 'system', `Support ticket #${ticketNumber}`, 'Your ticket has been received. We\'ll get back to you shortly.');
-    res.status(201).json({ ok: true, ticket: { ...doc, _id: r.insertedId } });
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
-});
-
-app.get('/api/support/tickets', auth, async (req, res) => {
-  try {
-    const items = await ticketsCol.find({ userId: new ObjectId(req.userId) }).sort({ createdAt: -1 }).limit(50).toArray();
-    res.json(items);
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
-});
-
-// ═══════════════════════════════════════════════════════════════════════════
-// TASKS ROUTE - Serves only the current 50-task window (auto-advances daily)
-// ═══════════════════════════════════════════════════════════════════════════
-app.get('/api/tasks', auth, async (req, res) => {
-  try {
-    const user = await usersCol.findOne({ _id: new ObjectId(req.userId) });
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    if (resetDailyTasks(user)) await usersCol.updateOne({ _id: user._id }, { $set: { tasksCompletedToday: 0, lastTaskDate: user.lastTaskDate } });
-
-    const page = Math.max(1, parseInt(req.query.page) || 1);
-    const size = Math.min(100, parseInt(req.query.size) || 50);
-    const type = req.query.type;
-    const filter = {};
-    if (type === 'survey' || type === 'task') filter.type = type;
-
-    // Get the currently active 50-task window (auto-advances every 24h)
-    const win = await getCurrentWindow(metaCol);
-    filter.id = { $gte: win.startSlot, $lte: win.endSlot };
-
-    const totalCount = await tasksCol.countDocuments(filter);
-
-    const tasks = await tasksCol.find(filter).sort({ id: 1 }).toArray();
-
-    const todayHistory = await historyCol.find({ userId: user._id, completedAt: { $gte: startOfToday() } }).project({ taskId: 1 }).toArray();
-    const completedIds = new Set(todayHistory.map(h => h.taskId));
-    const limit = dailyLimit(user);
-    const done = user.tasksCompletedToday || 0;
-    const remaining = Math.max(0, limit - done);
-    let unlockSlots = remaining;
-
-    const shaped = tasks.map(t => {
-      let status = 'locked';
-      if (completedIds.has(t.id)) status = 'completed';
-      else if (unlockSlots > 0) { status = 'unlocked'; unlockSlots--; }
-      return {
-        id: t.id, type: t.type, title: t.title, description: t.description,
-        category: t.category, country: t.country,
-        reward: user.subscriptionTier === 'free' && status !== 'locked' ? FREE_TASK_REWARD : t.reward,
-        time: t.time, questions: t.questions, difficulty: t.difficulty,
-        owner: t.owner, status, tier: t.tier
-      };
-    });
-    res.json({
-      tier: user.subscriptionTier,
-      dailyLimit: limit,
-      tasksCompletedToday: done,
-      tasksRemaining: remaining,
-      page, size, totalCount,
-      window: {
-        number: win.windowNum,
-        startSlot: win.startSlot,
-        endSlot: win.endSlot,
-        totalWindows: win.totalWindows,
-        totalTasks: win.totalTasks,
-        lastAdvancedAt: win.lastAdvancedAt
-      },
-      tasks: shaped
-    });
-  } catch (err) { console.error('Fetch tasks error:', err); res.status(500).json({ error: 'Server error' }); }
-});
-
-app.get('/api/tasks/:id', auth, async (req, res) => {
-  try {
-    const user = await usersCol.findOne({ _id: new ObjectId(req.userId) });
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    const task = await tasksCol.findOne({ id: Number(req.params.id) });
-    if (!task) return res.status(404).json({ error: 'Task not found' });
-    if (resetDailyTasks(user)) await usersCol.updateOne({ _id: user._id }, { $set: { tasksCompletedToday: 0, lastTaskDate: user.lastTaskDate } });
-    const completedToday = await historyCol.findOne({ userId: user._id, taskId: task.id, completedAt: { $gte: startOfToday() } });
-    if (completedToday) return res.status(409).json({ error: 'Task already completed today' });
-    const limit = dailyLimit(user);
-    const done = user.tasksCompletedToday || 0;
-    if (done >= limit) return res.status(403).json({ error: 'Daily limit reached' });
-    const questions = generateQuestions(task);
-    const reward = user.subscriptionTier === 'free' ? FREE_TASK_REWARD : task.reward;
-    res.json({ task: { id: task.id, type: task.type, title: task.title, description: task.description, category: task.category, country: task.country, time: task.time, difficulty: task.difficulty, owner: task.owner, reward, tier: task.tier }, questions });
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
-});
-
-app.post('/api/tasks/:id/complete', auth, async (req, res) => {
-  try {
-    const { answers } = req.body || {};
-    if (!Array.isArray(answers)) return res.status(400).json({ error: 'answers array is required' });
-    const user = await usersCol.findOne({ _id: new ObjectId(req.userId) });
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    if (resetDailyTasks(user)) await usersCol.updateOne({ _id: user._id }, { $set: { tasksCompletedToday: 0, lastTaskDate: user.lastTaskDate } });
-    const limit = dailyLimit(user);
-    const done = user.tasksCompletedToday || 0;
-    if (done >= limit) return res.status(429).json({ error: 'Daily limit reached' });
-    const task = await tasksCol.findOne({ id: Number(req.params.id) });
-    if (!task) return res.status(404).json({ error: 'Task not found' });
-
-    // Strict check: Prevent double submission of the same task
-    const completedToday = await historyCol.findOne({ userId: user._id, taskId: task.id, completedAt: { $gte: startOfToday() } });
-    if (completedToday) return res.status(409).json({ error: 'This task has already been completed today.' });
-
-    const reward = user.subscriptionTier === 'free' ? FREE_TASK_REWARD : task.reward;
-    const wTxn = {
-      userId: user._id, type: 'task_reward', amount: reward, status: 'pending',
-      reference: `task_${task.id}_${Date.now()}`, taskId: task.id, taskTitle: task.title,
-      taskType: task.type, taskCategory: task.category, owner: task.owner,
-      answersCount: answers.length, createdAt: new Date()
-    };
-    const wRes = await walletCol.insertOne(wTxn);
-
-    await usersCol.updateOne(
-      { _id: user._id },
-      { $inc: { tasksCompletedToday: 1, pendingBalance: reward, totalEarnings: reward }, $set: { lastTaskDate: new Date().toISOString() } }
-    );
-
-    await historyCol.insertOne({
-      userId: user._id, taskId: task.id, taskTitle: task.title,
-      taskType: task.type, taskCategory: task.category, owner: task.owner,
-      reward, answersCount: answers.length, answers,
-      walletTxnId: wRes.insertedId, status: 'pending', completedAt: new Date()
-    });
-    await createNotification(user._id, 'task', '✅ Task submitted', `"${task.title}" was submitted successfully. KES ${reward} is pending admin approval.`, { taskId: task.id, reward });
-    res.json({ message: `Task complete! KES ${reward} is pending admin confirmation.`, reward, status: 'pending', tasksCompletedToday: done + 1, tasksRemaining: Math.max(0, limit - (done + 1)) });
-  } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
-});
-
-app.get('/api/history', auth, async (req, res) => {
-  try {
-    const entries = await historyCol.find({ userId: new ObjectId(req.userId) }).sort({ completedAt: -1 }).limit(100).toArray();
-    res.json(entries.map(e => ({
-      id: e._id, taskId: e.taskId, taskTitle: e.taskTitle,
-      taskType: e.taskType, taskCategory: e.taskCategory, owner: e.owner,
-      reward: e.reward, answersCount: e.answersCount,
-      status: e.status || 'completed', reason: e.reason || null, completedAt: e.completedAt
-    })));
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
-});
-
-app.post('/api/subscribe', auth, async (req, res) => {
-  try {
-    const { tier, phone: phoneInput } = req.body || {};
-    if (!TIERS[tier] || tier === 'free') return res.status(400).json({ error: 'Invalid tier' });
-    const user = await usersCol.findOne({ _id: new ObjectId(req.userId) });
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    const phone = normalizePhone(phoneInput || user.phone);
-    if (!isValidKenyanPhone(phone)) return res.status(400).json({ error: 'Enter a valid M‑Pesa number' });
-    const amount = getTierPrice(tier);
-    const reference = `sub_${user._id}_${tier}_${Date.now()}`;
-    await txnsCol.insertOne({ userId: user._id, tier, amount, reference, phone, status: 'pending', kind: 'subscription', createdAt: new Date() });
-    const stk = await sendPayHeroStk({ amount, phone, reference });
-    if (!stk.ok) {
-      await txnsCol.updateOne({ reference }, { $set: { status: 'failed', reason: stk.message, payheroResponse: stk.data } });
-      return res.status(400).json({ error: stk.message });
-    }
-    await txnsCol.updateOne({ reference }, { $set: { payheroResponse: stk.data } });
-    res.json({ message: `STK push sent to ${phone}.`, reference, amount, tier, phone });
-  } catch (err) { res.status(500).json({ error: 'Payment initiation failed' }); }
-});
-
-app.post('/api/wallet/deposit', auth, async (req, res) => {
-  try {
-    const amount = Number(req.body?.amount) || 0;
-    const phoneInput = req.body?.phone;
-    if (amount < MIN_DEPOSIT) return res.status(400).json({ error: `Minimum deposit is KES ${MIN_DEPOSIT}` });
-    const user = await usersCol.findOne({ _id: new ObjectId(req.userId) });
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    const phone = normalizePhone(phoneInput || user.phone);
-    if (!isValidKenyanPhone(phone)) return res.status(400).json({ error: 'Enter a valid M‑Pesa number' });
-    const reference = `dep_${user._id}_${Date.now()}`;
-    await txnsCol.insertOne({ userId: user._id, amount, reference, phone, status: 'pending', kind: 'deposit', createdAt: new Date() });
-    const stk = await sendPayHeroStk({ amount, phone, reference });
-    if (!stk.ok) {
-      await txnsCol.updateOne({ reference }, { $set: { status: 'failed', reason: stk.message, payheroResponse: stk.data } });
-      return res.status(400).json({ error: stk.message });
-    }
-    await txnsCol.updateOne({ reference }, { $set: { payheroResponse: stk.data } });
-    res.json({ message: `STK push sent to ${phone}.`, reference, amount, phone });
-  } catch (err) { res.status(500).json({ error: 'Deposit initiation failed' }); }
-});
-
-app.post('/api/wallet/pay-activation', auth, async (req, res) => {
-  try {
-    const phoneInput = req.body?.phone;
-    const user = await usersCol.findOne({ _id: new ObjectId(req.userId) });
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    if (user.activationFeePaid === true) return res.status(400).json({ error: 'Activation fee already paid' });
-    const phone = normalizePhone(phoneInput || user.phone);
-    if (!isValidKenyanPhone(phone)) return res.status(400).json({ error: 'Enter a valid M‑Pesa number' });
-    const amount = ACTIVATION_FEE;
-    const reference = `act_${user._id}_${Date.now()}`;
-    await txnsCol.insertOne({ userId: user._id, amount, reference, phone, status: 'pending', kind: 'activation', createdAt: new Date() });
-    const stk = await sendPayHeroStk({ amount, phone, reference });
-    if (!stk.ok) {
-      await txnsCol.updateOne({ reference }, { $set: { status: 'failed', reason: stk.message, payheroResponse: stk.data } });
-      return res.status(400).json({ error: stk.message });
-    }
-    await txnsCol.updateOne({ reference }, { $set: { payheroResponse: stk.data } });
-    res.json({ message: `STK push sent to ${phone}. Pay KES ${amount}.`, reference, amount, phone });
-  } catch (err) { res.status(500).json({ error: 'Activation initiation failed' }); }
-});
-
-app.post('/api/wallet/withdraw', auth, async (req, res) => {
-  try {
-    const amount = Number(req.body?.amount) || 0;
-    const pin = req.body?.pin;
-    if (amount < MIN_WITHDRAWAL) return res.status(400).json({ error: `Minimum withdrawal is KES ${MIN_WITHDRAWAL}` });
-    const user = await usersCol.findOne({ _id: new ObjectId(req.userId) });
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    if (user.activationFeePaid !== true) {
-      return res.status(403).json({ error: 'ACTIVATION_REQUIRED', message: `Pay a one-time KES ${ACTIVATION_FEE} activation fee first.`, amount: ACTIVATION_FEE });
-    }
-    if (user.withdrawalPin) {
-      if (!pin) return res.status(400).json({ error: 'Withdrawal PIN required' });
-      const pinOk = await bcrypt.compare(String(pin), user.withdrawalPin);
-      if (!pinOk) return res.status(401).json({ error: 'Incorrect withdrawal PIN' });
-    }
-    if ((user.balance || 0) < amount) return res.status(400).json({ error: 'Insufficient funds. Please check your balance.' });
-    const upd = await usersCol.updateOne({ _id: user._id, balance: { $gte: amount } }, { $inc: { balance: -amount } });
-    if (upd.modifiedCount === 0) return res.status(400).json({ error: 'Insufficient funds. Please check your balance.' });
-    await walletCol.insertOne({ userId: user._id, type: 'withdrawal', amount: -amount, phone: user.phone, status: 'pending', reference: `wd_${user._id}_${Date.now()}`, createdAt: new Date() });
-    await createNotification(user._id, 'withdrawal', '💸 Withdrawal requested', `Your withdrawal of KES ${amount} has been submitted and is awaiting admin approval.`, { amount });
-    res.json({ message: `Withdrawal of KES ${amount} requested. Admin will process it.`, amount, phone: user.phone });
-  } catch (err) { res.status(500).json({ error: 'Withdrawal failed' }); }
-});
-
-app.get('/api/wallet/history', auth, async (req, res) => {
-  try {
-    await autoFailStalePayments();
-    const userId = new ObjectId(req.userId);
-    const walletTransactions = await walletCol.find({ userId }).sort({ createdAt: -1 }).limit(50).toArray();
-    const paymentTransactions = await txnsCol.find({ userId }).sort({ createdAt: -1 }).limit(50).toArray();
-    res.json({
-      walletTransactions: walletTransactions.map(w => ({
-        id: w._id, type: w.type, amount: w.amount, status: w.status,
-        reference: w.reference, taskTitle: w.taskTitle, owner: w.owner,
-        reason: w.reason || null, phone: w.phone,
-        createdAt: w.createdAt, confirmedAt: w.confirmedAt || null
-      })),
-      paymentTransactions: paymentTransactions.map(p => ({
-        id: p._id, kind: p.kind || 'subscription', tier: p.tier || null,
-        amount: p.amount, status: p.status, phone: p.phone,
-        reference: p.reference, mpesaRef: p.mpesaRef || null,
-        reason: p.reason || null,
-        createdAt: p.createdAt, completedAt: p.completedAt || null
-      }))
-    });
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
-});
-
-app.post('/api/payhero/callback', async (req, res) => {
-  try {
-    console.log('📬 PayHero callback (raw):', JSON.stringify(req.body, null, 2));
-    const body = req.body || {};
-    const resp = body.response || body || {};
-    const reference = body.external_reference || body.externalReference || resp.external_reference || resp.externalReference || body.User_Reference || body.user_reference || resp.User_Reference || resp.user_reference || body.reference || resp.reference || body.ExternalReference || resp.ExternalReference || body.account_reference || resp.account_reference;
-    const mpesaRef = body.MpesaReceiptNumber || resp.MpesaReceiptNumber || body.mpesa_receipt || resp.mpesa_receipt || body.MpesaReceipt || resp.MpesaReceipt || body.MPESA_Reference || resp.MPESA_Reference || body.receipt || resp.receipt || body.TransactionReceipt || resp.TransactionReceipt;
-    const resultCodeRaw = body.ResultCode ?? body.result_code ?? body.response_code ?? body.ResponseCode ?? resp.ResultCode ?? resp.result_code ?? resp.response_code ?? resp.ResponseCode;
-    const resultDesc = body.ResultDesc || body.result_desc || body.ResponseDescription || resp.ResultDesc || resp.result_desc || resp.ResponseDescription || null;
-    const statusRaw = body.Status || body.status || resp.Status || resp.status;
-    const hasReceipt = !!(mpesaRef && String(mpesaRef).trim().length > 3);
-    const resultCodeOk = resultCodeRaw === 0 || resultCodeRaw === '0';
-    const statusOk = /^(success|completed|complete|paid)$/i.test(String(statusRaw || '').trim());
-    const boolOk = body.success === true || resp.success === true || body.paid === true || resp.paid === true;
-    const isSuccess = hasReceipt || resultCodeOk || statusOk || boolOk;
-    const statusFail = /^(fail|failed|error|cancelled|canceled|rejected|timeout)$/i.test(String(statusRaw || '').trim());
-    const isExplicitFailure = !isSuccess && (statusFail || (resultCodeRaw !== undefined && !resultCodeOk));
-    if (!reference) return res.status(200).json({ status: 'received' });
-    const txn = await txnsCol.findOne({ reference });
-    if (!txn) return res.status(200).json({ status: 'received' });
-    if (txn.status === 'completed') return res.status(200).json({ status: 'already-processed' });
-    if (isExplicitFailure && !isSuccess) {
-      const reason = mapPayHeroFailureReason(resultCodeRaw, resultDesc);
-      await txnsCol.updateOne({ _id: txn._id }, { $set: { status: 'failed', reason, callback: body, completedAt: new Date() } });
-      if (txn.kind === 'subscription') {
-        await createNotification(txn.userId, 'payment_failed', '❌ Subscription payment failed', `${reason}. Please try again.`);
-      }
-      return res.status(200).json({ status: 'received' });
-    }
-    if (!isSuccess) {
-      await txnsCol.updateOne({ _id: txn._id }, { $set: { lastCallback: body, lastCallbackAt: new Date() } });
-      return res.status(200).json({ status: 'received' });
-    }
-    const prefix = String(reference).split('_')[0];
-    const userId = String(txn.userId);
-    if (prefix === 'sub') {
-      const tier = txn.tier;
-      if (!TIERS[tier]) { await txnsCol.updateOne({ _id: txn._id }, { $set: { status: 'failed', reason: 'Invalid tier on callback' } }); return res.status(200).json({ status: 'received' }); }
-      const user = await usersCol.findOne({ _id: new ObjectId(userId) });
-      if (!user) { await txnsCol.updateOne({ _id: txn._id }, { $set: { status: 'failed', reason: 'User not found' } }); return res.status(200).json({ status: 'received' }); }
-      const base = isSubscriptionActive(user) && user.subscriptionTier === tier ? new Date(user.subscriptionExpiry) : new Date();
-      const expiry = new Date(base); expiry.setDate(expiry.getDate() + SUBSCRIPTION_DAYS);
-      await usersCol.updateOne({ _id: user._id }, { $set: { subscriptionTier: tier, subscriptionExpiry: expiry, tasksCompletedToday: 0, lastTaskDate: new Date().toISOString() } });
-      await createNotification(user._id, 'subscription', `⭐ ${tier.charAt(0).toUpperCase()+tier.slice(1)} activated!`, `Your ${tier} plan is active until ${expiry.toLocaleDateString()}. Enjoy your new daily limit!`, { tier, amount: txn.amount });
-    } else if (prefix === 'dep') {
-      const amount = Number(txn.amount) || 0;
-      await usersCol.updateOne({ _id: new ObjectId(userId) }, { $inc: { balance: amount } });
-      await walletCol.insertOne({ userId: new ObjectId(userId), type: 'deposit', amount, phone: txn.phone, status: 'completed', reference, mpesaRef, createdAt: new Date(), confirmedAt: new Date() });
-      await createNotification(userId, 'deposit', '💰 Deposit received', `KES ${amount} has been added to your available balance.`, { amount });
-    } else if (prefix === 'act') {
-      await usersCol.updateOne({ _id: new ObjectId(userId) }, { $set: { activationFeePaid: true, activationPaidAt: new Date() } });
-      await walletCol.insertOne({ userId: new ObjectId(userId), type: 'activation_fee', amount: -ACTIVATION_FEE, phone: txn.phone, status: 'completed', reference, mpesaRef, createdAt: new Date(), confirmedAt: new Date() });
-      await createNotification(userId, 'activation', '🔓 Account activated!', 'Your withdrawal feature is now unlocked. You can request payouts any time.');
-    }
-    await txnsCol.updateOne({ _id: txn._id }, { $set: { status: 'completed', mpesaRef, callback: body, completedAt: new Date() } });
-    res.status(200).json({ status: 'received' });
-  } catch (err) { console.error('Callback error:', err); res.status(200).json({ status: 'received' }); }
-});
-
-app.get('/api/tiers', (req, res) => {
-  const out = {};
-  for (const [k, v] of Object.entries(TIERS)) out[k] = { name: v.name, price: getTierPrice(k), dailyLimit: v.dailyLimit, label: v.label, days: SUBSCRIPTION_DAYS };
-  res.json(out);
-});
-
-// ═══════════════════════════════════════════════════════════════════════════
-// ADMIN
-// ═══════════════════════════════════════════════════════════════════════════
-app.post('/api/admin/login', async (req, res) => {
-  try {
-    const { username, password } = req.body || {};
-    if (username !== ADMIN_USERNAME || password !== ADMIN_PASSWORD) {
-      const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.ip;
-      await loginAttemptsCol.insertOne({ email:`admin:${username}`, ip, ua:req.headers['user-agent']||'', success:false, reason:'Bad admin credentials', createdAt:new Date() });
-      return res.status(401).json({ error: 'Invalid admin credentials' });
-    }
-    const token = jwt.sign({ admin: true }, JWT_SECRET, { expiresIn: '12h' });
-    res.json({ token });
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
-});
-
-app.get('/api/admin/stats', adminAuth, async (req, res) => {
-  try {
-    await autoFailStalePayments();
-    const now = new Date();
-    const todayStart = startOfToday();
-    const weekAgo = new Date(Date.now() - 7 * 86400000);
-    const [totalUsers, newUsersToday, newUsersWeek, activeSubs, classicCount, premiumCount, goldenCount, totalVisits, visitsToday, uniqueVisitorsToday, loginSuccess, loginFail, txnsAll, txnsCompleted, txnsFailed, txnsPending, tasksCompletedAll, pendingRewardsCount, pendingWithdrawalsCount, activationsCount] = await Promise.all([
-      usersCol.countDocuments({}), usersCol.countDocuments({ createdAt: { $gte: todayStart } }), usersCol.countDocuments({ createdAt: { $gte: weekAgo } }),
-      usersCol.countDocuments({ subscriptionTier: { $ne:'free' }, subscriptionExpiry: { $gt: now } }),
-      usersCol.countDocuments({ subscriptionTier: 'classic', subscriptionExpiry: { $gt: now } }),
-      usersCol.countDocuments({ subscriptionTier: 'premium', subscriptionExpiry: { $gt: now } }),
-      usersCol.countDocuments({ subscriptionTier: 'golden',  subscriptionExpiry: { $gt: now } }),
-      visitsCol.countDocuments({}), visitsCol.countDocuments({ createdAt: { $gte: todayStart } }),
-      visitsCol.distinct('ip', { createdAt: { $gte: todayStart } }).then(a => a.length),
-      loginAttemptsCol.countDocuments({ success: true }), loginAttemptsCol.countDocuments({ success: false }),
-      txnsCol.countDocuments({}), txnsCol.countDocuments({ status: 'completed' }), txnsCol.countDocuments({ status: 'failed' }), txnsCol.countDocuments({ status: 'pending' }),
-      historyCol.countDocuments({}), walletCol.countDocuments({ type:'task_reward', status:'pending' }), walletCol.countDocuments({ type:'withdrawal', status:'pending' }),
-      txnsCol.countDocuments({ kind: 'activation', status: 'completed' })
-    ]);
-    const revAgg = await txnsCol.aggregate([{ $match: { status:'completed', kind:'subscription' } }, { $group: { _id: null, total: { $sum:'$amount' } } }]).toArray();
-    const revTodayAgg = await txnsCol.aggregate([{ $match: { status:'completed', kind:'subscription', completedAt: { $gte: todayStart } } }, { $group: { _id: null, total: { $sum:'$amount' } } }]).toArray();
-    const depAgg = await txnsCol.aggregate([{ $match: { status:'completed', kind:'deposit' } }, { $group: { _id: null, total: { $sum:'$amount' } } }]).toArray();
-    const actAgg = await txnsCol.aggregate([{ $match: { status:'completed', kind:'activation' } }, { $group: { _id: null, total: { $sum:'$amount' } } }]).toArray();
-    const payoutsAgg = await walletCol.aggregate([{ $match: { type:'task_reward', status:'completed' } }, { $group: { _id: null, total: { $sum:'$amount' } } }]).toArray();
-    const pendingRewardsAgg = await walletCol.aggregate([{ $match: { type:'task_reward', status:'pending' } }, { $group: { _id: null, total: { $sum:'$amount' } } }]).toArray();
-    res.json({
-      users: { total: totalUsers, today: newUsersToday, week: newUsersWeek },
-      subscriptions: { active: activeSubs, classic: classicCount, premium: premiumCount, golden: goldenCount },
-      visits: { total: totalVisits, today: visitsToday, uniqueToday: uniqueVisitorsToday },
-      logins: { success: loginSuccess, failed: loginFail },
-      transactions: { total: txnsAll, completed: txnsCompleted, failed: txnsFailed, pending: txnsPending },
-      revenue: { total: revAgg[0]?.total || 0, today: revTodayAgg[0]?.total || 0, deposits: depAgg[0]?.total || 0, activations: actAgg[0]?.total || 0, payouts: payoutsAgg[0]?.total || 0 },
-      tasksCompleted: tasksCompletedAll,
-      pending: { rewards: pendingRewardsCount, rewardsAmount: pendingRewardsAgg[0]?.total || 0, withdrawals: pendingWithdrawalsCount, activations: activationsCount }
-    });
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
-});
-
-app.get('/api/admin/settings/maintenance', adminAuth, async (req, res) => {
-  try {
-    const setting = await settingsCol.findOne({ key: 'maintenance_mode' });
-    res.json({ enabled: setting ? setting.enabled === true : false });
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
-});
-
-app.put('/api/admin/settings/maintenance', adminAuth, async (req, res) => {
-  try {
-    const { enabled } = req.body || {};
-    await settingsCol.updateOne(
-      { key: 'maintenance_mode' },
-      { $set: { enabled: !!enabled, updatedAt: new Date() } },
-      { upsert: true }
-    );
-    res.json({ ok: true, enabled: !!enabled });
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
-});
-
-// ─── Current task window info (admin) ─────────────────────────────────────
-app.get('/api/admin/tasks/window', adminAuth, async (req, res) => {
-  try {
-    const win = await getCurrentWindow(metaCol);
-    res.json(win);
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
-});
-
-app.post('/api/admin/tasks/refresh', adminAuth, async (req, res) => {
-  try {
-    console.log('🔍 Admin triggered task window advance...');
-    await new Promise(resolve => setTimeout(resolve, 1500)); // simulate scan
-    const win = await advanceWindow(metaCol);
-    res.json({
-      ok: true,
-      message: `Advanced to window ${win.windowNum} of ${win.totalWindows} (tasks ${win.startSlot}–${win.endSlot}).`,
-      window: win
-    });
-  } catch (err) { console.error('Admin task refresh error:', err); res.status(500).json({ error: 'Server error' }); }
-});
-
-app.get('/api/admin/users', adminAuth, async (req, res) => {
-  try {
-    const page = Math.max(1, parseInt(req.query.page) || 1);
-    const size = Math.min(200, parseInt(req.query.size) || 50);
-    const q = String(req.query.q || '').trim();
-    const filter = {};
-    if (q) filter.$or = [{ username: { $regex: q, $options: 'i' } }, { email: { $regex: q, $options: 'i' } }, { phone: { $regex: q, $options: 'i' } }];
-    const total = await usersCol.countDocuments(filter);
-    const users = await usersCol.find(filter, { projection: { password: 0 } }).sort({ createdAt: -1 }).skip((page-1)*size).limit(size).toArray();
-    const now = new Date();
-    res.json({ total, page, size, users: users.map(u => {
-      const active = u.subscriptionTier !== 'free' && u.subscriptionExpiry && new Date(u.subscriptionExpiry) > now;
-      return { id: u._id, username: u.username, email: u.email, phone: u.phone, subscriptionTier: u.subscriptionTier || 'free', subscriptionActive: !!active, subscriptionExpiry: u.subscriptionExpiry, balance: u.balance || 0, pendingBalance: u.pendingBalance || 0, totalEarnings: u.totalEarnings || 0, activationFeePaid: u.activationFeePaid === true, tasksCompletedToday: u.tasksCompletedToday || 0, lastLoginAt: u.lastLoginAt, lastLoginIp: u.lastLoginIp, signupIp: u.signupIp, createdAt: u.createdAt };
-    })});
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
-});
-
-app.get('/api/admin/transactions', adminAuth, async (req, res) => {
-  try {
-    await autoFailStalePayments();
-    const page = Math.max(1, parseInt(req.query.page) || 1);
-    const size = Math.min(200, parseInt(req.query.size) || 50);
-    const filter = {};
-    if (req.query.status) filter.status = req.query.status;
-    if (req.query.kind) filter.kind = req.query.kind;
-    const total = await txnsCol.countDocuments(filter);
-    const txns = await txnsCol.find(filter).sort({ createdAt: -1 }).skip((page-1)*size).limit(size).toArray();
-    const userIds = [...new Set(txns.map(t => String(t.userId)))].map(id => new ObjectId(id));
-    const users = await usersCol.find({ _id: { $in: userIds } }, { projection: { username:1, email:1, phone:1 } }).toArray();
-    const userMap = Object.fromEntries(users.map(u => [String(u._id), u]));
-    res.json({ total, page, size, transactions: txns.map(t => ({ id: t._id, reference: t.reference, kind: t.kind || 'subscription', tier: t.tier || null, amount: t.amount, phone: t.phone, status: t.status, reason: t.reason || null, mpesaRef: t.mpesaRef || null, createdAt: t.createdAt, completedAt: t.completedAt || null, user: userMap[String(t.userId)] || { username:'—', email:'—' } })) });
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
-});
-
-app.post('/api/admin/transactions/:id/mark-paid', adminAuth, async (req, res) => {
-  try {
-    const txn = await txnsCol.findOne({ _id: new ObjectId(req.params.id) });
-    if (!txn) return res.status(404).json({ error: 'Transaction not found' });
-    if (txn.status === 'completed') return res.status(400).json({ error: 'Already completed' });
-    const userId = String(txn.userId);
-    const prefix = String(txn.reference).split('_')[0];
-    if (prefix === 'sub') {
-      const user = await usersCol.findOne({ _id: new ObjectId(userId) });
-      if (!user) return res.status(404).json({ error: 'User not found' });
-      const tier = txn.tier;
-      if (!TIERS[tier]) return res.status(400).json({ error: 'Invalid tier' });
-      const base = isSubscriptionActive(user) && user.subscriptionTier === tier ? new Date(user.subscriptionExpiry) : new Date();
-      const expiry = new Date(base); expiry.setDate(expiry.getDate() + SUBSCRIPTION_DAYS);
-      await usersCol.updateOne({ _id: user._id }, { $set: { subscriptionTier: tier, subscriptionExpiry: expiry, tasksCompletedToday: 0, lastTaskDate: new Date().toISOString() } });
-      await createNotification(user._id, 'subscription', `⭐ ${tier} activated`, 'Your subscription was manually activated by admin.');
-    } else if (prefix === 'dep') {
-      const amount = Number(txn.amount) || 0;
-      await usersCol.updateOne({ _id: new ObjectId(userId) }, { $inc: { balance: amount } });
-      await walletCol.insertOne({ userId: new ObjectId(userId), type: 'deposit', amount, phone: txn.phone, status: 'completed', reference: txn.reference, mpesaRef: txn.mpesaRef || null, createdAt: new Date(), confirmedAt: new Date() });
-      await createNotification(userId, 'deposit', '💰 Deposit received', `KES ${amount} has been added to your balance.`);
-    } else if (prefix === 'act') {
-      await usersCol.updateOne({ _id: new ObjectId(userId) }, { $set: { activationFeePaid: true, activationPaidAt: new Date() } });
-      await walletCol.insertOne({ userId: new ObjectId(userId), type: 'activation_fee', amount: -ACTIVATION_FEE, phone: txn.phone, status: 'completed', reference: txn.reference, mpesaRef: txn.mpesaRef || null, createdAt: new Date(), confirmedAt: new Date() });
-      await createNotification(userId, 'activation', '🔓 Account activated!', 'Your withdrawal feature is now unlocked.');
-    }
-    await txnsCol.updateOne({ _id: txn._id }, { $set: { status: 'completed', reason: 'Manually marked as paid by admin', manualOverrideAt: new Date(), manualOverrideBy: 'admin' } });
-    res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
-});
-
-app.get('/api/admin/visits', adminAuth, async (req, res) => {
-  try {
-    const page = Math.max(1, parseInt(req.query.page) || 1);
-    const size = Math.min(200, parseInt(req.query.size) || 50);
-    const total = await visitsCol.countDocuments({});
-    const visits = await visitsCol.find({}).sort({ createdAt: -1 }).skip((page-1)*size).limit(size).toArray();
-    res.json({ total, page, size, visits });
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
-});
-
-app.get('/api/admin/login-attempts', adminAuth, async (req, res) => {
-  try {
-    const page = Math.max(1, parseInt(req.query.page) || 1);
-    const size = Math.min(200, parseInt(req.query.size) || 50);
-    const filter = {};
-    if (req.query.success === 'true')  filter.success = true;
-    if (req.query.success === 'false') filter.success = false;
-    const total = await loginAttemptsCol.countDocuments(filter);
-    const attempts = await loginAttemptsCol.find(filter).sort({ createdAt: -1 }).skip((page-1)*size).limit(size).toArray();
-    res.json({ total, page, size, attempts });
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
-});
-
-app.get('/api/admin/subscriptions', adminAuth, async (req, res) => {
-  try {
-    const now = new Date();
-    const subs = await usersCol.find({ subscriptionTier: { $ne:'free' }, subscriptionExpiry: { $gt: now } }, { projection: { password:0 } }).sort({ subscriptionExpiry: 1 }).toArray();
-    res.json(subs.map(u => ({ id: u._id, username: u.username, email: u.email, phone: u.phone, tier: u.subscriptionTier, expiry: u.subscriptionExpiry, daysLeft: Math.ceil((new Date(u.subscriptionExpiry) - now) / 86400000) })));
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
-});
-
-app.get('/api/admin/pending-rewards', adminAuth, async (req, res) => {
-  try {
-    const items = await walletCol.find({ type:'task_reward', status:'pending' }).sort({ createdAt: -1 }).limit(300).toArray();
-    const userIds = [...new Set(items.map(t => String(t.userId)))].map(id => new ObjectId(id));
-    const users = await usersCol.find({ _id: { $in: userIds } }, { projection: { username:1, email:1, phone:1 } }).toArray();
-    const userMap = Object.fromEntries(users.map(u => [String(u._id), u]));
-    res.json({ total: items.length, totalAmount: items.reduce((s, t) => s + t.amount, 0), items: items.map(t => ({ id: t._id, amount: t.amount, taskTitle: t.taskTitle, taskType: t.taskType, taskCategory: t.taskCategory, owner: t.owner, answersCount: t.answersCount, createdAt: t.createdAt, user: userMap[String(t.userId)] || { username:'—', email:'—' } })) });
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
-});
-
-app.post('/api/admin/wallet/confirm/:id', adminAuth, async (req, res) => {
-  try {
-    const txn = await walletCol.findOne({ _id: new ObjectId(req.params.id) });
-    if (!txn) return res.status(404).json({ error: 'Transaction not found' });
-    if (txn.status !== 'pending') return res.status(400).json({ error: 'Not pending' });
-    await usersCol.updateOne({ _id: txn.userId }, { $inc: { pendingBalance: -txn.amount, balance: txn.amount } });
-    await walletCol.updateOne({ _id: txn._id }, { $set: { status:'completed', confirmedAt: new Date() } });
-    await historyCol.updateOne({ walletTxnId: txn._id }, { $set: { status:'completed', confirmedAt: new Date() } });
-    await createNotification(txn.userId, 'task_approved', '✅ Task approved', `Your reward of KES ${txn.amount} for "${txn.taskTitle || 'task'}" has been confirmed and added to your balance.`, { amount: txn.amount });
-    res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
-});
-
-app.post('/api/admin/wallet/reject/:id', adminAuth, async (req, res) => {
-  try {
-    const txn = await walletCol.findOne({ _id: new ObjectId(req.params.id) });
-    if (!txn) return res.status(404).json({ error: 'Transaction not found' });
-    if (txn.status !== 'pending') return res.status(400).json({ error: 'Not pending' });
-    const reason = req.body?.reason || 'Rejected by admin';
-    await usersCol.updateOne({ _id: txn.userId }, { $inc: { pendingBalance: -txn.amount, totalEarnings: -txn.amount } });
-    await walletCol.updateOne({ _id: txn._id }, { $set: { status:'failed', reason, rejectedAt: new Date() } });
-    await historyCol.updateOne({ walletTxnId: txn._id }, { $set: { status:'failed', reason, rejectedAt: new Date() } });
-    await createNotification(txn.userId, 'task_rejected', '❌ Task rejected', `Your submission for "${txn.taskTitle || 'task'}" was rejected. Reason: ${reason}`, { reason });
-    res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
-});
-
-app.post('/api/admin/wallet/confirm-all', adminAuth, async (req, res) => {
-  try {
-    const items = await walletCol.find({ type:'task_reward', status:'pending' }).toArray();
-    const byUser = {};
-    for (const t of items) {
-      const k = String(t.userId);
-      if (!byUser[k]) byUser[k] = { total: 0, ids: [], count: 0 };
-      byUser[k].total += t.amount; byUser[k].ids.push(t._id); byUser[k].count++;
-    }
-    for (const [userId, data] of Object.entries(byUser)) {
-      await usersCol.updateOne({ _id: new ObjectId(userId) }, { $inc: { pendingBalance: -data.total, balance: data.total } });
-      await walletCol.updateMany({ _id: { $in: data.ids } }, { $set: { status:'completed', confirmedAt: new Date() } });
-      await historyCol.updateMany({ walletTxnId: { $in: data.ids } }, { $set: { status:'completed', confirmedAt: new Date() } });
-      await createNotification(userId, 'task_approved', '✅ Tasks approved', `${data.count} task${data.count>1?'s':''} approved. KES ${data.total} added to your balance.`, { amount: data.total, count: data.count });
-    }
-    res.json({ ok: true, count: items.length });
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
-});
-
-app.get('/api/admin/pending-withdrawals', adminAuth, async (req, res) => {
-  try {
-    const items = await walletCol.find({ type:'withdrawal', status:'pending' }).sort({ createdAt: -1 }).limit(300).toArray();
-    const userIds = [...new Set(items.map(t => String(t.userId)))].map(id => new ObjectId(id));
-    const users = await usersCol.find({ _id: { $in: userIds } }, { projection: { username:1, email:1, phone:1 } }).toArray();
-    const userMap = Object.fromEntries(users.map(u => [String(u._id), u]));
-    res.json({ total: items.length, totalAmount: items.reduce((s, t) => s + Math.abs(t.amount), 0), items: items.map(t => ({ id: t._id, amount: Math.abs(t.amount), phone: t.phone, reference: t.reference, createdAt: t.createdAt, user: userMap[String(t.userId)] || { username:'—', email:'—' } })) });
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
-});
-
-app.post('/api/admin/withdrawal/confirm/:id', adminAuth, async (req, res) => {
-  try {
-    const txn = await walletCol.findOne({ _id: new ObjectId(req.params.id), type:'withdrawal' });
-    if (!txn) return res.status(404).json({ error: 'Not found' });
-    if (txn.status !== 'pending') return res.status(400).json({ error: 'Not pending' });
-    await walletCol.updateOne({ _id: txn._id }, { $set: { status:'completed', confirmedAt: new Date() } });
-    await createNotification(txn.userId, 'withdrawal_paid', '✅ Withdrawal paid', `KES ${Math.abs(txn.amount)} has been sent to your M‑Pesa account ${txn.phone}.`, { amount: Math.abs(txn.amount) });
-    res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
-});
-
-app.post('/api/admin/withdrawal/reject/:id', adminAuth, async (req, res) => {
-  try {
-    const txn = await walletCol.findOne({ _id: new ObjectId(req.params.id), type:'withdrawal' });
-    if (!txn) return res.status(404).json({ error: 'Not found' });
-    if (txn.status !== 'pending') return res.status(400).json({ error: 'Not pending' });
-    const reason = req.body?.reason || 'Rejected by admin';
-    await usersCol.updateOne({ _id: txn.userId }, { $inc: { balance: Math.abs(txn.amount) } });
-    await walletCol.updateOne({ _id: txn._id }, { $set: { status:'failed', reason, rejectedAt: new Date() } });
-    await createNotification(txn.userId, 'withdrawal_rejected', '❌ Withdrawal refunded', `Your withdrawal of KES ${Math.abs(txn.amount)} was declined. Reason: ${reason}. The amount has been refunded to your balance.`, { amount: Math.abs(txn.amount), reason });
-    res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
-});
-
-app.get('/api/admin/settings/prices', adminAuth, (req, res) => res.json(tierPrices));
-app.put('/api/admin/settings/prices', adminAuth, async (req, res) => {
-  try {
-    const { classic, premium, golden } = req.body || {};
-    const c = Number(classic), p = Number(premium), g = Number(golden);
-    if ([c, p, g].some(v => !Number.isFinite(v) || v < 1 || v > 1000000)) return res.status(400).json({ error: 'Prices must be between 1 and 1,000,000' });
-    tierPrices = { classic: c, premium: p, golden: g };
-    await settingsCol.updateOne({ key: 'tier_prices' }, { $set: { ...tierPrices, updatedAt: new Date() } }, { upsert: true });
-    res.json({ ok: true, prices: tierPrices });
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
-});
-
-app.get('/api/admin/tickets', adminAuth, async (req, res) => {
-  try {
-    const items = await ticketsCol.find({}).sort({ createdAt: -1 }).limit(200).toArray();
-    res.json(items);
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
-});
-
-app.post('/api/admin/tickets/:id/reply', adminAuth, async (req, res) => {
-  try {
-    const { message } = req.body || {};
-    if (!message) return res.status(400).json({ error: 'Message required' });
-    const ticket = await ticketsCol.findOne({ _id: new ObjectId(req.params.id) });
-    await ticketsCol.updateOne({ _id: new ObjectId(req.params.id) }, { $push: { replies: { by: 'admin', message, at: new Date() } }, $set: { status: 'open', lastReplyAt: new Date() } });
-    if (ticket) await createNotification(ticket.userId, 'system', `Support reply on #${ticket.ticketNumber}`, message.slice(0, 200));
-    res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
-});
-
-app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
-app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
-
-(async () => {
-  try {
-    await connectDB();
-    // Auto-advance the task window every 24 hours
-    setInterval(async () => {
-      console.log('🕒 Auto-advancing task window (24h interval)...');
-      try {
-        await advanceWindow(metaCol);
-      } catch (e) { console.error('Window advance error:', e.message); }
-    }, 24 * 60 * 60 * 1000);
-
-    app.listen(PORT, () => {
-      console.log(`🚀 Server running on http://localhost:${PORT}`);
-      console.log(`   Admin: /admin`);
-    });
-  } catch (err) { console.error('❌ Failed to start:', err); process.exit(1); }
-})();
