@@ -4,22 +4,15 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <meta name="theme-color" content="#43B02A" />
-
-<!-- 🔴 GOOGLE SEARCH CONSOLE VERIFICATION -->
 <meta name="google-site-verification" content="google824c18b06aa00b28" />
-
-<!-- 🟢 SEO META TAGS FOR KENYA -->
 <title>JobPay: Online Jobs & Paid Surveys in Kenya | Make Money Online</title>
 <meta name="description" content="Find the latest online jobs and paid surveys in Kenya. Work from home, earn via M-Pesa, and make money online. Start your remote career today with JobPay!" />
 <meta name="keywords" content="online jobs in Kenya, make money online Kenya, paid surveys Kenya, remote jobs Kenya, work from home Kenya, part-time jobs Nairobi, M-Pesa online jobs, data entry jobs Kenya, virtual assistant jobs Kenya, freelance jobs Kenya, legit online jobs for students in Kenya, daily online surveys for cash, side hustle Kenya, JobPay" />
-
-<!-- 🔵 SOCIAL SHARING TAGS (WhatsApp, Facebook, Telegram, Twitter) -->
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://online-jobs-and-surveys.onrender.com/" />
 <meta property="og:title" content="JobPay: Online Jobs & Paid Surveys in Kenya" />
 <meta property="og:description" content="Earn money online in Kenya by completing simple surveys and micro-tasks. Get paid directly to your M-Pesa. Start today!" />
 <meta property="og:image" content="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80" />
-
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="JobPay: Online Jobs & Paid Surveys in Kenya" />
 <meta name="twitter:description" content="Earn money online in Kenya by completing simple surveys and micro-tasks. Get paid directly to your M-Pesa. Start today!" />
@@ -214,8 +207,6 @@
   /* M-Pesa logo */
   .mpesa-logo { display:inline-flex; align-items:center; }
   .mpesa-logo svg { display:block; height:36px; width:auto; }
-  .mpesa-logo.small svg { height:24px; }
-  .mpesa-logo.medium svg { height:30px; }
 
   /* Greeting */
   .greeting { display:flex; align-items:center; gap:12px; margin-bottom:18px; }
@@ -237,7 +228,7 @@
     font-size:11.5px; font-weight:900; color:var(--green); white-space:nowrap;
   }
 
-  /* NEW DEBIT CARD DESIGN (IMAGE 1) */
+  /* DEBIT CARD */
   .debit-card {
     background: var(--debit-bg);
     border-radius: 20px; padding: 20px; color: white;
@@ -274,8 +265,6 @@
   .card-bottom { display: flex; justify-content: space-between; align-items: center; position: relative; z-index: 1; }
   .withdraw-link { background: none; border: none; color: white; font-weight: 800; font-size: 14px; display: flex; align-items: center; gap: 4px; cursor: pointer; font-family: inherit; }
   .visa-logo { font-size: 24px; font-weight: 900; font-style: italic; letter-spacing: -1px; color: #F5A623; display: flex; align-items: center; }
-
-  /* END DEBIT CARD DESIGN */
 
   /* Quick actions */
   .quick-actions { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:20px; }
@@ -353,18 +342,6 @@
     display:flex; align-items:center; gap:3px;
   }
 
-  /* Categories */
-  .categories { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:22px; }
-  .category {
-    background:var(--card); border:1px solid var(--border);
-    border-radius:var(--radius); padding:12px 6px;
-    display:flex; flex-direction:column; align-items:center; gap:8px;
-    cursor:pointer; font-family:inherit; transition:transform 0.1s;
-  }
-  .category:active { transform:scale(0.96); }
-  .category-icon { width:44px; height:44px; border-radius:12px; display:grid; place-items:center; font-size:22px; flex-shrink:0; }
-  .category-label { font-size:10.5px; font-weight:800; color:var(--text-secondary); text-align:center; line-height:1.2; }
-
   /* Task cards */
   .task-card {
     background:var(--card); border:1px solid var(--border);
@@ -395,7 +372,6 @@
   .task-type-tag.task   { background:var(--green-light); color:var(--green-dark); }
   body.theme-dark .task-type-tag.survey { background:rgba(33,150,243,0.18); color:#90CAF9; }
   body.theme-dark .task-type-tag.task   { background:rgba(67,176,42,0.18); color:#A5D6A7; }
-  /* Tier specific tags */
   .task-type-tag.free { background:#E8F7E4; color:#2E7D1E; }
   .task-type-tag.classic { background:#E3F2FD; color:#0D47A1; }
   .task-type-tag.premium { background:#FFF8E1; color:#8D6E00; }
@@ -423,7 +399,6 @@
   .quick-stat-label { font-size:9.5px; font-weight:800; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.4px; margin-bottom:4px; }
   .quick-stat-value { font-size:14px; font-weight:900; color:var(--text); }
 
-  /* Stat grid */
   .stat-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:16px; }
   .stat-box { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:16px; }
   .stat-box-label { font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:0.6px; color:var(--text-muted); margin-bottom:6px; }
@@ -432,7 +407,6 @@
   .stat-box-value.yellow { color:var(--yellow); }
   .stat-box-sub { font-size:11px; color:var(--text-muted); font-weight:600; margin-top:4px; }
 
-  /* Cards */
   .card { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:18px; margin-bottom:14px; }
   .card-title {
     font-size:11px; font-weight:800; text-transform:uppercase;
@@ -441,7 +415,6 @@
   }
   .card-title::before { content:''; width:3px; height:14px; background:var(--green); border-radius:2px; }
 
-  /* Fields */
   .field { margin-bottom:14px; position:relative; }
   .field:last-child { margin-bottom:0; }
   .field label { display:block; font-size:12px; font-weight:700; color:var(--text-secondary); margin-bottom:6px; }
@@ -466,7 +439,6 @@
   .pw-hint span { display:flex; align-items:center; gap:4px; color:var(--text-muted); }
   .pw-hint span.ok { color:var(--green); }
 
-  /* Buttons */
   .btn {
     display:flex; align-items:center; justify-content:center; gap:8px;
     width:100%; padding:15px 20px;
@@ -483,7 +455,6 @@
   .btn-sm { padding:10px 14px; font-size:13px; border-radius:10px; }
   .btn-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
 
-  /* NEW WALLET CARD DESIGN (IMAGE 2) */
   .wallet-card-top {
     background: var(--debit-bg);
     border-radius: 20px; padding: 20px; color: white;
@@ -527,14 +498,11 @@
   }
   .mpesa-btn:active { transform: scale(0.97); }
   .mpesa-btn-icon { width: 36px; height: 36px; border-radius: 50%; background: white; display: grid; place-items: center; font-size: 18px; color: var(--green); font-weight: 900; }
-  /* END WALLET CARD DESIGN */
 
-  /* Auth */
   .auth-tabs { display:grid; grid-template-columns:1fr 1fr; gap:6px; background:var(--stat-icon-bg); border-radius:12px; padding:4px; margin-bottom:18px; }
   .auth-tab { padding:11px 12px; border:none; background:transparent; font-family:inherit; font-size:13.5px; font-weight:800; color:var(--text-muted); border-radius:9px; cursor:pointer; }
   .auth-tab.active { background:linear-gradient(135deg,var(--green),var(--green-dark)); color:white; box-shadow:0 4px 14px rgba(67,176,42,0.30); }
 
-  /* Messages */
   .msg { padding:12px 14px; border-radius:10px; margin-bottom:14px; font-size:13px; font-weight:700; display:none; }
   .msg.show { display:block; }
   .msg.success { background:var(--green-light); color:var(--green-dark); border:1px solid rgba(67,176,42,0.3); }
@@ -542,7 +510,6 @@
   body.theme-dark .msg.success { background:rgba(67,176,42,0.15); color:#A5D6A7; }
   body.theme-dark .msg.error   { background:rgba(230,0,0,0.15); color:#EF9A9A; }
 
-  /* Bottom nav */
   .bottom-nav {
     position:fixed; bottom:0; left:0; right:0;
     height:var(--nav-h); padding-bottom:env(safe-area-inset-bottom,0px);
@@ -566,18 +533,15 @@
     background:var(--green); border-radius:0 0 3px 3px;
   }
 
-  /* Loader */
   .loader { display:inline-block; width:18px; height:18px; border:2.5px solid rgba(255,255,255,0.3); border-top-color:white; border-radius:50%; animation:spin 0.6s linear infinite; }
   @keyframes spin { to { transform:rotate(360deg); } }
 
-  /* Empty */
   .empty { text-align:center; padding:40px 20px; }
   .empty-icon { width:64px; height:64px; border-radius:20px; background:var(--green-light); color:var(--green); display:grid; place-items:center; margin:0 auto 14px; font-size:28px; }
   body.theme-dark .empty-icon { background:rgba(67,176,42,0.18); color:#A5D6A7; }
   .empty-title { font-size:16px; font-weight:800; margin-bottom:6px; color:var(--text); }
   .empty-text { font-size:13px; color:var(--text-muted); line-height:1.5; max-width:280px; margin:0 auto; }
 
-  /* Modals */
   .modal-backdrop { position:fixed; inset:0; background:var(--overlay); display:none; z-index:500; align-items:flex-end; }
   .modal-backdrop.show { display:flex; }
   .modal {
@@ -621,7 +585,6 @@
   }
   .pin-input:focus { outline:none; border-color:var(--green); }
 
-  /* Notifications panel */
   .notif-panel {
     position:fixed; inset:0; background:var(--bg);
     z-index:450; display:none; flex-direction:column;
@@ -646,7 +609,6 @@
   .notif-empty-title { font-size:15px; font-weight:800; margin-bottom:6px; color:var(--text); }
   .notif-empty-text { font-size:13px; color:var(--text-muted); font-weight:600; }
 
-  /* Settings panels */
   .settings-panel {
     position:fixed; inset:0; background:var(--bg);
     z-index:460; display:none; flex-direction:column;
@@ -693,12 +655,10 @@
   .photo-preview { width:72px; height:72px; border-radius:20px; background:linear-gradient(135deg,var(--green),var(--green-mid)); display:grid; place-items:center; color:white; font-size:28px; font-weight:900; overflow:hidden; flex-shrink:0; box-shadow:var(--shadow-green); }
   .photo-preview img { width:100%; height:100%; object-fit:cover; display:block; }
 
-  /* Screens */
   .screen { display:none; }
   .screen.active { display:block; animation:fade 0.2s ease-out; }
   @keyframes fade { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
 
-  /* History items */
   .hist-card {
     background:var(--card); border:1px solid var(--border);
     border-radius:14px; padding:14px; margin-bottom:10px;
@@ -765,7 +725,6 @@
     margin-top:6px; font-weight:600;
   }
 
-  /* Filter chips */
   .filter-row { display:flex; gap:8px; margin-bottom:12px; overflow-x:auto; padding-bottom:4px; }
   .filter-row::-webkit-scrollbar { display:none; }
   .filter-chip {
@@ -776,7 +735,6 @@
   }
   .filter-chip.active { background:var(--green); color:white; border-color:var(--green); }
 
-  /* Flower */
   .flower-sprinkle { position:fixed; inset:0; pointer-events:none; z-index:600; overflow:hidden; }
   .flower { position:absolute; top:-60px; font-size:28px; opacity:0; animation-name:flowerFall; animation-timing-function:linear; animation-fill-mode:forwards; }
   @keyframes flowerFall {
@@ -810,8 +768,7 @@
   <div class="header-right" id="headerRight" style="display:none;">
     <button class="icon-btn" id="refreshBtn" aria-label="Refresh" onclick="location.reload()">
       <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M23 4v6h-6"></path>
-        <path d="M1 20v-6h6"></path>
+        <path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path>
         <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
       </svg>
     </button>
@@ -842,57 +799,19 @@
   </div>
 
   <nav class="drawer-nav">
-    <button class="drawer-item" data-nav="home">
-      <span class="drawer-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#43B02A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg></span>
-      <span class="drawer-item-label">Home</span><span class="drawer-item-chevron">›</span>
-    </button>
-    <button class="drawer-item" data-nav="find-jobs">
-      <span class="drawer-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#2196F3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></span>
-      <span class="drawer-item-label">Find Jobs</span><span class="drawer-item-chevron">›</span>
-    </button>
-    <button class="drawer-item" data-nav="guide">
-      <span class="drawer-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#2196F3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg></span>
-      <span class="drawer-item-label">Guide</span><span class="drawer-item-chevron">›</span>
-    </button>
-    <button class="drawer-item" data-nav="recommended">
-      <span class="drawer-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#E60000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2" fill="#E60000"></circle></svg></span>
-      <span class="drawer-item-label">Recommended</span><span class="drawer-item-chevron">›</span>
-    </button>
-    <button class="drawer-item" data-nav="wallet">
-      <span class="drawer-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#43B02A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="14" rx="3"></rect><path d="M2 10h20"></path><circle cx="17" cy="15" r="1.5" fill="#43B02A"></circle></svg></span>
-      <span class="drawer-item-label">Wallet</span><span class="drawer-item-chevron">›</span>
-    </button>
-    <button class="drawer-item" data-nav="my-tasks">
-      <span class="drawer-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#2196F3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg></span>
-      <span class="drawer-item-label">My Tasks</span><span class="drawer-item-chevron">›</span>
-    </button>
-    <button class="drawer-item" data-nav="history">
-      <span class="drawer-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#F5A623" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3"></path><circle cx="12" cy="12" r="10"></circle></svg></span>
-      <span class="drawer-item-label">History</span><span class="drawer-item-chevron">›</span>
-    </button>
-    <button class="drawer-item" data-nav="referrals">
-      <span class="drawer-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#2196F3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></span>
-      <span class="drawer-item-label">Referrals</span><span class="drawer-item-chevron">›</span>
-    </button>
-    <button class="drawer-item" data-nav="notifications">
-      <span class="drawer-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#E60000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg></span>
-      <span class="drawer-item-label">Notifications</span>
-      <span class="drawer-item-badge hidden" id="drawerNotifBadge">0</span>
-      <span class="drawer-item-chevron">›</span>
-    </button>
+    <button class="drawer-item" data-nav="home"><span class="drawer-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#43B02A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg></span><span class="drawer-item-label">Home</span><span class="drawer-item-chevron">›</span></button>
+    <button class="drawer-item" data-nav="find-jobs"><span class="drawer-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#2196F3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></span><span class="drawer-item-label">Find Jobs</span><span class="drawer-item-chevron">›</span></button>
+    <button class="drawer-item" data-nav="guide"><span class="drawer-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#2196F3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg></span><span class="drawer-item-label">Guide</span><span class="drawer-item-chevron">›</span></button>
+    <button class="drawer-item" data-nav="recommended"><span class="drawer-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#E60000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2" fill="#E60000"></circle></svg></span><span class="drawer-item-label">Recommended</span><span class="drawer-item-chevron">›</span></button>
+    <button class="drawer-item" data-nav="wallet"><span class="drawer-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#43B02A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="14" rx="3"></rect><path d="M2 10h20"></path><circle cx="17" cy="15" r="1.5" fill="#43B02A"></circle></svg></span><span class="drawer-item-label">Wallet</span><span class="drawer-item-chevron">›</span></button>
+    <button class="drawer-item" data-nav="my-tasks"><span class="drawer-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#2196F3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg></span><span class="drawer-item-label">My Tasks</span><span class="drawer-item-chevron">›</span></button>
+    <button class="drawer-item" data-nav="history"><span class="drawer-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#F5A623" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3"></path><circle cx="12" cy="12" r="10"></circle></svg></span><span class="drawer-item-label">History</span><span class="drawer-item-chevron">›</span></button>
+    <button class="drawer-item" data-nav="referrals"><span class="drawer-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#2196F3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></span><span class="drawer-item-label">Referrals</span><span class="drawer-item-chevron">›</span></button>
+    <button class="drawer-item" data-nav="notifications"><span class="drawer-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#E60000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg></span><span class="drawer-item-label">Notifications</span><span class="drawer-item-badge hidden" id="drawerNotifBadge">0</span><span class="drawer-item-chevron">›</span></button>
     <div class="drawer-divider">MORE</div>
-    <button class="drawer-item" data-nav="messages">
-      <span class="drawer-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#2196F3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg></span>
-      <span class="drawer-item-label">Messages</span><span class="drawer-item-chevron">›</span>
-    </button>
-    <button class="drawer-item" data-nav="help">
-      <span class="drawer-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#2196F3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6"></path><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path></svg></span>
-      <span class="drawer-item-label">Help &amp; Support</span><span class="drawer-item-chevron">›</span>
-    </button>
-    <button class="drawer-item" data-nav="settings">
-      <span class="drawer-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#7A7A7A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></span>
-      <span class="drawer-item-label">Settings</span><span class="drawer-item-chevron">›</span>
-    </button>
+    <button class="drawer-item" data-nav="messages"><span class="drawer-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#2196F3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg></span><span class="drawer-item-label">Messages</span><span class="drawer-item-chevron">›</span></button>
+    <button class="drawer-item" data-nav="help"><span class="drawer-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#2196F3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6"></path><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path></svg></span><span class="drawer-item-label">Help &amp; Support</span><span class="drawer-item-chevron">›</span></button>
+    <button class="drawer-item" data-nav="settings"><span class="drawer-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#7A7A7A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></span><span class="drawer-item-label">Settings</span><span class="drawer-item-chevron">›</span></button>
   </nav>
 
   <button class="drawer-logout" id="drawerLogout">
@@ -907,7 +826,7 @@
     <div class="card" style="border-color:var(--green);box-shadow:var(--shadow-green);">
       <div class="card-title">Welcome to JobPay</div>
       <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;font-weight:600;">
-        Complete surveys &amp; tasks. Get paid. New users get <strong style="color:var(--green);">2 free tasks (KES 21 each) every day</strong>.
+        Complete surveys &amp; tasks. Get paid. New users get <strong style="color:var(--green);" id="cfgFreeTierText">2 free tasks (KES 21 each) every day</strong>.
       </p>
       <div class="auth-tabs">
         <button class="auth-tab active" id="tabRegister" type="button">Create Account</button>
@@ -961,7 +880,6 @@
       <div class="level-chip"><span class="crown">👑</span><span id="levelText">Classic · Lv 1</span></div>
     </div>
 
-    <!-- NEW DEBIT CARD DESIGN (IMAGE 1) -->
     <div class="debit-card">
       <div class="card-top">
         <div class="card-logo">JobPay <small>DEBIT CARD</small></div>
@@ -995,11 +913,9 @@
       <div class="featured-title">Complete Surveys</div>
       <div class="featured-sub">Share your thoughts, earn money.</div>
       <button class="featured-btn" data-nav="find-jobs">View Available Surveys <span>›</span></button>
-      
       <div class="featured-human">
         <img src="https://images.unsplash.com/photo-1531123897727-8f129e1bf98c?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&q=80" alt="Woman using phone" onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=\'font-size:80px;opacity:0.6;position:absolute;bottom:10px;right:10px;\'>👩🏾‍💻📱</div>';" />
       </div>
-
       <div class="featured-features">
         <div class="featured-feature"><div class="featured-feature-icon">⚡</div> Easy &amp; Simple</div>
         <div class="featured-feature"><div class="featured-feature-icon">💵</div> Quick Payouts</div>
@@ -1018,7 +934,6 @@
       <div class="section-head-title">✨ Recommended for you</div>
       <button class="section-head-link" id="personalizedBtn">🎯 Personalized ›</button>
     </div>
-    <!-- THIS IS WHERE THE TASKS WILL ALWAYS APPEAR (LOCKED IF LIMIT REACHED) -->
     <div id="homeTaskList"></div>
 
     <div class="section-head">
@@ -1044,12 +959,11 @@
     <div class="card">
       <div style="font-size:15px; font-weight:700; margin-bottom:10px;">Welcome to JobPay!</div>
       <p style="font-size:13px; color:var(--text-muted); margin-bottom:16px;">Follow these simple steps to start earning:</p>
-      
       <div style="display:flex; gap:12px; margin-bottom:16px;">
         <div style="font-size:24px;">1️⃣</div>
         <div>
           <div style="font-weight:800; font-size:14px;">Take Tasks</div>
-          <div style="font-size:12px; color:var(--text-muted);">Go to the Home or Find Jobs tab. Complete the surveys and micro-tasks. Free users get 2 tasks daily. Tasks unlock again 24 hours after you complete them.</div>
+          <div style="font-size:12px; color:var(--text-muted);">Go to the Home or Find Jobs tab. Complete the surveys and micro-tasks. Free users get <span id="cfgGuideFreeTasks">2</span> tasks daily. Tasks unlock again 24 hours after you complete them.</div>
         </div>
       </div>
       <div style="display:flex; gap:12px; margin-bottom:16px;">
@@ -1070,17 +984,14 @@
         <div style="font-size:24px;">4️⃣</div>
         <div>
           <div style="font-weight:800; font-size:14px;">Withdraw</div>
-          <div style="font-size:12px; color:var(--text-muted);">Once you have KES 200, you can withdraw to your M-Pesa. A one-time activation fee of KES 499 is required.</div>
+          <div style="font-size:12px; color:var(--text-muted);">Once you have <span id="cfgGuideMinWithdrawal">KES 200</span>, you can withdraw to your M-Pesa. A one-time activation fee of <span id="cfgGuideActivationFee">KES 499</span> is required.</div>
         </div>
       </div>
-      
       <div style="background:var(--red-light); border:1px solid var(--red); border-radius:12px; padding:12px; margin-top:16px;">
         <div style="font-weight:800; color:var(--red); font-size:13px; display:flex; align-items:center; gap:6px;">
           <span>⚠️</span> Having Trouble?
         </div>
-        <div style="font-size:12px; color:var(--red); margin-top:4px;">
-          If you experience any inconvenience, please try refreshing the page by tapping the refresh icon in the header.
-        </div>
+        <div style="font-size:12px; color:var(--red); margin-top:4px;">If you experience any inconvenience, please try refreshing the page by tapping the refresh icon in the header.</div>
       </div>
     </div>
   </div>
@@ -1109,22 +1020,17 @@
   </div>
 </section>
 
-<!-- WALLET (IMAGE 2) -->
+<!-- WALLET -->
 <section class="screen" id="screen-wallet">
   <div class="container">
-    <!-- NEW WALLET CARD DESIGN -->
     <div class="wallet-card-top">
       <div class="wallet-card-header">
         <div class="wallet-card-label">AVAILABLE BALANCE</div>
         <div class="wallet-card-mpesa"><span>M-PESA</span></div>
       </div>
-      <div class="wallet-card-balance">
-        <small>KES</small><span id="walletBalance">0</span>
-      </div>
+      <div class="wallet-card-balance"><small>KES</small><span id="walletBalance">0</span></div>
       <div class="wallet-card-total">💵 Total earned: <span id="walletTotalEarned">KES 0</span></div>
     </div>
-
-    <!-- PENDING CARD -->
     <div class="pending-card">
       <div>
         <div class="pending-label">⏳ PENDING</div>
@@ -1133,8 +1039,6 @@
       </div>
       <div class="pending-icon">⏳</div>
     </div>
-
-    <!-- LARGE MPESA BUTTONS -->
     <div class="mpesa-btn-row">
       <button class="mpesa-btn" id="btnDeposit">
         <div class="mpesa-btn-icon">💰</div>
@@ -1145,8 +1049,6 @@
         <span>Withdraw via<br>M-Pesa (Agent/Paybill)</span>
       </button>
     </div>
-
-    <!-- RECENT TRANSACTIONS -->
     <div class="card">
       <div class="card-title">Recent Transactions</div>
       <div id="txList"></div>
@@ -1166,9 +1068,7 @@
 <section class="screen" id="screen-history">
   <div class="container">
     <div class="section-head"><div class="section-head-title">Transaction History</div></div>
-    <p style="font-size:12.5px;color:var(--text-muted);font-weight:600;margin-bottom:14px;">
-      All your activity: tasks, subscriptions, deposits, withdrawals
-    </p>
+    <p style="font-size:12.5px;color:var(--text-muted);font-weight:600;margin-bottom:14px;">All your activity: tasks, subscriptions, deposits, withdrawals</p>
     <div class="filter-row" id="historyFilters">
       <button class="filter-chip active" data-hfilter="">All</button>
       <button class="filter-chip" data-hfilter="tasks">📋 Tasks</button>
@@ -1186,7 +1086,7 @@
     <div class="card" style="text-align:center;border-color:var(--green);box-shadow:var(--shadow-green);">
       <div style="font-size:48px;margin-bottom:10px;">👥</div>
       <div style="font-size:22px;font-weight:900;margin-bottom:4px;color:var(--text);">Invite Friends</div>
-      <div style="font-size:13px;color:var(--text-muted);font-weight:600;margin-bottom:16px;">Earn KES 50 for every friend who signs up and completes their first task</div>
+      <div style="font-size:13px;color:var(--text-muted);font-weight:600;margin-bottom:16px;">Earn <span id="cfgReferralBonus">KES 50</span> for every friend who signs up and completes their first task</div>
     </div>
     <div class="card">
       <div class="card-title">Your Referral Link</div>
@@ -1205,7 +1105,7 @@
       <div style="font-size:13px;color:var(--text-muted);font-weight:600;line-height:1.7;">
         1. Share your unique referral link with friends<br>
         2. They sign up using your link<br>
-        3. Once they complete their first paid task, you earn <strong style="color:var(--green);">KES 50</strong><br>
+        3. Once they complete their first paid task, you earn <strong style="color:var(--green);" id="cfgReferralBonusInline">KES 50</strong><br>
         4. Rewards are credited automatically
       </div>
     </div>
@@ -1409,7 +1309,7 @@
     <div class="settings-group">
       <div class="settings-group-title">Frequently Asked</div>
       <div class="faq-item"><div class="faq-q">Why haven't I received payment?</div><div class="faq-a">Payments go through: Pending → Under Review → Approved → Paid. If your task is still Pending, an admin has not yet confirmed it.</div></div>
-      <div class="faq-item"><div class="faq-q">How do withdrawals work?</div><div class="faq-a">You can withdraw once your Available balance ≥ KES 200. Your first withdrawal requires a one-time KES 499 activation fee.</div></div>
+      <div class="faq-item"><div class="faq-q">How do withdrawals work?</div><div class="faq-a">You can withdraw once your Available balance ≥ <span id="cfgFaqMinWithdrawal">KES 200</span>. Your first withdrawal requires a one-time <span id="cfgFaqActivationFee">KES 499</span> activation fee.</div></div>
       <div class="faq-item"><div class="faq-q">Why was my task rejected?</div><div class="faq-a">Tasks can be rejected if the answers are incomplete or contradictory. You'll see the reason in your History tab.</div></div>
       <div class="faq-item"><div class="faq-q">How do referrals work?</div><div class="faq-a">Share your referral link with friends. When they sign up and complete their first paid task, you earn a reward.</div></div>
     </div>
@@ -1483,33 +1383,32 @@
 <section class="screen" id="screen-subscribe">
   <div class="container">
     <div class="msg" id="subMsg"></div>
-    <div class="tier-grid">
-      <div class="tier-card classic">
-        <span class="tier-badge classic">Classic</span>
-        <div class="tier-name">Classic</div>
-        <div class="tier-price" id="tierPriceClassic">KES 200 <span>/ week</span></div>
-        <div class="tier-limit">🔓 Unlock 10 tasks per day</div>
+    <div class="tier-grid" style="display:flex;flex-direction:column;gap:12px;">
+      <div class="tier-card classic" style="border:2px solid var(--green);border-radius:16px;padding:18px;background:var(--card);">
+        <span class="tier-badge classic" style="font-size:10px;font-weight:900;background:#E3F2FD;color:#0D47A1;padding:4px 10px;border-radius:999px;text-transform:uppercase;">Classic</span>
+        <div class="tier-name" style="font-size:18px;font-weight:900;margin-top:10px;">Classic</div>
+        <div class="tier-price" id="tierPriceClassic" style="font-size:22px;font-weight:900;margin:6px 0;color:var(--green);">KES 200 <span style="font-size:12px;color:var(--text-muted);">/ week</span></div>
+        <div class="tier-limit" style="font-size:12px;color:var(--text-muted);font-weight:600;margin-bottom:12px;">🔓 Unlock 10 tasks per day</div>
         <button class="tier-btn classic" data-tier="classic" id="tierBtnClassic" style="width:100%;padding:13px;border-radius:10px;font-size:14px;font-weight:800;font-family:inherit;border:none;cursor:pointer;background:var(--green);color:white;">Upgrade – KES 200</button>
       </div>
-      <div class="tier-card premium">
-        <span class="tier-badge premium">Premium</span>
-        <div class="tier-name">Premium</div>
-        <div class="tier-price" id="tierPricePremium" style="color:var(--blue);">KES 350 <span>/ week</span></div>
-        <div class="tier-limit">🔓 Unlock 20 tasks per day</div>
+      <div class="tier-card premium" style="border:2px solid var(--blue);border-radius:16px;padding:18px;background:var(--card);">
+        <span class="tier-badge premium" style="font-size:10px;font-weight:900;background:#FFF8E1;color:#8D6E00;padding:4px 10px;border-radius:999px;text-transform:uppercase;">Premium</span>
+        <div class="tier-name" style="font-size:18px;font-weight:900;margin-top:10px;">Premium</div>
+        <div class="tier-price" id="tierPricePremium" style="font-size:22px;font-weight:900;margin:6px 0;color:var(--blue);">KES 350 <span style="font-size:12px;color:var(--text-muted);">/ week</span></div>
+        <div class="tier-limit" style="font-size:12px;color:var(--text-muted);font-weight:600;margin-bottom:12px;">🔓 Unlock 20 tasks per day</div>
         <button class="tier-btn premium" data-tier="premium" id="tierBtnPremium" style="width:100%;padding:13px;border-radius:10px;font-size:14px;font-weight:800;font-family:inherit;border:none;cursor:pointer;background:var(--blue);color:white;">Upgrade – KES 350</button>
       </div>
-      <div class="tier-card golden">
-        <span class="tier-badge golden">Golden</span>
-        <div class="tier-name">Golden</div>
-        <div class="tier-price" id="tierPriceGolden" style="color:var(--gold);">KES 450 <span>/ week</span></div>
-        <div class="tier-limit">🔓 Unlock 50+ tasks per day</div>
+      <div class="tier-card golden" style="border:2px solid var(--gold);border-radius:16px;padding:18px;background:var(--card);">
+        <span class="tier-badge golden" style="font-size:10px;font-weight:900;background:#FFF8E1;color:#8D6E00;padding:4px 10px;border-radius:999px;text-transform:uppercase;">Golden</span>
+        <div class="tier-name" style="font-size:18px;font-weight:900;margin-top:10px;">Golden</div>
+        <div class="tier-price" id="tierPriceGolden" style="font-size:22px;font-weight:900;margin:6px 0;color:var(--gold);">KES 450 <span style="font-size:12px;color:var(--text-muted);">/ week</span></div>
+        <div class="tier-limit" style="font-size:12px;color:var(--text-muted);font-weight:600;margin-bottom:12px;">🔓 Unlock 50+ tasks per day</div>
         <button class="tier-btn golden" data-tier="golden" id="tierBtnGolden" style="width:100%;padding:13px;border-radius:10px;font-size:14px;font-weight:800;font-family:inherit;border:none;cursor:pointer;background:var(--gold);color:#1A1A1A;">Upgrade – KES 450</button>
       </div>
     </div>
     <div class="card">
       <div style="font-size:12px;color:var(--text-muted);font-weight:600;line-height:1.7;">
-        💡 Tap an upgrade button. You'll be asked to confirm your M‑Pesa number, then receive an STK push. Enter your PIN to pay.
-        Subscription activates <strong style="color:var(--green);">instantly after payment confirmation</strong> and is valid for <strong>7 days</strong>.
+        💡 Tap an upgrade button. You'll be asked to confirm your M‑Pesa number, then receive an STK push. Enter your PIN to pay. Subscription activates <strong style="color:var(--green);">instantly after payment confirmation</strong> and is valid for <strong>7 days</strong>.
       </div>
     </div>
   </div>
@@ -1525,11 +1424,7 @@
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 64">
           <rect width="200" height="64" rx="10" fill="#43B02A"/>
           <text x="14" y="46" font-family="'Arial Black',Arial,sans-serif" font-size="38" font-weight="900" fill="#FFFFFF" letter-spacing="-1">M</text>
-          <g transform="translate(64,10)">
-            <rect x="0" y="0" width="26" height="44" rx="5" fill="none" stroke="#FFFFFF" stroke-width="3"/>
-            <rect x="5" y="5" width="16" height="30" rx="2" fill="#7AC943"/>
-            <circle cx="13" cy="40" r="2" fill="#FFFFFF"/>
-          </g>
+          <g transform="translate(64,10)"><rect x="0" y="0" width="26" height="44" rx="5" fill="none" stroke="#FFFFFF" stroke-width="3"/><rect x="5" y="5" width="16" height="30" rx="2" fill="#7AC943"/><circle cx="13" cy="40" r="2" fill="#FFFFFF"/></g>
           <path d="M 58 26 Q 77 16 96 28" stroke="#E30613" stroke-width="4" fill="none" stroke-linecap="round"/>
           <text x="102" y="46" font-family="'Arial Black',Arial,sans-serif" font-size="38" font-weight="900" fill="#FFFFFF" letter-spacing="-1">PESA</text>
         </svg>
@@ -1555,11 +1450,7 @@
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 64">
           <rect width="200" height="64" rx="10" fill="#43B02A"/>
           <text x="14" y="46" font-family="'Arial Black',Arial,sans-serif" font-size="38" font-weight="900" fill="#FFFFFF" letter-spacing="-1">M</text>
-          <g transform="translate(64,10)">
-            <rect x="0" y="0" width="26" height="44" rx="5" fill="none" stroke="#FFFFFF" stroke-width="3"/>
-            <rect x="5" y="5" width="16" height="30" rx="2" fill="#7AC943"/>
-            <circle cx="13" cy="40" r="2" fill="#FFFFFF"/>
-          </g>
+          <g transform="translate(64,10)"><rect x="0" y="0" width="26" height="44" rx="5" fill="none" stroke="#FFFFFF" stroke-width="3"/><rect x="5" y="5" width="16" height="30" rx="2" fill="#7AC943"/><circle cx="13" cy="40" r="2" fill="#FFFFFF"/></g>
           <path d="M 58 26 Q 77 16 96 28" stroke="#E30613" stroke-width="4" fill="none" stroke-linecap="round"/>
           <text x="102" y="46" font-family="'Arial Black',Arial,sans-serif" font-size="38" font-weight="900" fill="#FFFFFF" letter-spacing="-1">PESA</text>
         </svg>
@@ -1568,8 +1459,8 @@
     </div>
     <div style="background:#FFF8E1;border:1.5px solid #FFE8A1;border-radius:14px;padding:18px;margin-bottom:16px;">
       <div style="font-size:11px;font-weight:900;text-transform:uppercase;color:#8A6D3B;margin-bottom:6px;">⚠️ One-time fee required</div>
-      <div style="font-size:28px;font-weight:900;color:#8A6D3B;">KES 499</div>
-      <div style="font-size:12px;color:#8A6D3B;font-weight:600;margin-top:6px;line-height:1.5;">To unlock withdrawals, you must pay a one-time account activation fee of <strong>KES 499</strong>.</div>
+      <div style="font-size:28px;font-weight:900;color:#8A6D3B;" id="cfgActivationFee">KES 499</div>
+      <div style="font-size:12px;color:#8A6D3B;font-weight:600;margin-top:6px;line-height:1.5;">To unlock withdrawals, you must pay a one-time account activation fee of <strong id="cfgActivationFeeInline">KES 499</strong>.</div>
     </div>
     <div class="msg" id="activationModalMsg"></div>
     <div class="field"><label for="activationPhone">M‑Pesa Number</label><input type="tel" id="activationPhone" placeholder="0712 345 678" inputmode="tel" /></div>
@@ -1587,21 +1478,17 @@
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 64">
           <rect width="200" height="64" rx="10" fill="#43B02A"/>
           <text x="14" y="46" font-family="'Arial Black',Arial,sans-serif" font-size="38" font-weight="900" fill="#FFFFFF" letter-spacing="-1">M</text>
-          <g transform="translate(64,10)">
-            <rect x="0" y="0" width="26" height="44" rx="5" fill="none" stroke="#FFFFFF" stroke-width="3"/>
-            <rect x="5" y="5" width="16" height="30" rx="2" fill="#7AC943"/>
-            <circle cx="13" cy="40" r="2" fill="#FFFFFF"/>
-          </g>
+          <g transform="translate(64,10)"><rect x="0" y="0" width="26" height="44" rx="5" fill="none" stroke="#FFFFFF" stroke-width="3"/><rect x="5" y="5" width="16" height="30" rx="2" fill="#7AC943"/><circle cx="13" cy="40" r="2" fill="#FFFFFF"/></g>
           <path d="M 58 26 Q 77 16 96 28" stroke="#E30613" stroke-width="4" fill="none" stroke-linecap="round"/>
           <text x="102" y="46" font-family="'Arial Black',Arial,sans-serif" font-size="38" font-weight="900" fill="#FFFFFF" letter-spacing="-1">PESA</text>
         </svg>
       </span>
-      <span style="font-size:13px;color:var(--text-muted);font-weight:600;">Minimum deposit is KES 50</span>
+      <span style="font-size:13px;color:var(--text-muted);font-weight:600;" id="cfgMinDeposit">Minimum deposit is KES 50</span>
     </div>
     <div class="msg" id="depositModalMsg"></div>
     <div class="field"><label for="depositPhone">M‑Pesa Number</label><input type="tel" id="depositPhone" placeholder="0712 345 678" inputmode="tel" /></div>
     <input type="number" class="amount-input" id="depositAmount" placeholder="0" inputmode="numeric" />
-    <div class="quick-amounts"><button class="quick-amt" data-amt="50">50</button><button class="quick-amt" data-amt="100">100</button><button class="quick-amt" data-amt="200">200</button><button class="quick-amt" data-amt="500">500</button><button class="quick-amt" data-amt="1000">1000</button><button class="quick-amt" data-amt="2000">2000</button></div>
+    <div class="quick-amounts" id="depositQuickAmounts"></div>
     <button class="btn btn-mpesa" id="confirmDeposit">Send STK to this number</button>
   </div>
 </div>
@@ -1616,21 +1503,17 @@
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 64">
           <rect width="200" height="64" rx="10" fill="#43B02A"/>
           <text x="14" y="46" font-family="'Arial Black',Arial,sans-serif" font-size="38" font-weight="900" fill="#FFFFFF" letter-spacing="-1">M</text>
-          <g transform="translate(64,10)">
-            <rect x="0" y="0" width="26" height="44" rx="5" fill="none" stroke="#FFFFFF" stroke-width="3"/>
-            <rect x="5" y="5" width="16" height="30" rx="2" fill="#7AC943"/>
-            <circle cx="13" cy="40" r="2" fill="#FFFFFF"/>
-          </g>
+          <g transform="translate(64,10)"><rect x="0" y="0" width="26" height="44" rx="5" fill="none" stroke="#FFFFFF" stroke-width="3"/><rect x="5" y="5" width="16" height="30" rx="2" fill="#7AC943"/><circle cx="13" cy="40" r="2" fill="#FFFFFF"/></g>
           <path d="M 58 26 Q 77 16 96 28" stroke="#E30613" stroke-width="4" fill="none" stroke-linecap="round"/>
           <text x="102" y="46" font-family="'Arial Black',Arial,sans-serif" font-size="38" font-weight="900" fill="#FFFFFF" letter-spacing="-1">PESA</text>
         </svg>
       </span>
-      <span style="font-size:13px;color:var(--text-muted);font-weight:600;">Minimum withdrawal is KES 200</span>
+      <span style="font-size:13px;color:var(--text-muted);font-weight:600;" id="cfgMinWithdrawal">Minimum withdrawal is KES 200</span>
     </div>
     <div class="msg" id="withdrawModalMsg"></div>
     <input type="number" class="amount-input" id="withdrawAmount" placeholder="0" inputmode="numeric" />
     <div class="field" id="withdrawPinField" style="display:none;"><label for="withdrawPin">Withdrawal PIN</label><input type="password" id="withdrawPin" class="pin-input" inputmode="numeric" maxlength="6" placeholder="••••" /></div>
-    <div class="quick-amounts"><button class="quick-amt" data-amt="200">200</button><button class="quick-amt" data-amt="300">300</button><button class="quick-amt" data-amt="500">500</button><button class="quick-amt" data-amt="1000">1000</button><button class="quick-amt" data-amt="2000">2000</button><button class="quick-amt" data-amt="5000">5000</button></div>
+    <div class="quick-amounts" id="withdrawQuickAmounts"></div>
     <button class="btn btn-primary" id="confirmWithdraw">Withdraw to M‑Pesa</button>
   </div>
 </div>
@@ -1696,6 +1579,20 @@
   let timerInterval = null;
   let currentScreen = 'home';
 
+  // ─── SERVER-DRIVEN CONFIG (min deposits, withdrawals, fees, quick amounts, prices) ───
+  let CONFIG = {
+    currency: 'KES',
+    minDeposit: 50, maxDeposit: 150000,
+    minWithdrawal: 200, maxWithdrawal: 50000,
+    activationFee: 499, referralBonus: 50,
+    freeDailyTasks: 2, freeTaskReward: 21,
+    depositQuickAmounts: [50, 100, 200, 500, 1000, 2000, 5000],
+    withdrawalQuickAmounts: [200, 300, 500, 1000, 2000, 5000],
+    prices: { classic: 200, premium: 350, golden: 450 },
+    tierLimits: { free: 2, classic: 10, premium: 20, golden: 50 },
+    withdrawalPinRequired: true
+  };
+
   const prefsKey = 'jobpay_prefs';
   let prefs = JSON.parse(localStorage.getItem(prefsKey) || '{}');
   prefs = {
@@ -1742,7 +1639,6 @@
   function showMsg(el, text, type = 'success') { el.textContent = text; el.className = `msg show ${type}`; }
   function clearMsg(el) { el.className = 'msg'; el.textContent = ''; }
 
-  // CUSTOM TOAST (Replaces native alert())
   function showToast(message, type = 'error') {
     const toast = document.createElement('div');
     toast.style.cssText = `
@@ -1751,33 +1647,25 @@
       color: white; padding: 12px 24px; border-radius: 12px;
       font-size: 14px; font-weight: 700; z-index: 9999;
       box-shadow: 0 4px 12px rgba(0,0,0,0.3); text-align: center;
-      animation: slideDown 0.3s ease-out; max-width: 90%;
+      animation: fade 0.3s ease-out; max-width: 90%;
     `;
     toast.textContent = message;
     document.body.appendChild(toast);
     setTimeout(() => toast.remove(), 3000);
   }
 
-  // CUSTOM CONFIRM MODAL (Replaces native confirm())
   function showCustomConfirm(title, message, onConfirm) {
     $('customConfirmTitle').textContent = title;
     $('customConfirmMsg').textContent = message;
     const modal = $('customConfirmModal');
-    
     const okBtn = $('customConfirmOk');
     const cancelBtn = $('customConfirmCancel');
     const newOkBtn = okBtn.cloneNode(true);
     const newCancelBtn = cancelBtn.cloneNode(true);
     okBtn.parentNode.replaceChild(newOkBtn, okBtn);
     cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
-    
-    newOkBtn.addEventListener('click', () => {
-      modal.classList.remove('show');
-      if (onConfirm) onConfirm();
-    });
-    newCancelBtn.addEventListener('click', () => {
-      modal.classList.remove('show');
-    });
+    newOkBtn.addEventListener('click', () => { modal.classList.remove('show'); if (onConfirm) onConfirm(); });
+    newCancelBtn.addEventListener('click', () => { modal.classList.remove('show'); });
     modal.classList.add('show');
   }
 
@@ -1787,18 +1675,12 @@
     if (target) target.classList.add('active');
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.nav === name));
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    
     currentScreen = name;
-    if (pushState) {
-      window.history.pushState({ screen: name }, '', '#' + name);
-    }
+    if (pushState) window.history.pushState({ screen: name }, '', '#' + name);
   }
 
   function navigate(name) {
-    if (name !== 'home' && timerInterval) {
-      clearInterval(timerInterval);
-      timerInterval = null;
-    }
+    if (name !== 'home' && timerInterval) { clearInterval(timerInterval); timerInterval = null; }
     switch (name) {
       case 'home':          loadDashboard(); goTo('home'); break;
       case 'guide':         goTo('guide'); break;
@@ -1814,20 +1696,17 @@
       case 'settings':      openSettings('hub'); break;
       case 'settings-hub':  openSettings('hub'); break;
       case 'profile':       loadProfile(); goTo('profile'); break;
-      case 'subscribe':     loadPublicPrices(); goTo('subscribe'); break;
+      case 'subscribe':     loadConfig(); goTo('subscribe'); break;
       default: break;
     }
   }
 
   window.history.replaceState({ screen: 'home' }, '', '#home');
   window.addEventListener('popstate', (event) => {
-    if (event.state && event.state.screen) {
-      goTo(event.state.screen, false);
-    } else {
+    if (event.state && event.state.screen) goTo(event.state.screen, false);
+    else {
       if (currentScreen === 'home') {
-        showCustomConfirm('Leave JobPay?', 'Are you sure you want to leave JobPay?', () => {
-          window.history.back();
-        });
+        showCustomConfirm('Leave JobPay?', 'Are you sure you want to leave JobPay?', () => window.history.back());
       } else {
         goTo('home', false);
         window.history.replaceState({ screen: 'home' }, '', '#home');
@@ -1874,11 +1753,7 @@
   }
 
   document.querySelectorAll('.drawer-item[data-nav]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const name = btn.dataset.nav;
-      closeDrawer();
-      setTimeout(() => navigate(name), 200);
-    });
+    btn.addEventListener('click', () => { const name = btn.dataset.nav; closeDrawer(); setTimeout(() => navigate(name), 200); });
   });
   document.querySelectorAll('.nav-btn[data-nav]').forEach(btn => {
     btn.addEventListener('click', () => navigate(btn.dataset.nav));
@@ -1887,10 +1762,7 @@
     if (el.classList.contains('drawer-item') || el.classList.contains('nav-btn')) return;
     el.addEventListener('click', () => navigate(el.dataset.nav));
   });
-  $('drawerUserCard').addEventListener('click', () => {
-    closeDrawer();
-    setTimeout(() => navigate('profile'), 200);
-  });
+  $('drawerUserCard').addEventListener('click', () => { closeDrawer(); setTimeout(() => navigate('profile'), 200); });
   $('profileBtn').addEventListener('click', () => navigate('profile'));
 
   $('drawerLogout').addEventListener('click', () => {
@@ -1912,42 +1784,31 @@
   // GUIDE AUDIO
   $('playAudioGuide').addEventListener('click', () => {
     if ('speechSynthesis' in window) {
-      const utterance = new SpeechSynthesisUtterance(
-        "Welcome to JobPay! Here is how the app works. " +
-        "Step 1: Take Tasks. Go to the Home or Find Jobs tab. Complete the surveys and micro-tasks. Free users get 2 tasks daily. Tasks unlock again 24 hours after you complete them. " +
-        "Step 2: Upgrade. Upgrade to Classic, Premium, or Golden to unlock more tasks every day. " +
-        "Step 3: Deposit. You can deposit funds via M-Pesa to your wallet. " +
-        "Step 4: Withdraw. Once you have KES 200, you can withdraw to your M-Pesa. A one-time activation fee of KES 499 is required. " +
-        "Having trouble? If you experience any inconvenience, please try refreshing the page by tapping the refresh icon in the header."
+      const u = new SpeechSynthesisUtterance(
+        `Welcome to JobPay! Here is how the app works. Step 1: Take Tasks. Free users get ${CONFIG.freeDailyTasks} tasks daily. ` +
+        `Step 2: Upgrade. Step 3: Deposit. Step 4: Withdraw. Once you have ${CONFIG.currency} ${CONFIG.minWithdrawal}, you can withdraw. ` +
+        `A one-time activation fee of ${CONFIG.currency} ${CONFIG.activationFee} is required.`
       );
-      utterance.rate = 0.9;
-      window.speechSynthesis.speak(utterance);
-    } else {
-      showToast("Audio guide is not supported on this device.");
-    }
+      u.rate = 0.9;
+      window.speechSynthesis.speak(u);
+    } else showToast("Audio guide is not supported on this device.");
   });
 
   // NOTIFICATIONS
   function notifIconFor(type) {
-    const map = {
-      task: '📋', task_approved: '✅', task_rejected: '❌',
-      withdrawal: '💸', withdrawal_paid: '✅', withdrawal_rejected: '↩️',
-      deposit: '💰', subscription: '⭐', activation: '🔓',
-      login: '🔐', payment_failed: '❌', system: '🔔'
-    };
+    const map = { task: '📋', task_approved: '✅', task_rejected: '❌', withdrawal: '💸', withdrawal_paid: '✅',
+      withdrawal_rejected: '↩️', deposit: '💰', subscription: '⭐', activation: '🔓', login: '🔐',
+      payment_failed: '❌', system: '🔔' };
     return map[type] || '🔔';
   }
   function updateNotifBadge(n) {
     notifUnread = n || 0;
-    const badge = $('notifBadge');
-    const dbadge = $('drawerNotifBadge');
+    const badge = $('notifBadge'), dbadge = $('drawerNotifBadge');
     if (n > 0) {
       const txt = n > 99 ? '99+' : String(n);
       badge.textContent = txt; badge.classList.remove('hidden');
       dbadge.textContent = txt; dbadge.classList.remove('hidden');
-    } else {
-      badge.classList.add('hidden'); dbadge.classList.add('hidden');
-    }
+    } else { badge.classList.add('hidden'); dbadge.classList.add('hidden'); }
   }
   function timeAgoShort(d) {
     const s = Math.floor((Date.now() - new Date(d)) / 1000);
@@ -1984,8 +1845,7 @@
           <div class="notif-item-msg">${n.message}</div>
           <div class="notif-item-time">${timeAgoShort(n.createdAt)}</div>
         </div>
-      </div>
-    `).join('');
+      </div>`).join('');
     el.querySelectorAll('.notif-item').forEach(it => {
       it.addEventListener('click', async () => {
         const id = it.dataset.nid;
@@ -2010,9 +1870,8 @@
       } catch {}
     }, 1500);
   }
-  function closeNotifPanel() { $('notifPanel').classList.remove('show'); }
   $('notifBtn').addEventListener('click', openNotifPanel);
-  $('notifBack').addEventListener('click', closeNotifPanel);
+  $('notifBack').addEventListener('click', () => $('notifPanel').classList.remove('show'));
   $('notifMarkRead').addEventListener('click', async () => {
     try {
       await api('/api/notifications/read-all', { method: 'POST' });
@@ -2021,6 +1880,65 @@
   });
   setInterval(() => { if (token) refreshUnreadCount(); }, 30000);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && token) refreshUnreadCount(); });
+
+  // ================== CONFIG + PRICES (server-driven) ==================
+  async function loadConfig() {
+    try {
+      const res = await fetch('/api/config?_=' + Date.now(), { cache: 'no-store' });
+      if (res.ok) {
+        const cfg = await res.json();
+        CONFIG = { ...CONFIG, ...cfg };
+        if (cfg.prices) CONFIG.prices = { ...CONFIG.prices, ...cfg.prices };
+      }
+    } catch (err) { console.warn('Config fetch failed, using defaults:', err.message); }
+    publicPrices = { ...publicPrices, ...CONFIG.prices };
+    applyConfigToUI();
+  }
+  const loadPublicPrices = loadConfig;
+
+  function setHTML(id, html) { const el = $(id); if (el) el.innerHTML = html; }
+
+  function applyConfigToUI() {
+    const C = CONFIG.currency;
+    const setText = (id, txt) => { const el = $(id); if (el) el.textContent = txt; };
+
+    setText('cfgFreeTierText', `${CONFIG.freeDailyTasks} free tasks (${C} ${CONFIG.freeTaskReward} each) every day`);
+    setText('cfgGuideFreeTasks', CONFIG.freeDailyTasks);
+    setText('cfgGuideMinWithdrawal', `${C} ${CONFIG.minWithdrawal}`);
+    setText('cfgGuideActivationFee', `${C} ${CONFIG.activationFee}`);
+    setText('cfgReferralBonus', `${C} ${CONFIG.referralBonus}`);
+    setText('cfgReferralBonusInline', `${C} ${CONFIG.referralBonus}`);
+    setText('cfgFaqMinWithdrawal', `${C} ${CONFIG.minWithdrawal}`);
+    setText('cfgFaqActivationFee', `${C} ${CONFIG.activationFee}`);
+    setText('cfgMinDeposit', `Minimum deposit is ${C} ${CONFIG.minDeposit}`);
+    setText('cfgMinWithdrawal', `Minimum withdrawal is ${C} ${CONFIG.minWithdrawal}`);
+    setText('cfgActivationFee', `${C} ${CONFIG.activationFee}`);
+    setText('cfgActivationFeeInline', `${C} ${CONFIG.activationFee}`);
+    setText('confirmActivation', `Pay ${C} ${CONFIG.activationFee} Activation Fee`);
+
+    renderQuickAmounts('depositQuickAmounts', CONFIG.depositQuickAmounts);
+    renderQuickAmounts('withdrawQuickAmounts', CONFIG.withdrawalQuickAmounts);
+
+    setHTML('tierPriceClassic', `${C} ${publicPrices.classic} <span style="font-size:12px;color:var(--text-muted);">/ week</span>`);
+    setHTML('tierPricePremium', `${C} ${publicPrices.premium} <span style="font-size:12px;color:var(--text-muted);">/ week</span>`);
+    setHTML('tierPriceGolden',  `${C} ${publicPrices.golden}  <span style="font-size:12px;color:var(--text-muted);">/ week</span>`);
+    setText('tierBtnClassic', `Upgrade – ${C} ${publicPrices.classic}`);
+    setText('tierBtnPremium', `Upgrade – ${C} ${publicPrices.premium}`);
+    setText('tierBtnGolden',  `Upgrade – ${C} ${publicPrices.golden}`);
+  }
+
+  function renderQuickAmounts(containerId, amounts) {
+    const el = $(containerId);
+    if (!el || !Array.isArray(amounts) || !amounts.length) return;
+    el.innerHTML = amounts.map(a => `<button class="quick-amt" data-amt="${a}">${Number(a).toLocaleString()}</button>`).join('');
+    el.querySelectorAll('.quick-amt').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const modal = btn.closest('.modal');
+        const inp = modal && modal.querySelector('input.amount-input');
+        if (inp) inp.value = btn.dataset.amt;
+      });
+    });
+  }
 
   // SETTINGS HUB
   function openSettings(section) {
@@ -2041,9 +1959,7 @@
     if (section === 'privacy') applyPrivacyUI();
     if (section === 'help') loadTickets();
   }
-  document.querySelectorAll('[data-settings]').forEach(row => {
-    row.addEventListener('click', () => openSettings(row.dataset.settings));
-  });
+  document.querySelectorAll('[data-settings]').forEach(row => row.addEventListener('click', () => openSettings(row.dataset.settings)));
   document.querySelectorAll('[data-close-panel]').forEach(b => {
     b.addEventListener('click', () => {
       const backToHub = b.hasAttribute('data-back-to-hub');
@@ -2071,8 +1987,7 @@
   }
   $('uploadPhotoBtn').addEventListener('click', () => $('profilePhotoInput').click());
   $('profilePhotoInput').addEventListener('change', async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+    const file = e.target.files[0]; if (!file) return;
     if (!file.type.startsWith('image/')) { showToast('Please select an image file'); e.target.value = ''; return; }
     if (file.size > 5 * 1024 * 1024) { showToast('Image must be under 5MB'); e.target.value = ''; return; }
     const reader = new FileReader();
@@ -2100,7 +2015,6 @@
     reader.readAsDataURL(file);
     e.target.value = '';
   });
-  
   $('removePhotoBtn').addEventListener('click', async () => {
     if (!user?.photo) { showMsg($('acctSettingsMsg'), 'No photo to remove', 'error'); return; }
     showCustomConfirm('Remove Photo', 'Are you sure you want to remove your profile photo?', async () => {
@@ -2112,17 +2026,14 @@
       } catch (err) { showMsg($('acctSettingsMsg'), err.message, 'error'); }
     });
   });
-  
   $('saveProfileBtn').addEventListener('click', async () => {
     const btn = $('saveProfileBtn'); btn.disabled = true; btn.innerHTML = '<span class="loader"></span>';
     try {
-      const res = await api('/api/user/profile', {
-        method: 'PUT', body: JSON.stringify({
-          username: $('setUsername').value.trim(),
-          email: $('setEmail').value.trim(),
-          phone: $('setPhone').value.trim()
-        })
-      });
+      const res = await api('/api/user/profile', { method: 'PUT', body: JSON.stringify({
+        username: $('setUsername').value.trim(),
+        email: $('setEmail').value.trim(),
+        phone: $('setPhone').value.trim()
+      }) });
       user = res.user; localStorage.setItem('jobpay_user', JSON.stringify(user));
       updateDrawer(); showMsg($('acctSettingsMsg'), '✓ Profile updated', 'success');
     } catch (err) { showMsg($('acctSettingsMsg'), err.message, 'error'); }
@@ -2231,7 +2142,7 @@
     } catch (err) { console.error(err); }
   }
 
-  // APPEARANCE
+  // APPEARANCE / ACCESSIBILITY / NOTIF / LANGUAGE / PRIVACY
   function applyAppearanceUI() {
     const themeEl = document.getElementById('theme' + prefs.theme.charAt(0).toUpperCase() + prefs.theme.slice(1));
     if (themeEl) themeEl.checked = true;
@@ -2240,17 +2151,10 @@
     const fsMap = { small: 'fsSmall', normal: 'fsNormal', large: 'fsLarge', xlarge: 'fsXLarge' };
     if ($(fsMap[prefs.fontSize])) $(fsMap[prefs.fontSize]).checked = true;
   }
-  document.querySelectorAll('input[name="theme"]').forEach(r => {
-    r.addEventListener('change', () => { prefs.theme = r.value; savePrefs(); applyPrefs(); });
-  });
-  document.querySelectorAll('input[name="taskDisplay"]').forEach(r => {
-    r.addEventListener('change', () => { prefs.taskDisplay = r.value; savePrefs(); });
-  });
-  document.querySelectorAll('input[name="fontSize"]').forEach(r => {
-    r.addEventListener('change', () => { prefs.fontSize = r.value; savePrefs(); applyPrefs(); });
-  });
+  document.querySelectorAll('input[name="theme"]').forEach(r => r.addEventListener('change', () => { prefs.theme = r.value; savePrefs(); applyPrefs(); }));
+  document.querySelectorAll('input[name="taskDisplay"]').forEach(r => r.addEventListener('change', () => { prefs.taskDisplay = r.value; savePrefs(); }));
+  document.querySelectorAll('input[name="fontSize"]').forEach(r => r.addEventListener('change', () => { prefs.fontSize = r.value; savePrefs(); applyPrefs(); }));
 
-  // ACCESSIBILITY
   function applyAccessibilityUI() {
     $('accLargeText').checked = prefs.accLargeText;
     $('accHighContrast').checked = prefs.accHighContrast;
@@ -2260,35 +2164,26 @@
   $('accHighContrast').addEventListener('change', e => { prefs.accHighContrast = e.target.checked; savePrefs(); applyPrefs(); });
   $('accReduceAnim').addEventListener('change', e => { prefs.accReduceAnim = e.target.checked; savePrefs(); applyPrefs(); });
 
-  // NOTIFICATIONS SETTINGS
   function applyNotificationsUI() {
     document.querySelectorAll('[data-notif]').forEach(t => { t.checked = prefs.notif[t.dataset.notif] !== false; });
   }
-  document.querySelectorAll('[data-notif]').forEach(t => {
-    t.addEventListener('change', () => { prefs.notif[t.dataset.notif] = t.checked; savePrefs(); });
-  });
+  document.querySelectorAll('[data-notif]').forEach(t => t.addEventListener('change', () => { prefs.notif[t.dataset.notif] = t.checked; savePrefs(); }));
 
-  // LANGUAGE
   function applyLanguageUI() {
     const el = document.getElementById(prefs.language === 'sw' ? 'langSw' : 'langEn');
     if (el) el.checked = true;
     $('locationJobsToggle').checked = prefs.locationJobs !== false;
   }
-  document.querySelectorAll('input[name="lang"]').forEach(r => {
-    r.addEventListener('change', () => { prefs.language = r.value; savePrefs(); document.documentElement.lang = r.value; });
-  });
+  document.querySelectorAll('input[name="lang"]').forEach(r => r.addEventListener('change', () => { prefs.language = r.value; savePrefs(); document.documentElement.lang = r.value; }));
   $('locationJobsToggle').addEventListener('change', e => { prefs.locationJobs = e.target.checked; savePrefs(); });
 
-  // PRIVACY
   function applyPrivacyUI() {
     const el = document.getElementById(prefs.profileVis === 'public' ? 'visPublic' : 'visPrivate');
     if (el) el.checked = true;
     $('privPersonalize').checked = prefs.privPersonalize !== false;
     $('privAnalytics').checked = prefs.privAnalytics !== false;
   }
-  document.querySelectorAll('input[name="profileVis"]').forEach(r => {
-    r.addEventListener('change', () => { prefs.profileVis = r.value; savePrefs(); });
-  });
+  document.querySelectorAll('input[name="profileVis"]').forEach(r => r.addEventListener('change', () => { prefs.profileVis = r.value; savePrefs(); }));
   $('privPersonalize').addEventListener('change', e => { prefs.privPersonalize = e.target.checked; savePrefs(); });
   $('privAnalytics').addEventListener('change', e => { prefs.privAnalytics = e.target.checked; savePrefs(); });
   $('downloadDataBtn').addEventListener('click', async () => {
@@ -2303,7 +2198,7 @@
   });
 
   // HELP
-  document.querySelectorAll('.faq-q').forEach(q => { q.addEventListener('click', () => q.parentElement.classList.toggle('open')); });
+  document.querySelectorAll('.faq-q').forEach(q => q.addEventListener('click', () => q.parentElement.classList.toggle('open')));
   async function loadTickets() {
     try {
       const items = await api('/api/support/tickets');
@@ -2319,8 +2214,7 @@
             <span class="ticket-status ${t.status || 'open'}">${(t.status || 'open').toUpperCase()}</span>
           </div>
           <div class="ticket-msg">${(t.message || '').replace(/[<>&"]/g, '').slice(0, 140)}${(t.message || '').length > 140 ? '…' : ''}</div>
-        </div>
-      `).join('');
+        </div>`).join('');
     } catch (err) { console.error(err); }
   }
   $('submitTicketBtn').addEventListener('click', async () => {
@@ -2339,24 +2233,6 @@
   });
   $('msgContactSupport').addEventListener('click', () => openSettings('help'));
 
-  // PRICES
-  async function loadPublicPrices() {
-    try {
-      const res = await fetch('/api/prices?_=' + Date.now(), { cache: 'no-store' });
-      if (!res.ok) return;
-      const p = await res.json();
-      publicPrices = { classic: Number(p.classic) || 200, premium: Number(p.premium) || 350, golden: Number(p.golden) || 450 };
-      const setHTML = (id, html) => { const el = $(id); if (el) el.innerHTML = html; };
-      const setText = (id, txt) => { const el = $(id); if (el) el.textContent = txt; };
-      setHTML('tierPriceClassic', `KES ${publicPrices.classic} <span>/ week</span>`);
-      setHTML('tierPricePremium', `KES ${publicPrices.premium} <span>/ week</span>`);
-      setHTML('tierPriceGolden', `KES ${publicPrices.golden} <span>/ week</span>`);
-      setText('tierBtnClassic', `Upgrade – KES ${publicPrices.classic}`);
-      setText('tierBtnPremium', `Upgrade – KES ${publicPrices.premium}`);
-      setText('tierBtnGolden', `Upgrade – KES ${publicPrices.golden}`);
-    } catch (err) { console.error('Load prices error:', err); }
-  }
-
   // AUTH
   function attachToggle(btnId, inputId) {
     $(btnId).addEventListener('click', () => {
@@ -2372,11 +2248,6 @@
     const v = $('authPassword').value;
     const checks = { len: v.length >= 8, upper: /[A-Z]/.test(v), lower: /[a-z]/.test(v), num: /[0-9]/.test(v) };
     document.querySelectorAll('#pwHint span').forEach(el => el.classList.toggle('ok', checks[el.dataset.req]));
-  });
-  $('authConfirm').addEventListener('input', () => {
-    const pw = $('authPassword').value, cf = $('authConfirm').value;
-    $('authConfirm').classList.toggle('error', cf.length > 0 && cf !== pw);
-    $('authConfirm').classList.toggle('valid', cf.length > 0 && cf === pw);
   });
   function setAuthTab(tab) {
     const isLogin = tab === 'login';
@@ -2397,8 +2268,6 @@
     const confirmPassword = $('authConfirm').value;
     if (!username || !email || !phone || !password || !confirmPassword) return showMsg($('authMsg'), 'Please fill all fields', 'error');
     if (password !== confirmPassword) return showMsg($('authMsg'), 'Passwords do not match', 'error');
-    if (!(password.length >= 8 && /[A-Z]/.test(password) && /[a-z]/.test(password) && /[0-9]/.test(password)))
-      return showMsg($('authMsg'), 'Password must be 8+ chars with uppercase, lowercase, and a number', 'error');
     try {
       $('btnRegister').disabled = true; $('btnRegister').innerHTML = '<span class="loader"></span>';
       const data = await api('/api/register', { method: 'POST', body: JSON.stringify({ username, email, phone, password, confirmPassword }) });
@@ -2435,47 +2304,36 @@
     window.history.replaceState({ screen: 'home' }, '', '#home');
   }
 
-  // COUNTDOWN TIMER LOGIC (24 hours rolling)
+  // COUNTDOWN TIMER
   function startCountdown() {
     if (timerInterval) clearInterval(timerInterval);
-    
     const updateTimer = () => {
       const now = Date.now();
       const lastTask = user?.lastTaskDate ? new Date(user.lastTaskDate).getTime() : now;
       const cooldown = 24 * 60 * 60 * 1000;
       const unlockTime = lastTask + cooldown;
       const diff = unlockTime - now;
-
       if (diff <= 0) {
-        clearInterval(timerInterval);
-        timerInterval = null;
+        clearInterval(timerInterval); timerInterval = null;
         $('timerDisplay').textContent = "00:00:00";
         $('freeTrialTimer').innerHTML = `
           <div style="font-size: 16px; font-weight: 800; color: #2E7D1E;">🎉 Free tasks are available now!</div>
-          <div style="font-size: 12px; color: #43B02A; font-weight: 600; margin-top: 4px;">Refreshing...</div>
-        `;
+          <div style="font-size: 12px; color: #43B02A; font-weight: 600; margin-top: 4px;">Refreshing...</div>`;
         setTimeout(() => { loadDashboard(); }, 3000);
         return;
       }
-
       const h = Math.floor(diff / 3600000);
       const m = Math.floor((diff % 3600000) / 60000);
       const s = Math.floor((diff % 60000) / 1000);
       $('timerDisplay').textContent = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
     };
-
     updateTimer();
     timerInterval = setInterval(updateTimer, 1000);
   }
 
-  // TASK SORTING LOGIC (Unlocked -> Locked -> Completed)
   function sortTasks(tasks) {
     const order = { 'unlocked': 0, 'locked': 1, 'completed': 2 };
-    return tasks.sort((a, b) => {
-      const orderA = order[a.status] ?? 3;
-      const orderB = order[b.status] ?? 3;
-      return orderA - orderB;
-    });
+    return tasks.sort((a, b) => (order[a.status] ?? 3) - (order[b.status] ?? 3));
   }
 
   // DASHBOARD
@@ -2485,10 +2343,8 @@
       const me = await api('/api/me');
       user = me; localStorage.setItem('jobpay_user', JSON.stringify(me));
       updateDrawer();
-      
       $('homeBalance').textContent = (me.balance || 0).toLocaleString();
       $('homePending').textContent = (me.pendingBalance || 0).toLocaleString();
-      
       $('qsTodayEarn').textContent = `KES ${(me.todayEarnings || me.totalEarnings || 0).toLocaleString()}`;
       $('qsTasksDone').textContent = me.tasksCompletedToday || 0;
       $('qsPending').textContent = `KES ${(me.pendingBalance || 0).toLocaleString()}`;
@@ -2497,33 +2353,18 @@
       const isFree = me.subscriptionTier === 'free';
       const limitReached = isFree && (me.tasksCompletedToday >= me.dailyLimit);
 
-      if (limitReached) {
-        $('freeTrialTimer').style.display = 'block';
-        startCountdown();
-      } else {
-        $('freeTrialTimer').style.display = 'none';
-        if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
-      }
+      if (limitReached) { $('freeTrialTimer').style.display = 'block'; startCountdown(); }
+      else { $('freeTrialTimer').style.display = 'none'; if (timerInterval) { clearInterval(timerInterval); timerInterval = null; } }
 
-      // ALWAYS FETCH TASKS (they will be locked if limit is reached)
       const data = await api(`/api/tasks?page=${page}&size=50&type=${currentType}`);
       totalTaskCount = data.totalCount;
-      
       const sortedTasks = sortTasks(data.tasks);
-      
       const list = $('homeTaskList');
       let html = sortedTasks.map(t => renderTaskCard(t)).join('');
-      
-      if (!html) {
-        html = `<div class="card"><div class="empty"><div class="empty-icon">📋</div><div class="empty-title">No tasks available</div></div></div>`;
-      } else if (limitReached) {
-        // Add a small note above the list if limit is reached
-        html = `<div style="font-size:12px; font-weight:700; color:var(--text-muted); margin-bottom:10px; text-align:center; padding:10px; background:var(--card-alt); border-radius:10px;">Free tasks used. Upgrade to unlock these tasks.</div>` + html;
-      }
-      
+      if (!html) html = `<div class="card"><div class="empty"><div class="empty-icon">📋</div><div class="empty-title">No tasks available</div></div></div>`;
+      else if (limitReached) html = `<div style="font-size:12px; font-weight:700; color:var(--text-muted); margin-bottom:10px; text-align:center; padding:10px; background:var(--card-alt); border-radius:10px;">Free tasks used. Upgrade to unlock these tasks.</div>` + html;
       list.innerHTML = html;
       attachTaskHandlers(list);
-      
     } catch (err) { console.error('Dashboard error:', err); }
   }
 
@@ -2533,9 +2374,7 @@
       const data = await api(`/api/tasks?page=${page}&size=50&type=${currentType}`);
       totalTaskCount = data.totalCount;
       $('findJobsCount').textContent = totalTaskCount.toLocaleString();
-      
       const sortedTasks = sortTasks(data.tasks);
-      
       const list = $('findJobsList');
       const html = sortedTasks.map(t => renderTaskCard(t)).join('');
       if (append) list.insertAdjacentHTML('beforeend', html);
@@ -2565,41 +2404,19 @@
   }
   $('personalizedBtn').addEventListener('click', () => navigate('recommended'));
 
-  // TASK CARD RENDERER
   function renderTaskCard(t) {
     const isLocked = t.status === 'locked';
     const isCompleted = t.status === 'completed';
     const cardCls = `task-card ${isLocked ? 'locked' : ''} ${isCompleted ? 'completed' : ''}`;
-    const catIcons = {
-      'Google Review Verification':'🔍','Instagram Engagement Survey':'📸','Facebook Ad Feedback':'📘',
-      'YouTube Video Tagging':'▶️','TikTok Trend Analysis':'🎵','Twitter/X Sentiment Study':'🐦',
-      'LinkedIn Professional Survey':'💼','WhatsApp Business Feedback':'💬','Google Maps Location Check':'📍',
-      'Amazon Product Review Validation':'📦','Netflix Content Preference':'🎬','Spotify Playlist Curation':'🎧',
-      'Uber Ride Experience':'🚗','Airbnb Host Feedback':'🏠','eBay Seller Rating':'🛒',
-      'Shopify Store UX Test':'🛍️','Reddit Community Poll':'👽','Pinterest Board Categorization':'📌',
-      'Snapchat Filter Feedback':'👻','Discord Server Moderation':'🎮','Twitch Streamer Interaction':'🎥'
-    };
-    const iconBg = {
-      'Google Review Verification':'#E3F2FD','Instagram Engagement Survey':'#FCE4EC','Facebook Ad Feedback':'#E3F2FD',
-      'YouTube Video Tagging':'#FFEBEE','TikTok Trend Analysis':'#FFF3E0','Twitter/X Sentiment Study':'#E0F7FA',
-      'LinkedIn Professional Survey':'#E8F5E9','WhatsApp Business Feedback':'#E8F5E9','Google Maps Location Check':'#FFF8E1',
-      'Amazon Product Review Validation':'#FFF3E0','Netflix Content Preference':'#FCE4EC','Spotify Playlist Curation':'#E8F5E9',
-      'Uber Ride Experience':'#E0F7FA','Airbnb Host Feedback':'#FCE4EC','eBay Seller Rating':'#E3F2FD',
-      'Shopify Store UX Test':'#E8F5E9','Reddit Community Poll':'#FFF3E0','Pinterest Board Categorization':'#FCE4EC',
-      'Snapchat Filter Feedback':'#FFF8E1','Discord Server Moderation':'#EDE7F6','Twitch Streamer Interaction':'#EDE7F6'
-    };
-    const icon = catIcons[t.category] || '📋';
-    const bg = iconBg[t.category] || '#E8F7E4';
-    
-    // Tier Label logic
-    let tierLabel = 'Free';
-    let tierClass = 'free';
+    const icon = t.owner?.avatar || '📋';
+    let tierLabel = 'Free', tierClass = 'free';
     if (t.tier === 'classic') { tierLabel = 'Classic'; tierClass = 'classic'; }
     else if (t.tier === 'premium') { tierLabel = 'Premium'; tierClass = 'premium'; }
+    else if (t.tier === 'golden') { tierLabel = 'Golden'; tierClass = 'premium'; }
 
     return `
       <div class="${cardCls}" data-task-id="${t.id}" data-status="${t.status}">
-        <div class="task-icon" style="background:${bg};color:#333;">
+        <div class="task-icon" style="background:var(--stat-icon-bg);color:#333;">
           ${icon}
           ${isLocked ? '<div class="lock-badge">🔒</div>' : ''}
           ${isCompleted ? '<div class="completed-badge">✓</div>' : ''}
@@ -2622,8 +2439,7 @@
           <div class="task-spots">87 spots left</div>
         </div>
         ${!isCompleted ? '<div class="task-chevron">›</div>' : ''}
-      </div>
-    `;
+      </div>`;
   }
   function attachTaskHandlers(container) {
     container.querySelectorAll('.task-card').forEach(card => {
@@ -2668,17 +2484,13 @@
               ${answers[current] === i ? '<span style="width:10px;height:10px;border-radius:50%;background:var(--green);"></span>' : ''}
             </span>
             <span>${opt}</span>
-          </button>
-        `).join('')}
-      </div>
-    `;
+          </button>`).join('')}
+      </div>`;
     $('surveyBody').querySelectorAll('.survey-opt').forEach(btn => {
       btn.addEventListener('click', () => { survey.answers[current] = Number(btn.dataset.i); renderSurveyQuestion(); });
     });
     $('surveyPrev').style.visibility = current === 0 ? 'hidden' : 'visible';
     $('surveyNext').textContent = current === questions.length - 1 ? 'Finish & Submit' : 'Next';
-    
-    // Fix for Next button not clickable: Ensure it's enabled
     $('surveyNext').disabled = false;
   }
   $('surveyPrev').addEventListener('click', () => { if (survey.current > 0) { survey.current--; renderSurveyQuestion(); } });
@@ -2718,8 +2530,7 @@
         <div class="success-amount">KES ${reward}</div>
         <div class="success-sub">Your reward is <strong>pending admin confirmation</strong>.<br>It will be added to your Available Balance once approved.</div>
         <button class="btn btn-primary" id="successDone" style="width:100%;">Back to Tasks</button>
-      </div>
-    `;
+      </div>`;
     sprinkleFlowers();
     $('successDone').addEventListener('click', () => {
       $('surveyModal').classList.remove('show');
@@ -2727,15 +2538,12 @@
       loadDashboard(); loadNotifications(true); goTo('home');
     });
   }
-  
   $('surveyClose').addEventListener('click', () => {
     if (survey.current > 0 || survey.answers.some(a => a !== null)) {
       showCustomConfirm('Quit Survey?', 'Are you sure you want to quit this survey? Your progress will be lost.', () => {
         $('surveyModal').classList.remove('show'); $('surveyFooter').style.display = 'flex';
       });
-    } else {
-      $('surveyModal').classList.remove('show'); $('surveyFooter').style.display = 'flex';
-    }
+    } else { $('surveyModal').classList.remove('show'); $('surveyFooter').style.display = 'flex'; }
   });
 
   // WALLET
@@ -2757,9 +2565,9 @@
         const ageMs = Date.now() - d.getTime();
         let displayStatus = tx.status;
         if (tx._type === 'deposit' && tx.status === 'pending' && ageMs > 5 * 60 * 1000) displayStatus = 'failed';
-        let label, amountCls, amountTxt;
-        if (tx._type === 'deposit') { label = '💳 Deposit'; amountCls = 'positive'; amountTxt = `+KES ${tx.amount.toLocaleString()}`; }
-        else { label = '💸 Withdrawal'; amountCls = 'negative'; amountTxt = `-KES ${Math.abs(tx.amount).toLocaleString()}`; }
+        let label, amountTxt;
+        if (tx._type === 'deposit') { label = '💳 Deposit'; amountTxt = `+KES ${tx.amount.toLocaleString()}`; }
+        else { label = '💸 Withdrawal'; amountTxt = `-KES ${Math.abs(tx.amount).toLocaleString()}`; }
         const pillCls = { completed: 'success', failed: 'failed', pending: 'pending' }[displayStatus] || 'pending';
         const pillLabel = { completed: '✓ Successful', failed: '✕ Failed', pending: '⏳ Pending' }[displayStatus] || displayStatus;
         return `<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid var(--divider);gap:10px;">
@@ -2768,7 +2576,7 @@
             <div style="font-size:11px;color:var(--text-muted);font-weight:600;">${date}</div>
             <span class="hist-status ${pillCls}" style="align-self:flex-start;">${pillLabel}</span>
           </div>
-          <div style="font-size:15px;font-weight:900;color:${amountCls === 'positive' ? 'var(--green)' : 'var(--red)'};white-space:nowrap;">${amountTxt}</div>
+          <div style="font-size:15px;font-weight:900;color:${tx._type === 'deposit' ? 'var(--green)' : 'var(--red)'};white-space:nowrap;">${amountTxt}</div>
         </div>`;
       }).join('');
     } catch (err) { console.error(err); }
@@ -2779,10 +2587,7 @@
     try {
       const list = await api('/api/history');
       const el = $('myTasksList');
-      if (!list.length) {
-        el.innerHTML = `<div class="card"><div class="empty"><div class="empty-icon">📋</div><div class="empty-title">No tasks yet</div></div></div>`;
-        return;
-      }
+      if (!list.length) { el.innerHTML = `<div class="card"><div class="empty"><div class="empty-icon">📋</div><div class="empty-title">No tasks yet</div></div></div>`; return; }
       el.innerHTML = list.map(h => {
         const d = new Date(h.completedAt);
         const date = d.toLocaleDateString() + ' • ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -2809,77 +2614,29 @@
     try {
       const [taskList, walletData] = await Promise.all([api('/api/history'), api('/api/wallet/history')]);
       const entries = [];
-
       (taskList || []).forEach(h => {
-        entries.push({
-          kind: 'task',
-          title: h.taskTitle,
-          owner: h.owner,
-          amount: h.reward,
-          status: h.status,
-          reason: h.reason || null,
-          reference: null,
-          at: new Date(h.completedAt),
-          meta: `${h.answersCount} answers`
-        });
+        entries.push({ kind: 'task', title: h.taskTitle, owner: h.owner, amount: h.reward, status: h.status, reason: h.reason || null, reference: null, at: new Date(h.completedAt), meta: `${h.answersCount} answers` });
       });
-
       (walletData.paymentTransactions || []).forEach(t => {
         const ageMs = Date.now() - new Date(t.createdAt).getTime();
         let status = t.status;
         if (status === 'pending' && ageMs > 5 * 60 * 1000) status = 'failed';
         const kind = t.kind === 'subscription' ? 'subscription' : t.kind === 'deposit' ? 'deposit' : 'other';
-        let title, amount;
-        if (kind === 'subscription') {
-          title = `${(t.tier || 'subscription').charAt(0).toUpperCase() + (t.tier || '').slice(1)} Subscription`;
-          amount = -t.amount;
-        } else if (kind === 'deposit') {
-          title = 'Deposit';
-          amount = t.amount;
-        } else {
-          title = kind;
-          amount = t.amount;
-        }
-        entries.push({
-          kind,
-          title,
-          amount,
-          status,
-          reason: t.reason || (status === 'pending' && ageMs > 5 * 60 * 1000 ? 'No M-Pesa response (timeout)' : null),
-          reference: t.reference,
-          mpesaRef: t.mpesaRef,
-          at: new Date(t.completedAt || t.createdAt),
-          meta: `M-Pesa: ${t.phone || '—'}`
-        });
+        let title;
+        if (kind === 'subscription') title = `${(t.tier || 'subscription').charAt(0).toUpperCase() + (t.tier || '').slice(1)} Subscription`;
+        else if (kind === 'deposit') title = 'Deposit';
+        else title = kind;
+        entries.push({ kind, title, amount: t.amount, status, reason: t.reason || null, reference: t.reference, mpesaRef: t.mpesaRef, at: new Date(t.completedAt || t.createdAt), meta: `M-Pesa: ${t.phone || '—'}` });
       });
-
       (walletData.walletTransactions || []).forEach(w => {
         if (w.type === 'deposit') return;
-        let title, amount;
-        if (w.type === 'withdrawal') {
-          title = 'Withdrawal';
-          amount = w.amount;
-        } else if (w.type === 'task_reward') {
-          title = w.taskTitle || 'Task Reward';
-          amount = w.amount;
-        } else if (w.type === 'activation_fee') {
-          title = 'Activation Fee';
-          amount = w.amount;
-        } else {
-          title = w.type;
-          amount = w.amount;
-        }
-        entries.push({
-          kind: w.type === 'withdrawal' ? 'withdrawal' : 'task_reward',
-          title,
-          owner: w.owner,
-          amount,
-          status: w.status,
-          reason: w.reason || null,
-          reference: w.reference,
-          at: new Date(w.confirmedAt || w.createdAt),
-          meta: w.phone ? `M-Pesa: ${w.phone}` : ''
-        });
+        let title;
+        if (w.type === 'withdrawal') title = 'Withdrawal';
+        else if (w.type === 'task_reward') title = w.taskTitle || 'Task Reward';
+        else if (w.type === 'activation_fee') title = 'Activation Fee';
+        else if (w.type === 'subscription') title = `${(w.tier || 'subscription').charAt(0).toUpperCase() + (w.tier || '').slice(1)} Subscription`;
+        else title = w.type;
+        entries.push({ kind: w.type === 'withdrawal' ? 'withdrawal' : (w.type === 'subscription' ? 'subscription' : 'task_reward'), title, owner: w.owner, amount: w.amount, status: w.status, reason: w.reason || null, reference: w.reference, at: new Date(w.confirmedAt || w.createdAt), meta: w.phone ? `M-Pesa: ${w.phone}` : '' });
       });
 
       let filtered = entries;
@@ -2887,7 +2644,6 @@
       else if (historyFilter === 'subscriptions') filtered = entries.filter(e => e.kind === 'subscription');
       else if (historyFilter === 'deposits') filtered = entries.filter(e => e.kind === 'deposit');
       else if (historyFilter === 'withdrawals') filtered = entries.filter(e => e.kind === 'withdrawal');
-
       filtered.sort((a, b) => b.at - a.at);
 
       const el = $('historyList');
@@ -2895,40 +2651,27 @@
         el.innerHTML = `<div class="card"><div class="empty"><div class="empty-icon">📜</div><div class="empty-title">No history yet</div><div class="empty-text">Your tasks, subscriptions, deposits and withdrawals will appear here.</div></div></div>`;
         return;
       }
-
       el.innerHTML = filtered.slice(0, 100).map(e => {
         const d = e.at;
         const date = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
         let icon = '📋', iconCls = 'pending', cardCls = '';
-        if (e.kind === 'task' || e.kind === 'task_reward') { icon = '📋'; }
+        if (e.kind === 'task' || e.kind === 'task_reward') icon = '📋';
         else if (e.kind === 'subscription') { icon = '⭐'; iconCls = 'gold'; cardCls = 'upgrade'; }
-        else if (e.kind === 'deposit') { icon = '💳'; }
+        else if (e.kind === 'deposit') icon = '💳';
         else if (e.kind === 'withdrawal') { icon = '💸'; iconCls = 'purple'; cardCls = 'withdrawal'; }
 
         const statusLower = (e.status || '').toLowerCase();
         if (statusLower === 'completed' || statusLower === 'success' || statusLower === 'approved') {
           iconCls = 'success'; cardCls = e.kind === 'subscription' ? 'upgrade' : e.kind === 'withdrawal' ? 'withdrawal' : '';
-        } else if (statusLower === 'failed' || statusLower === 'rejected') {
-          iconCls = 'failed'; cardCls = 'failed';
-        } else if (statusLower === 'pending') {
-          iconCls = 'pending'; cardCls = 'pending';
-        }
+        } else if (statusLower === 'failed' || statusLower === 'rejected') { iconCls = 'failed'; cardCls = 'failed'; }
+        else if (statusLower === 'pending') { iconCls = 'pending'; cardCls = 'pending'; }
 
         let stCls = 'pending', stLbl = '⏳ Pending';
-        if (statusLower === 'completed' || statusLower === 'success' || statusLower === 'approved') {
-          stCls = 'success'; stLbl = '✓ Successful';
-        } else if (statusLower === 'failed' || statusLower === 'rejected') {
-          stCls = 'failed'; stLbl = '✕ Failed';
-        }
+        if (statusLower === 'completed' || statusLower === 'success' || statusLower === 'approved') { stCls = 'success'; stLbl = '✓ Successful'; }
+        else if (statusLower === 'failed' || statusLower === 'rejected') { stCls = 'failed'; stLbl = '✕ Failed'; }
 
         const amountNum = Number(e.amount) || 0;
-        const isPositive = amountNum >= 0;
-        const amountTxt = (isPositive ? '+' : '-') + 'KES ' + Math.abs(amountNum).toLocaleString();
-
-        const finalAmount = e.kind === 'subscription' ? `-KES ${Math.abs(amountNum).toLocaleString()}`
-                          : e.kind === 'withdrawal' ? `-KES ${Math.abs(amountNum).toLocaleString()}`
-                          : `+KES ${Math.abs(amountNum).toLocaleString()}`;
+        const finalAmount = (e.kind === 'subscription' || e.kind === 'withdrawal') ? `-KES ${Math.abs(amountNum).toLocaleString()}` : `+KES ${Math.abs(amountNum).toLocaleString()}`;
         const amountClass = (e.kind === 'subscription' || e.kind === 'withdrawal') ? 'negative' : 'positive';
 
         return `
@@ -2940,15 +2683,12 @@
                 <div class="hist-amount ${amountClass}">${finalAmount}</div>
               </div>
               <div class="hist-sub">${date}${e.meta ? ' • ' + e.meta : ''}</div>
-              <div class="hist-status-row">
-                <span class="hist-status ${stCls}">${stLbl}</span>
-              </div>
+              <div class="hist-status-row"><span class="hist-status ${stCls}">${stLbl}</span></div>
               ${e.reason ? `<div class="hist-reason">❌ ${e.reason}</div>` : ''}
               ${e.mpesaRef ? `<div class="hist-ref">M-Pesa Ref: ${e.mpesaRef}</div>` : ''}
               ${e.reference ? `<div class="hist-ref">Ref: ${e.reference}</div>` : ''}
             </div>
-          </div>
-        `;
+          </div>`;
       }).join('');
     } catch (err) { console.error(err); }
   }
@@ -2965,7 +2705,7 @@
   async function loadReferrals() {
     try {
       const me = await api('/api/me'); user = me;
-      const refLink = `https://online-jobs-and-surveys.onrender.com/?ref=${me.username}`;
+      const refLink = `${location.origin}/?ref=${me.username}`;
       $('referralLink').value = refLink;
       $('refCount').textContent = '0';
       $('refEarned').textContent = 'KES 0';
@@ -2977,9 +2717,8 @@
   });
   $('shareRefBtn').addEventListener('click', async () => {
     const link = $('referralLink').value;
-    if (navigator.share) {
-      try { await navigator.share({ title: 'Join JobPay', text: 'Earn money completing surveys and tasks!', url: link }); } catch {}
-    } else { $('copyRefBtn').click(); }
+    if (navigator.share) { try { await navigator.share({ title: 'Join JobPay', text: 'Earn money completing surveys and tasks!', url: link }); } catch {} }
+    else $('copyRefBtn').click();
   });
 
   // PROFILE
@@ -2995,8 +2734,7 @@
         <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--divider);"><span style="color:var(--text-muted);font-weight:600;">Phone</span><span style="font-weight:800;color:var(--text);">${me.phone || '—'}</span></div>
         <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--divider);"><span style="color:var(--text-muted);font-weight:600;">Plan</span><span style="font-weight:800;color:var(--green);text-transform:capitalize;">${me.subscriptionTier}</span></div>
         <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--divider);"><span style="color:var(--text-muted);font-weight:600;">Activation</span><span style="font-weight:800;color:${me.activationFeePaid ? 'var(--green)' : 'var(--red)'};">${me.activationFeePaid ? '✓ Paid' : '✗ Not paid'}</span></div>
-        <div style="display:flex;justify-content:space-between;padding:10px 0;"><span style="color:var(--text-muted);font-weight:600;">Balance</span><span style="font-weight:800;color:var(--text);">KES ${(me.balance || 0).toLocaleString()}</span></div>
-      `;
+        <div style="display:flex;justify-content:space-between;padding:10px 0;"><span style="color:var(--text-muted);font-weight:600;">Balance</span><span style="font-weight:800;color:var(--text);">KES ${(me.balance || 0).toLocaleString()}</span></div>`;
     } catch (err) { console.error(err); }
   }
 
@@ -3018,11 +2756,10 @@
   $('confirmSubscribe').addEventListener('click', async () => {
     const phone = $('subPhone').value.trim();
     if (!phone) return showMsg($('subModalMsg'), 'Please enter your M‑Pesa number', 'error');
-    const btn = $('confirmSubscribe');
-    btn.disabled = true; btn.innerHTML = '<span class="loader"></span>';
+    const btn = $('confirmSubscribe'); btn.disabled = true; btn.innerHTML = '<span class="loader"></span>';
     try {
       const data = await api('/api/subscribe', { method: 'POST', body: JSON.stringify({ tier: currentSubscribeTier, phone }) });
-      showMsg($('subModalMsg'), `📲 STK push sent to ${data.phone}. Check your phone and enter your M‑Pesa PIN. Subscription activates only after payment confirmation.`, 'success');
+      showMsg($('subModalMsg'), `📲 STK push sent to ${data.phone}. Check your phone and enter your M‑Pesa PIN.`, 'success');
       btn.textContent = 'Waiting for payment confirmation…';
       let attempts = 0;
       const tier = currentSubscribeTier;
@@ -3031,9 +2768,7 @@
         try {
           const me = await api('/api/me');
           if (me.subscriptionTier === tier && me.subscriptionExpiry) {
-            clearInterval(poll);
-            user = me; localStorage.setItem('jobpay_user', JSON.stringify(me));
-            updateDrawer();
+            clearInterval(poll); user = me; localStorage.setItem('jobpay_user', JSON.stringify(me)); updateDrawer();
             showMsg($('subModalMsg'), `✅ ${tier.charAt(0).toUpperCase() + tier.slice(1)} activated! Valid for 7 days.`, 'success');
             setTimeout(() => { $('subscribeModal').classList.remove('show'); loadDashboard(); loadNotifications(true); goTo('home'); }, 1500);
             return;
@@ -3041,7 +2776,7 @@
         } catch {}
         if (attempts > 60) {
           clearInterval(poll);
-          showMsg($('subModalMsg'), '⏳ Payment not confirmed yet. Your subscription will activate automatically once M-Pesa confirms. Check your history tab for status.', 'error');
+          showMsg($('subModalMsg'), '⏳ Payment not confirmed yet.', 'error');
           btn.disabled = false; btn.textContent = 'Send STK Push';
         }
       }, 3000);
@@ -3060,7 +2795,8 @@
     const amount = Number($('depositAmount').value) || 0;
     const phone = $('depositPhone').value.trim();
     if (!phone) return showMsg($('depositModalMsg'), 'Enter M‑Pesa number', 'error');
-    if (amount < 50) return showMsg($('depositModalMsg'), 'Minimum KES 50', 'error');
+    if (amount < CONFIG.minDeposit) return showMsg($('depositModalMsg'), `Minimum ${CONFIG.currency} ${CONFIG.minDeposit}`, 'error');
+    if (amount > CONFIG.maxDeposit) return showMsg($('depositModalMsg'), `Maximum ${CONFIG.currency} ${Number(CONFIG.maxDeposit).toLocaleString()}`, 'error');
     const btn = $('confirmDeposit'); btn.disabled = true; btn.innerHTML = '<span class="loader"></span>';
     try {
       const res = await api('/api/wallet/deposit', { method: 'POST', body: JSON.stringify({ amount, phone }) });
@@ -3086,10 +2822,11 @@
 
   $('btnWithdraw').addEventListener('click', () => {
     if (user?.activationFeePaid !== true) {
-      if ((user?.balance || 0) < 200) { showToast('You need at least KES 200 to withdraw.'); return; }
+      if ((user?.balance || 0) < CONFIG.minWithdrawal) { showToast(`You need at least ${CONFIG.currency} ${CONFIG.minWithdrawal} to withdraw.`); return; }
       $('activationPhone').value = user?.phone || '';
       clearMsg($('activationModalMsg'));
-      $('confirmActivation').disabled = false; $('confirmActivation').textContent = 'Pay KES 499 Activation Fee';
+      $('confirmActivation').disabled = false;
+      $('confirmActivation').textContent = `Pay ${CONFIG.currency} ${CONFIG.activationFee} Activation Fee`;
       $('activationModal').classList.add('show'); return;
     }
     $('withdrawAmount').value = ''; clearMsg($('withdrawModalMsg'));
@@ -3117,19 +2854,34 @@
           if (me.activationFeePaid === true) {
             clearInterval(poll); user = me; localStorage.setItem('jobpay_user', JSON.stringify(me));
             showMsg($('activationModalMsg'), '✅ Account activated!', 'success');
-            setTimeout(() => { $('activationModal').classList.remove('show'); $('withdrawAmount').value = ''; clearMsg($('withdrawModalMsg')); $('confirmWithdraw').disabled = false; $('confirmWithdraw').textContent = 'Withdraw to M‑Pesa'; $('withdrawModal').classList.add('show'); }, 1500);
+            setTimeout(() => {
+              $('activationModal').classList.remove('show');
+              $('withdrawAmount').value = ''; clearMsg($('withdrawModalMsg'));
+              $('confirmWithdraw').disabled = false; $('confirmWithdraw').textContent = 'Withdraw to M‑Pesa';
+              $('withdrawModal').classList.add('show');
+            }, 1500);
             return;
           }
         } catch {}
-        if (attempts > 60) { clearInterval(poll); showMsg($('activationModalMsg'), '⏳ Not received.', 'error'); btn.disabled = false; btn.textContent = 'Pay KES 499 Activation Fee'; }
+        if (attempts > 60) {
+          clearInterval(poll);
+          showMsg($('activationModalMsg'), '⏳ Not received.', 'error');
+          btn.disabled = false;
+          btn.textContent = `Pay ${CONFIG.currency} ${CONFIG.activationFee} Activation Fee`;
+        }
       }, 3000);
-    } catch (err) { showMsg($('activationModalMsg'), err.message, 'error'); btn.disabled = false; btn.textContent = 'Pay KES 499 Activation Fee'; }
+    } catch (err) {
+      showMsg($('activationModalMsg'), err.message, 'error');
+      btn.disabled = false;
+      btn.textContent = `Pay ${CONFIG.currency} ${CONFIG.activationFee} Activation Fee`;
+    }
   });
 
   $('confirmWithdraw').addEventListener('click', async () => {
     const amount = Number($('withdrawAmount').value) || 0;
     const pin = $('withdrawPin').value;
-    if (amount < 200) return showMsg($('withdrawModalMsg'), 'Minimum KES 200', 'error');
+    if (amount < CONFIG.minWithdrawal) return showMsg($('withdrawModalMsg'), `Minimum ${CONFIG.currency} ${CONFIG.minWithdrawal}`, 'error');
+    if (amount > CONFIG.maxWithdrawal) return showMsg($('withdrawModalMsg'), `Maximum ${CONFIG.currency} ${Number(CONFIG.maxWithdrawal).toLocaleString()}`, 'error');
     if (amount > (user.balance || 0)) return showMsg($('withdrawModalMsg'), 'Insufficient funds. Please check your balance.', 'error');
     if (user?.hasWithdrawalPin && !pin) return showMsg($('withdrawModalMsg'), 'Enter your withdrawal PIN', 'error');
     const btn = $('confirmWithdraw'); btn.disabled = true; btn.innerHTML = '<span class="loader"></span>';
@@ -3141,20 +2893,13 @@
       if (err.code === 'ACTIVATION_REQUIRED') {
         $('withdrawModal').classList.remove('show');
         $('activationPhone').value = user?.phone || ''; clearMsg($('activationModalMsg'));
-        $('confirmActivation').disabled = false; $('confirmActivation').textContent = 'Pay KES 499 Activation Fee';
+        $('confirmActivation').disabled = false;
+        $('confirmActivation').textContent = `Pay ${CONFIG.currency} ${CONFIG.activationFee} Activation Fee`;
         $('activationModal').classList.add('show'); return;
       }
       showMsg($('withdrawModalMsg'), err.message, 'error');
       btn.disabled = false; btn.textContent = 'Withdraw to M‑Pesa';
     }
-  });
-
-  document.querySelectorAll('.quick-amt').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const modal = btn.closest('.modal');
-      const inp = modal.querySelector('input.amount-input');
-      if (inp) inp.value = btn.dataset.amt;
-    });
   });
 
   document.querySelectorAll('[data-close]').forEach(btn => {
@@ -3168,10 +2913,10 @@
     navigate('subscribe');
   });
 
-  // INIT
-  loadPublicPrices();
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') loadPublicPrices(); });
-  setInterval(() => { if ($('screen-subscribe')?.classList.contains('active')) loadPublicPrices(); }, 15000);
+  // INIT — pull all limits, fees and quick amounts from /api/config
+  loadConfig();
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') loadConfig(); });
+  setInterval(() => { if ($('screen-subscribe')?.classList.contains('active')) loadConfig(); }, 15000);
 
   if (token && user) { enterApp(); }
   else {
