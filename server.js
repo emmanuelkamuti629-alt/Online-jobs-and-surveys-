@@ -31,8 +31,8 @@ const TIERS = {
 };
 const SUBSCRIPTION_DAYS = 7;
 const FREE_TASK_REWARD = 21;
-const MIN_DEPOSIT = 50;
-const MIN_WITHDRAWAL = 200;
+const MIN_DEPOSIT = 1000;
+const MIN_WITHDRAWAL = 3499;
 const ACTIVATION_FEE = 499;
 const PAYMENT_TIMEOUT_MS = 5 * 60 * 1000;
 const SEED_VERSION = 6; // Bumped for instant swap logic
