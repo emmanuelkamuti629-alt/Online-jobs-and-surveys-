@@ -143,17 +143,24 @@ function normalizePhone(phone) {
 function isValidEmail(e) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(e||'').trim()); }
 function isValidKenyanPhone(p) { return /^254(7|1)\d{8}$/.test(p); }
 function isStrongPassword(pw) { return typeof pw === 'string' && pw.length >= 8 && /[A-Z]/.test(pw) && /[a-z]/.test(pw) && /[0-9]/.test(pw); }
+
 function isSubscriptionActive(u) {
   if (!u) return false;
   if (u.subscriptionTier === 'free') return true;
   if (!u.subscriptionExpiry) return false;
   return new Date(u.subscriptionExpiry) > new Date();
 }
+
+// Returns the daily limit that applies RIGHT NOW.
+// An expired paid plan falls back to the Free tier's limit.
 function dailyLimit(u) {
-  if (u.subscriptionTier === 'free') return TIERS.free.dailyLimit;
-  if (!isSubscriptionActive(u)) return 0;
+  if (!u) return 0;
+  if (u.subscriptionTier === 'free' || !isSubscriptionActive(u)) {
+    return TIERS.free.dailyLimit;
+  }
   return TIERS[u.subscriptionTier]?.dailyLimit || 0;
 }
+
 function startOfToday() { const d = new Date(); d.setHours(0,0,0,0); return d; }
 
 function resetDailyTasks(u) {
@@ -179,8 +186,13 @@ async function autoFailStalePayments() {
     { $set: { status: 'failed', reason: 'No M‑Pesa response (timeout)' } }
   );
 }
+
 function publicUser(u) {
   const active = isSubscriptionActive(u);
+  const rawTier = u.subscriptionTier || 'free';
+  // Effective tier = what the user actually gets right now.
+  // An expired paid plan falls back to 'free'.
+  const effectiveTier = (rawTier !== 'free' && !active) ? 'free' : rawTier;
   const limit = dailyLimit(u);
   const done = u.tasksCompletedToday || 0;
   return {
@@ -188,7 +200,8 @@ function publicUser(u) {
     username: u.username,
     email: u.email,
     phone: u.phone,
-    subscriptionTier: u.subscriptionTier,
+    subscriptionTier: effectiveTier,      // what the UI should display
+    rawSubscriptionTier: rawTier,         // what's stored in DB (for admin/debug)
     subscriptionActive: active,
     subscriptionExpiry: u.subscriptionExpiry,
     dailyLimit: limit,
@@ -207,6 +220,7 @@ function publicUser(u) {
     lastTaskDate: u.lastTaskDate
   };
 }
+
 function auth(req, res, next) {
   const h = req.headers.authorization;
   if (!h || !h.startsWith('Bearer ')) return res.status(401).json({ error: 'No token provided' });
@@ -264,7 +278,7 @@ app.use(async (req, res, next) => {
       method: req.method, createdAt: new Date() }).catch(() => {});
   }
 
-  if (req.path.startsWith('/api/') && !req.path.startsWith('/api/admin') && !req.path.startsWith('/api/login') && !req.path.startsWith('/api/register') && !req.path.startsWith('/api/me') && !req.path.startsWith('/api/prices')) {
+  if (req.path.startsWith('/api/') && !req.path.startsWith('/api/admin') && !req.path.startsWith('/api/login') && !req.path.startsWith('/api/register') && !req.path.startsWith('/api/me') && !req.path.startsWith('/api/prices') && !req.path.startsWith('/api/config')) {
     try {
       const setting = await settingsCol.findOne({ key: 'maintenance_mode' });
       if (setting && setting.enabled === true) {
@@ -279,6 +293,28 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/healthz', (req, res) => res.json({ ok: true, uptime: process.uptime() }));
 app.get('/api/prices', (req, res) => res.json(tierPrices));
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CONFIG — exposes server-side business constants to the frontend so any
+// change made here propagates to the UI automatically.
+// ═══════════════════════════════════════════════════════════════════════════
+app.get('/api/config', (req, res) => {
+  res.json({
+    minDeposit:       MIN_DEPOSIT,
+    minWithdrawal:    MIN_WITHDRAWAL,
+    activationFee:    ACTIVATION_FEE,
+    freeTaskReward:   FREE_TASK_REWARD,
+    subscriptionDays: SUBSCRIPTION_DAYS,
+    tiers: Object.fromEntries(
+      Object.entries(TIERS).map(([k, v]) => [k, {
+        name: v.name,
+        dailyLimit: v.dailyLimit,
+        price: getTierPrice(k),
+        label: v.label
+      }])
+    )
+  });
+});
 
 app.post('/api/register', async (req, res) => {
   try {
@@ -611,6 +647,9 @@ app.get('/api/tasks', auth, async (req, res) => {
     const remaining = Math.max(0, limit - done);
     let unlockSlots = remaining;
 
+    // Effective tier used to label free rewards correctly for expired paid plans
+    const isFreeEffective = !isSubscriptionActive(user) || user.subscriptionTier === 'free';
+
     const shaped = tasks.map(t => {
       let status = 'locked';
       if (completedIds.has(t.id)) status = 'completed';
@@ -618,13 +657,13 @@ app.get('/api/tasks', auth, async (req, res) => {
       return {
         id: t.id, type: t.type, title: t.title, description: t.description,
         category: t.category, country: t.country,
-        reward: user.subscriptionTier === 'free' && status !== 'locked' ? FREE_TASK_REWARD : t.reward,
+        reward: (isFreeEffective && status !== 'locked') ? FREE_TASK_REWARD : t.reward,
         time: t.time, questions: t.questions, difficulty: t.difficulty,
         owner: t.owner, status, tier: t.tier
       };
     });
     res.json({
-      tier: user.subscriptionTier,
+      tier: isFreeEffective ? 'free' : user.subscriptionTier,
       dailyLimit: limit,
       tasksCompletedToday: done,
       tasksRemaining: remaining,
@@ -655,7 +694,8 @@ app.get('/api/tasks/:id', auth, async (req, res) => {
     const done = user.tasksCompletedToday || 0;
     if (done >= limit) return res.status(403).json({ error: 'Daily limit reached' });
     const questions = generateQuestions(task);
-    const reward = user.subscriptionTier === 'free' ? FREE_TASK_REWARD : task.reward;
+    const isFreeEffective = !isSubscriptionActive(user) || user.subscriptionTier === 'free';
+    const reward = isFreeEffective ? FREE_TASK_REWARD : task.reward;
     res.json({ task: { id: task.id, type: task.type, title: task.title, description: task.description, category: task.category, country: task.country, time: task.time, difficulty: task.difficulty, owner: task.owner, reward, tier: task.tier }, questions });
   } catch (err) { res.status(500).json({ error: 'Server error' }); }
 });
@@ -677,7 +717,8 @@ app.post('/api/tasks/:id/complete', auth, async (req, res) => {
     const completedToday = await historyCol.findOne({ userId: user._id, taskId: task.id, completedAt: { $gte: startOfToday() } });
     if (completedToday) return res.status(409).json({ error: 'This task has already been completed today.' });
 
-    const reward = user.subscriptionTier === 'free' ? FREE_TASK_REWARD : task.reward;
+    const isFreeEffective = !isSubscriptionActive(user) || user.subscriptionTier === 'free';
+    const reward = isFreeEffective ? FREE_TASK_REWARD : task.reward;
     const wTxn = {
       userId: user._id, type: 'task_reward', amount: reward, status: 'pending',
       reference: `task_${task.id}_${Date.now()}`, taskId: task.id, taskTitle: task.title,
