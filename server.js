@@ -1,5 +1,5 @@
 // =============================================================================
-//  JobPay — server.js  (MongoDB + PayHero)   v3 — legacy-compatible
+//  JobPay — server.js  (MongoDB + PayHero)   v4 — email OR username login
 // =============================================================================
 
 require('dotenv').config();
@@ -10,7 +10,7 @@ const jwt      = require('jsonwebtoken');
 const bcrypt   = require('bcryptjs');
 const crypto   = require('crypto');
 const axios    = require('axios');
-const { MongoClient } = require('mongodb');
+const { MongoClient, ObjectId } = require('mongodb');
 const path     = require('path');
 
 const app = express();
@@ -28,7 +28,7 @@ const PAYHERO_CHANNEL_ID   = Number(process.env.PAYHERO_CHANNEL_ID) || 0;
 const PAYHERO_CALLBACK_URL = process.env.PAYHERO_CALLBACK_URL || '';
 
 // =============================================================================
-//  CONFIG
+//  CONFIG — single source of truth for the whole UI
 // =============================================================================
 const APP_CONFIG = {
   currency: 'KES',
@@ -78,9 +78,10 @@ async function connectDB() {
     tickets:       db.collection('tickets'),
     loginHistory:  db.collection('loginHistory'),
   };
-  // Indexes (unique email uses case-insensitive collation for legacy safety)
+  // Indexes (unique email uses case-insensitive collation)
   await Promise.all([
     collections.users.createIndex({ email: 1 },  { unique: true, collation: { locale: 'en', strength: 2 } }),
+    collections.users.createIndex({ username: 1 }, { unique: true, collation: { locale: 'en', strength: 2 } }),
     collections.users.createIndex({ id: 1 },     { unique: true, sparse: true }),
     collections.walletTx.createIndex({ userId: 1, createdAt: -1 }),
     collections.payTx.createIndex({ userId: 1, createdAt: -1 }),
@@ -251,18 +252,35 @@ function verifyPassword(plain, user) {
   return false;
 }
 
-/** Case-insensitive email lookup (works with or without the collation index). */
-async function findUserByEmail(email) {
-  if (!email) return null;
-  const normalized = String(email).trim().toLowerCase();
-  // Try exact (fast path — works if migration already lowercased)
-  let user = await collections.users.findOne({ email: normalized });
+/**
+ * Case-insensitive lookup by EMAIL or USERNAME.
+ * Order: exact lowercase email → exact username → case-insensitive email → case-insensitive username.
+ */
+async function findUserByEmailOrUsername(identifier) {
+  if (!identifier) return null;
+  const raw = String(identifier).trim();
+  const lower = raw.toLowerCase();
+  const escaped = raw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  // 1. Exact lowercase email
+  let user = await collections.users.findOne({ email: lower });
   if (user) return user;
-  // Fall back to case-insensitive regex
-  const escaped = normalized.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  // 2. Exact username
+  user = await collections.users.findOne({ username: raw });
+  if (user) return user;
+
+  // 3. Case-insensitive email
   user = await collections.users.findOne({ email: { $regex: `^${escaped}$`, $options: 'i' } });
+  if (user) return user;
+
+  // 4. Case-insensitive username
+  user = await collections.users.findOne({ username: { $regex: `^${escaped}$`, $options: 'i' } });
   return user;
 }
+
+// Backward-compat alias
+const findUserByEmail = (email) => findUserByEmailOrUsername(email);
 
 const signToken = (u) => jwt.sign(
   { uid: u.id, oid: String(u._id) },
@@ -285,10 +303,11 @@ async function auth(req, res, next) {
   try {
     let user = null;
     if (payload.uid !== undefined) user = await collections.users.findOne({ id: payload.uid });
-    if (!user && payload.oid)      user = await collections.users.findOne({ _id: new (require('mongodb').ObjectId)(payload.oid) });
+    if (!user && payload.oid) {
+      try { user = await collections.users.findOne({ _id: new ObjectId(payload.oid) }); } catch {}
+    }
     if (!user) return res.status(401).json({ error: 'User not found' });
 
-    // Safety: ensure user has numeric id (from migration)
     if (typeof user.id !== 'number') {
       const newId = await nextSeq('users');
       await collections.users.updateOne({ _id: user._id }, { $set: { id: newId } });
@@ -407,8 +426,14 @@ app.post('/api/register', async (req, res) => {
     if (!(password.length >= 8 && /[A-Z]/.test(password) && /[a-z]/.test(password) && /[0-9]/.test(password)))
       return res.status(400).json({ error: 'Password must be 8+ chars with uppercase, lowercase, and a number' });
 
-    const existing = await findUserByEmail(email);
-    if (existing) return res.status(400).json({ error: 'Email already registered' });
+    const existingEmail = await findUserByEmailOrUsername(email);
+    if (existingEmail && existingEmail.email === email.toLowerCase()) {
+      return res.status(400).json({ error: 'Email already registered' });
+    }
+    const existingUsername = await findUserByEmailOrUsername(username);
+    if (existingUsername && existingUsername.username === username) {
+      return res.status(400).json({ error: 'Username already taken' });
+    }
 
     const id = await nextSeq('users');
     const user = {
@@ -434,27 +459,36 @@ app.post('/api/register', async (req, res) => {
     res.json({ token: signToken(user), user: publicUser(user) });
   } catch (err) {
     console.error('Register error:', err);
+    if (err.code === 11000) {
+      return res.status(400).json({ error: 'Email or username already registered' });
+    }
     res.status(500).json({ error: 'Registration failed' });
   }
 });
 
+// Login — accepts `identifier` OR `email` OR `username`
 app.post('/api/login', async (req, res) => {
   try {
-    const { email, password } = req.body || {};
-    if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
+    const body = req.body || {};
+    const identifier = (body.identifier || body.email || body.username || '').toString().trim();
+    const password   = body.password;
 
-    const user = await findUserByEmail(email);
+    if (!identifier || !password) {
+      return res.status(400).json({ error: 'Email or username and password required' });
+    }
+
+    const user = await findUserByEmailOrUsername(identifier);
     if (!user) {
-      console.warn(`🔐 Login fail — email not found: ${email}`);
-      return res.status(400).json({ error: 'Invalid email or password' });
-    }
-    if (!verifyPassword(password, user)) {
-      console.warn(`🔐 Login fail — wrong password for: ${user.email}`);
-      await recordLogin(user.id, req, false);
-      return res.status(400).json({ error: 'Invalid email or password' });
+      console.warn(`🔐 Login fail — no user matches: ${identifier}`);
+      return res.status(400).json({ error: 'Invalid email/username or password' });
     }
 
-    // Ensure user has numeric id (in case migration hasn't run yet)
+    if (!verifyPassword(password, user)) {
+      console.warn(`🔐 Login fail — wrong password for: ${user.email || user.username}`);
+      await recordLogin(user.id, req, false);
+      return res.status(400).json({ error: 'Invalid email/username or password' });
+    }
+
     if (typeof user.id !== 'number') {
       const newId = await nextSeq('users');
       await collections.users.updateOne({ _id: user._id }, { $set: { id: newId } });
@@ -844,9 +878,16 @@ app.put('/api/user/profile', auth, async (req, res) => {
   try {
     const { username, email, phone } = req.body || {};
     const set = {};
-    if (username) set.username = username;
+    if (username && username !== req.user.username) {
+      const dup = await collections.users.findOne({
+        username: { $regex: `^${username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' },
+        id: { $ne: req.user.id },
+      });
+      if (dup) return res.status(400).json({ error: 'Username already taken' });
+      set.username = username;
+    }
     if (email && email.toLowerCase() !== req.user.email) {
-      const dup = await findUserByEmail(email);
+      const dup = await findUserByEmailOrUsername(email);
       if (dup && dup.id !== req.user.id) return res.status(400).json({ error: 'Email in use' });
       set.email = email.toLowerCase();
     }
@@ -953,7 +994,7 @@ app.get('*', (req, res, next) => {
 (async () => {
   try {
     await connectDB();
-    await migrateLegacyUsers();   // 👈 the magic — fixes old users on every boot
+    await migrateLegacyUsers();
     await seedTasks();
     app.listen(PORT, () => console.log(`✅ JobPay running → http://localhost:${PORT}`));
   } catch (err) {
