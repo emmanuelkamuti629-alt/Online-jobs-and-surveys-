@@ -237,7 +237,7 @@
     font-size:11.5px; font-weight:900; color:var(--green); white-space:nowrap;
   }
 
-  /* NEW DEBIT CARD DESIGN (IMAGE 1) */
+  /* DEBIT CARD */
   .debit-card {
     background: var(--debit-bg);
     border-radius: 20px; padding: 20px; color: white;
@@ -274,8 +274,6 @@
   .card-bottom { display: flex; justify-content: space-between; align-items: center; position: relative; z-index: 1; }
   .withdraw-link { background: none; border: none; color: white; font-weight: 800; font-size: 14px; display: flex; align-items: center; gap: 4px; cursor: pointer; font-family: inherit; }
   .visa-logo { font-size: 24px; font-weight: 900; font-style: italic; letter-spacing: -1px; color: #F5A623; display: flex; align-items: center; }
-
-  /* END DEBIT CARD DESIGN */
 
   /* Quick actions */
   .quick-actions { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:20px; }
@@ -395,7 +393,6 @@
   .task-type-tag.task   { background:var(--green-light); color:var(--green-dark); }
   body.theme-dark .task-type-tag.survey { background:rgba(33,150,243,0.18); color:#90CAF9; }
   body.theme-dark .task-type-tag.task   { background:rgba(67,176,42,0.18); color:#A5D6A7; }
-  /* Tier specific tags */
   .task-type-tag.free { background:#E8F7E4; color:#2E7D1E; }
   .task-type-tag.classic { background:#E3F2FD; color:#0D47A1; }
   .task-type-tag.premium { background:#FFF8E1; color:#8D6E00; }
@@ -483,7 +480,7 @@
   .btn-sm { padding:10px 14px; font-size:13px; border-radius:10px; }
   .btn-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
 
-  /* NEW WALLET CARD DESIGN (IMAGE 2) */
+  /* Wallet card */
   .wallet-card-top {
     background: var(--debit-bg);
     border-radius: 20px; padding: 20px; color: white;
@@ -527,7 +524,6 @@
   }
   .mpesa-btn:active { transform: scale(0.97); }
   .mpesa-btn-icon { width: 36px; height: 36px; border-radius: 50%; background: white; display: grid; place-items: center; font-size: 18px; color: var(--green); font-weight: 900; }
-  /* END WALLET CARD DESIGN */
 
   /* Auth */
   .auth-tabs { display:grid; grid-template-columns:1fr 1fr; gap:6px; background:var(--stat-icon-bg); border-radius:12px; padding:4px; margin-bottom:18px; }
@@ -1406,6 +1402,7 @@
       <div class="faq-item"><div class="faq-q">How do withdrawals work?</div><div class="faq-a" id="faqWithdrawAnswer">You can withdraw once your Available balance meets the minimum threshold. Your first withdrawal requires a one-time activation fee.</div></div>
       <div class="faq-item"><div class="faq-q">Why was my task rejected?</div><div class="faq-a">Tasks can be rejected if the answers are incomplete or contradictory. You'll see the reason in your History tab.</div></div>
       <div class="faq-item"><div class="faq-q">How do referrals work?</div><div class="faq-a">Share your referral link with friends. When they sign up and complete their first paid task, you earn a reward.</div></div>
+      <div class="faq-item"><div class="faq-q">My plan expired — what happens?</div><div class="faq-a">When a paid plan expires, your account automatically falls back to the Free tier: you keep 2 free tasks per day and can re-subscribe any time from the Upgrade tab.</div></div>
     </div>
     <div class="settings-group">
       <div class="settings-group-title">Submit a Ticket</div>
@@ -1930,6 +1927,7 @@
     else av.textContent = (user.username || 'U').charAt(0).toUpperCase();
     $('drawerName').textContent = user.username || 'User';
     $('drawerHandle').textContent = '@' + (user.username || 'user');
+    // subscriptionTier from server is already 'free' if the plan expired
     const tier = user.subscriptionTier || 'free';
     const badge = $('drawerTier');
     badge.textContent = tier.charAt(0).toUpperCase() + tier.slice(1);
@@ -3069,11 +3067,14 @@
       $('profileBigName').textContent = me.username || 'User';
       $('profileBigHandle').textContent = '@' + (me.username || 'user');
       setProfilePhotoUI(me.photo);
+      const expiredNote = (me.rawSubscriptionTier && me.rawSubscriptionTier !== me.subscriptionTier)
+        ? ` <span style="color:var(--text-muted);font-weight:600;">(expired ${me.rawSubscriptionTier})</span>`
+        : '';
       $('profileBody').innerHTML = `
         <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--divider);"><span style="color:var(--text-muted);font-weight:600;">Username</span><span style="font-weight:800;color:var(--text);">${me.username}</span></div>
         <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--divider);"><span style="color:var(--text-muted);font-weight:600;">Email</span><span style="font-weight:800;font-size:13px;color:var(--text);">${me.email}</span></div>
         <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--divider);"><span style="color:var(--text-muted);font-weight:600;">Phone</span><span style="font-weight:800;color:var(--text);">${me.phone || '—'}</span></div>
-        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--divider);"><span style="color:var(--text-muted);font-weight:600;">Plan</span><span style="font-weight:800;color:var(--green);text-transform:capitalize;">${me.subscriptionTier}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--divider);"><span style="color:var(--text-muted);font-weight:600;">Plan</span><span style="font-weight:800;color:var(--green);text-transform:capitalize;">${me.subscriptionTier}${expiredNote}</span></div>
         <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--divider);"><span style="color:var(--text-muted);font-weight:600;">Activation</span><span style="font-weight:800;color:${me.activationFeePaid ? 'var(--green)' : 'var(--red)'};">${me.activationFeePaid ? '✓ Paid' : '✗ Not paid'}</span></div>
         <div style="display:flex;justify-content:space-between;padding:10px 0;"><span style="color:var(--text-muted);font-weight:600;">Balance</span><span style="font-weight:800;color:var(--text);">KES ${(me.balance || 0).toLocaleString()}</span></div>
       `;
@@ -3270,4 +3271,4 @@
 })();
 </script>
 </body>
-          </html>
+  </html>
