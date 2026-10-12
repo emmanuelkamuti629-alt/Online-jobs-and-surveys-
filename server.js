@@ -8,6 +8,15 @@ const cors = require('cors');
 const crypto = require('crypto');
 const path = require('path');
 
+// ═══════════════════════════════════════════════════════════════════════════
+// TASK / SURVEY CONTENT  →  lives in tasks.js
+// ═══════════════════════════════════════════════════════════════════════════
+const {
+  seedTasks: seedTasksRaw,
+  generateQuestions,
+  getDailySeed
+} = require('./tasks');
+
 const app = express();
 app.set('trust proxy', 1);
 app.use(cors());
@@ -30,12 +39,11 @@ const TIERS = {
   golden:  { name:'Golden',  dailyLimit:50, price:450, label:'50+ tasks / day' }
 };
 const SUBSCRIPTION_DAYS = 7;
-const FREE_TASK_REWARD = 21;
-const MIN_DEPOSIT = 1000;
-const MIN_WITHDRAWAL = 3499;
-const ACTIVATION_FEE = 499;
+const FREE_TASK_REWARD  = 21;
+const MIN_DEPOSIT       = 1000;
+const MIN_WITHDRAWAL    = 3499;
+const ACTIVATION_FEE    = 499;
 const PAYMENT_TIMEOUT_MS = 5 * 60 * 1000;
-const SEED_VERSION = 6; // Bumped for instant swap logic
 
 let tierPrices = { classic: 200, premium: 350, golden: 450 };
 function getTierPrice(tier) {
@@ -45,6 +53,9 @@ function getTierPrice(tier) {
 
 let db, usersCol, txnsCol, tasksCol, walletCol, historyCol, metaCol,
     visitsCol, loginAttemptsCol, settingsCol, ticketsCol, notificationsCol;
+
+// Wrapper so the rest of this file can keep calling seedTasks(true) / seedTasks(false)
+const seedTasks = (force = false) => seedTasksRaw({ tasksCol, metaCol }, force);
 
 async function connectDB() {
   if (!process.env.MONGODB_URI) throw new Error('MONGODB_URI is not set');
@@ -69,7 +80,7 @@ async function connectDB() {
   await walletCol.createIndex({ userId: 1, createdAt: -1 });
   await historyCol.createIndex({ userId: 1, completedAt: -1 });
   await tasksCol.createIndex({ id: 1 }, { unique: true });
-  await tasksCol.createIndex({ batchId: 1 }); 
+  await tasksCol.createIndex({ batchId: 1 });
   await visitsCol.createIndex({ createdAt: -1 });
   await loginAttemptsCol.createIndex({ createdAt: -1 });
   await ticketsCol.createIndex({ userId: 1, createdAt: -1 });
@@ -82,7 +93,7 @@ async function connectDB() {
     await settingsCol.insertOne({ key: 'maintenance_mode', enabled: false, updatedAt: new Date() });
   }
 
-  await seedTasks(true); 
+  await seedTasks(true);
   await loadTierPrices();
   console.log('✅ MongoDB connected');
 }
@@ -98,14 +109,6 @@ async function loadTierPrices() {
   } else {
     await settingsCol.insertOne({ key: 'tier_prices', classic: 200, premium: 350, golden: 450, updatedAt: new Date() });
   }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// DAILY SEED LOGIC
-// ═══════════════════════════════════════════════════════════════════════════
-function getDailySeed() {
-  const d = new Date();
-  return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -126,165 +129,8 @@ async function createNotification(userId, type, title, message, meta = {}) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// SEED (Simulating scraping from various platforms)
+// HELPERS
 // ═══════════════════════════════════════════════════════════════════════════
-const OWNER_NAMES = ['Sarah M.','James K.','Grace W.','David O.','Amina H.','Peter N.','Lucy A.','Brian C.','Faith M.','Kevin R.','Njeri K.','Otieno J.','Wanjiku S.','Hassan A.','Esther M.','Mercy W.','Kimani T.','Achieng O.','Mwangi D.','Zawadi L.'];
-const OWNER_AVATARS = ['👩‍💼','👨‍💼','🧑‍💻','👨‍🔬','👩‍🔬','🧑‍🎓','👨‍🏫','👩‍🏫','🧑‍🎨','👩‍💻','👨‍💻','🧑‍🔧','👨‍⚕️','👩‍⚕️','🧑‍🍳','🧑‍🌾','👩‍🎤','👨‍🎤','🧑‍🚀','👩‍✈️'];
-const OWNER_COUNTRIES = ['Kenya','Kenya','Kenya','Uganda','Tanzania','Rwanda','Kenya'];
-const AVATAR_COLORS = ['#43B02A','#2196F3','#F5A623','#E91E63','#9C27B0','#00BCD4','#FF5722','#795548','#3F51B5','#009688'];
-
-const SURVEY_TOPICS = [
-  'Google Review Verification', 'Instagram Engagement Survey', 'Facebook Ad Feedback', 
-  'YouTube Video Tagging', 'TikTok Trend Analysis', 'Twitter/X Sentiment Study',
-  'LinkedIn Professional Survey', 'WhatsApp Business Feedback', 'Google Maps Location Check',
-  'Amazon Product Review Validation', 'Netflix Content Preference', 'Spotify Playlist Curation',
-  'Uber Ride Experience', 'Airbnb Host Feedback', 'eBay Seller Rating', 
-  'Shopify Store UX Test', 'Reddit Community Poll', 'Pinterest Board Categorization',
-  'Snapchat Filter Feedback', 'Discord Server Moderation', 'Twitch Streamer Interaction'
-];
-
-const TASK_TITLES = [
-  'Verify Google Business Listing', 'Check Website Search Ranking', 'Transcribe YouTube Short',
-  'Label Instagram Reels', 'Rate Facebook Marketplace Item', 'Proofread Social Media Post',
-  'Categorize TikTok Comments', 'Translate X/Twitter Post', 'Moderate Discord Chat',
-  'Review LinkedIn Job Post', 'Test Mobile App UX', 'Compare Flight Prices',
-  'Verify Hotel Reviews', 'Check E-commerce Prices', 'Validate News Article',
-  'Tag Images for AI Training', 'Record Voice Sample for AI', 'Answer Quick Poll',
-  'Map Local Business Location', 'Correct OCR Text from Receipt'
-];
-
-function ownerFor(i) {
-  return {
-    name: OWNER_NAMES[i % OWNER_NAMES.length],
-    avatar: OWNER_AVATARS[i % OWNER_AVATARS.length],
-    color: AVATAR_COLORS[i % AVATAR_COLORS.length],
-    country: OWNER_COUNTRIES[i % OWNER_COUNTRIES.length],
-    rating: (4.5 + ((i * 3) % 5) / 10).toFixed(1)
-  };
-}
-
-function descFor(title, category, country) {
-  const t = {
-    'Google Review Verification':'Help verify the authenticity of Google Business reviews.',
-    'Instagram Engagement Survey':'Share your thoughts on Instagram engagement.',
-    'Facebook Ad Feedback':'Give feedback on Facebook ad campaigns.',
-    'YouTube Video Tagging':'Tag videos correctly for AI training.',
-    'TikTok Trend Analysis':'Analyze current TikTok trends.',
-    'Twitter/X Sentiment Study':'Rate the sentiment of recent X/Twitter posts.',
-    'LinkedIn Professional Survey':'Answer questions about professional networking.',
-    'WhatsApp Business Feedback':'Share your experience with WhatsApp Business.',
-    'Google Maps Location Check':'Verify if a location is accurate on Google Maps.',
-    'Amazon Product Review Validation':'Help validate Amazon product reviews.',
-    'Netflix Content Preference':'Tell us what you like to watch on Netflix.',
-    'Spotify Playlist Curation':'Help categorize songs for Spotify playlists.',
-    'Uber Ride Experience':'Rate your recent Uber ride experience.',
-    'Airbnb Host Feedback':'Give feedback on your Airbnb stay.',
-    'eBay Seller Rating':'Rate an eBay seller based on their profile.',
-    'Shopify Store UX Test':'Test a Shopify store and give UX feedback.',
-    'Reddit Community Poll':'Participate in a Reddit community poll.',
-    'Pinterest Board Categorization':'Categorize images for Pinterest boards.',
-    'Snapchat Filter Feedback':'Give feedback on a new Snapchat filter.',
-    'Discord Server Moderation':'Help moderate a Discord server.',
-    'Twitch Streamer Interaction':'Engage with a Twitch streamer\'s content.'
-  };
-  return t[category] || `Help understand ${category.toLowerCase()} in ${country}.`;
-}
-
-async function seedTasks(force = false) {
-  const meta = await metaCol.findOne({ key: 'task_seed_version' });
-  const todayStr = new Date().toISOString().slice(0, 10);
-  
-  if (!force && meta && meta.version === SEED_VERSION && meta.lastSeedDate === todayStr) {
-    return;
-  }
-
-  console.log('🌱 Generating new tasks (instant swap)...');
-  
-  const newBatchId = Date.now();
-  const newTasks = [];
-  let idCounter = 1;
-
-  for (let i = 0; i < 2000; i++) {
-    const topic = SURVEY_TOPICS[i % SURVEY_TOPICS.length];
-    const country = OWNER_COUNTRIES[i % OWNER_COUNTRIES.length];
-    const owner = ownerFor(i);
-    const title = `${topic} – ${country} #${idCounter}`;
-    const reward = 50 + ((i * 7) % 100); // Min reward 50
-    const tier = ['free', 'classic', 'premium'][i % 3];
-    
-    newTasks.push({ 
-      id: (newBatchId % 1000000) * 10000 + idCounter, 
-      type: i % 2 === 0 ? 'survey' : 'task', 
-      title, 
-      category: topic, 
-      country,
-      description: descFor(title, topic, country), 
-      reward: reward,
-      time: `${3 + (i % 7)} min`, 
-      questions: 10 + (i % 11),
-      difficulty: ['easy','medium','hard'][i % 3], 
-      owner, 
-      tier, 
-      batchId: newBatchId, 
-      createdAt: new Date() 
-    });
-    idCounter++;
-  }
-  
-  // 1. Insert the new tasks first
-  await tasksCol.insertMany(newTasks);
-  console.log(`✅ Inserted ${newTasks.length} new tasks (batch: ${newBatchId})`);
-
-  // 2. Only after the new tasks are safely saved, delete the old ones
-  await tasksCol.deleteMany({ batchId: { $ne: newBatchId } });
-  console.log(`✅ Deleted old tasks.`);
-
-  // 3. Update the meta collection
-  await metaCol.updateOne(
-    { key:'task_seed_version' }, 
-    { $set: { version: SEED_VERSION, lastSeedDate: todayStr, updatedAt: new Date() } }, 
-    { upsert: true }
-  );
-  
-  console.log(`✅ Task refresh complete for ${todayStr}`);
-}
-
-const QT = [
-  { q:'How often do you use {topic} products or services?', o:['Daily','Weekly','Monthly','Rarely or never'] },
-  { q:'How would you rate your overall experience with {topic}?', o:['Very satisfied','Satisfied','Neutral','Dissatisfied'] },
-  { q:'Which age group do you belong to?', o:['18-24','25-34','35-44','45+'] },
-  { q:'Which factor matters most when choosing {topic}?', o:['Price','Quality','Convenience','Brand reputation'] },
-  { q:'How likely are you to recommend {topic} to a friend?', o:['Very likely','Somewhat likely','Neutral','Unlikely'] },
-  { q:'How did you first hear about {topic}?', o:['Social media','Friends/family','Ads','Search engine'] },
-  { q:'What is your preferred payment method?', o:['M‑Pesa','Card','Bank transfer','Cash'] },
-  { q:'Which best describes your employment status?', o:['Employed full‑time','Self‑employed','Student','Unemployed'] },
-  { q:'How much do you typically spend monthly on {topic}?', o:['Under KES 1,000','KES 1,000–5,000','KES 5,000–20,000','Over KES 20,000'] },
-  { q:'How important is {topic} to your daily life?', o:['Very important','Somewhat important','Not very important','Not at all'] },
-  { q:'Which feature of {topic} do you use most?', o:['Mobile app','Website','In‑person','None of these'] },
-  { q:'Would you pay more for a premium version of {topic}?', o:['Definitely','Probably','Probably not','Definitely not'] },
-  { q:'How would you improve {topic}?', o:['Lower prices','Better quality','Faster service','More features'] },
-  { q:'Which region are you located in?', o:['Nairobi','Coast','Rift Valley','Western/Eastern'] },
-  { q:'How many people in your household use {topic}?', o:['Just me','2–3','4–5','6+'] },
-  { q:'How satisfied are you with the price of {topic}?', o:['Very satisfied','Satisfied','Neutral','Not satisfied'] },
-  { q:'What is your gender?', o:['Male','Female','Prefer not to say','Other'] },
-  { q:'How long have you used {topic}?', o:['Less than 6 months','6–12 months','1–3 years','Over 3 years'] },
-  { q:'Which device do you primarily use for {topic}?', o:['Smartphone','Laptop/PC','Tablet','Other'] },
-  { q:'How would you describe your income level?', o:['Low','Lower middle','Upper middle','High'] }
-];
-
-function generateQuestions(task) {
-  const dailySeed = getDailySeed();
-  const seed = (Number(task.id) || 1) + dailySeed; 
-  const count = Math.min(20, Math.max(10, Number(task.questions) || 12));
-  const out = [];
-  for (let i = 0; i < count; i++) {
-    const idx = (seed * 7 + i * 13) % QT.length;
-    const tpl = QT[idx];
-    out.push({ n:i+1, question: tpl.q.replace(/{topic}/g, (task.category||'this').toLowerCase()), options: tpl.o });
-  }
-  return out;
-}
-
 function normalizePhone(phone) {
   let p = String(phone || '').replace(/\D/g, '');
   if (p.startsWith('254')) return p;
@@ -416,7 +262,6 @@ app.use(async (req, res, next) => {
       method: req.method, createdAt: new Date() }).catch(() => {});
   }
 
-  // Block non-admin API routes if maintenance is enabled
   if (req.path.startsWith('/api/') && !req.path.startsWith('/api/admin') && !req.path.startsWith('/api/login') && !req.path.startsWith('/api/register') && !req.path.startsWith('/api/me') && !req.path.startsWith('/api/prices')) {
     try {
       const setting = await settingsCol.findOne({ key: 'maintenance_mode' });
@@ -742,7 +587,7 @@ app.get('/api/tasks', auth, async (req, res) => {
     const user = await usersCol.findOne({ _id: new ObjectId(req.userId) });
     if (!user) return res.status(404).json({ error: 'User not found' });
     if (resetDailyTasks(user)) await usersCol.updateOne({ _id: user._id }, { $set: { tasksCompletedToday: 0, lastTaskDate: user.lastTaskDate } });
-    
+
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const size = Math.min(100, parseInt(req.query.size) || 50);
     const type = req.query.type;
@@ -774,7 +619,7 @@ app.get('/api/tasks', auth, async (req, res) => {
     const done = user.tasksCompletedToday || 0;
     const remaining = Math.max(0, limit - done);
     let unlockSlots = remaining;
-    
+
     const shaped = tasks.map(t => {
       let status = 'locked';
       if (completedIds.has(t.id)) status = 'completed';
@@ -821,7 +666,7 @@ app.post('/api/tasks/:id/complete', auth, async (req, res) => {
     if (done >= limit) return res.status(429).json({ error: 'Daily limit reached' });
     const task = await tasksCol.findOne({ id: Number(req.params.id) });
     if (!task) return res.status(404).json({ error: 'Task not found' });
-    
+
     // Strict check: Prevent double submission of the same task
     const completedToday = await historyCol.findOne({ userId: user._id, taskId: task.id, completedAt: { $gte: startOfToday() } });
     if (completedToday) return res.status(409).json({ error: 'This task has already been completed today.' });
@@ -834,7 +679,7 @@ app.post('/api/tasks/:id/complete', auth, async (req, res) => {
       answersCount: answers.length, createdAt: new Date()
     };
     const wRes = await walletCol.insertOne(wTxn);
-    
+
     await usersCol.updateOne(
       { _id: user._id },
       { $inc: { tasksCompletedToday: 1, pendingBalance: reward, totalEarnings: reward }, $set: { lastTaskDate: new Date().toISOString() } }
