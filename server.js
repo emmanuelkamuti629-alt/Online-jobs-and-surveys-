@@ -1,7 +1,5 @@
 // =============================================================================
-//  JobPay — server.js  (MongoDB + PayHero)
-//  Single source of truth for: min deposits, min withdrawals, activation fee,
-//  referral bonus, free tier, quick-amount buttons, tier limits, tier prices.
+//  JobPay — server.js  (MongoDB + PayHero)   v3 — legacy-compatible
 // =============================================================================
 
 require('dotenv').config();
@@ -27,10 +25,10 @@ const PAYHERO_BASE         = process.env.PAYHERO_BASE || 'https://backend.payher
 const PAYHERO_USERNAME     = process.env.PAYHERO_USERNAME || '';
 const PAYHERO_PASSWORD     = process.env.PAYHERO_PASSWORD || '';
 const PAYHERO_CHANNEL_ID   = Number(process.env.PAYHERO_CHANNEL_ID) || 0;
-const PAYHERO_CALLBACK_URL = process.env.PAYHERO_CALLBACK_URL || ''; // e.g. https://yourhost.com/api/payhero/callback
+const PAYHERO_CALLBACK_URL = process.env.PAYHERO_CALLBACK_URL || '';
 
 // =============================================================================
-//  CONFIG — single source of truth for the whole UI
+//  CONFIG
 // =============================================================================
 const APP_CONFIG = {
   currency: 'KES',
@@ -56,8 +54,6 @@ const APP_CONFIG = {
 // =============================================================================
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
-// IMPORTANT: PayHero POSTs JSON with its own signature header. We capture the
-// raw body here so signature checks could be added later if needed.
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(PUBLIC_DIR));
 
@@ -82,16 +78,18 @@ async function connectDB() {
     tickets:       db.collection('tickets'),
     loginHistory:  db.collection('loginHistory'),
   };
+  // Indexes (unique email uses case-insensitive collation for legacy safety)
   await Promise.all([
-    collections.users.createIndex({ email: 1 },       { unique: true }),
-    collections.users.createIndex({ username: 1 },    { unique: true }),
+    collections.users.createIndex({ email: 1 },  { unique: true, collation: { locale: 'en', strength: 2 } }),
+    collections.users.createIndex({ id: 1 },     { unique: true, sparse: true }),
     collections.walletTx.createIndex({ userId: 1, createdAt: -1 }),
     collections.payTx.createIndex({ userId: 1, createdAt: -1 }),
-    collections.payTx.createIndex({ reference: 1 },   { unique: true, sparse: true }),
+    collections.payTx.createIndex({ reference: 1 }, { unique: true, sparse: true }),
     collections.payTx.createIndex({ checkoutRequestId: 1 }, { sparse: true }),
     collections.notifications.createIndex({ userId: 1, createdAt: -1 }),
-    collections.completions.createIndex({ userId: 1, taskId: 1 }, { unique: true }),
-  ]);
+    collections.completions.createIndex({ userId: 1, taskId: 1 }, { unique: true, sparse: true }),
+  ]).catch(err => console.warn('⚠️  Index warning (likely duplicates in legacy data):', err.message));
+
   console.log('✅ MongoDB connected →', MONGODB_DB);
 }
 
@@ -101,7 +99,78 @@ async function nextSeq(name) {
     { $inc: { seq: 1 } },
     { upsert: true, returnDocument: 'after' }
   );
-  return r.value ? r.value.seq : r.seq;
+  const doc = r.value || r;
+  return doc.seq;
+}
+
+// =============================================================================
+//  AUTO-MIGRATION — runs on every boot, safe & idempotent
+// =============================================================================
+async function migrateLegacyUsers() {
+  console.log('🔧 Running legacy user migration...');
+  let touched = 0;
+  let maxId = 0;
+
+  const existingMax = await collections.users.find({ id: { $type: 'number' } })
+    .sort({ id: -1 }).limit(1).toArray();
+  if (existingMax.length) maxId = existingMax[0].id || 0;
+
+  const cursor = collections.users.find({});
+  while (await cursor.hasNext()) {
+    const u = await cursor.next();
+    const set = {};
+
+    // 1. Normalize email to lowercase
+    if (typeof u.email === 'string' && u.email !== u.email.toLowerCase()) {
+      set.email = u.email.toLowerCase();
+    }
+    // 2. Rename `password` → `passwordHash`
+    if (u.password && !u.passwordHash) {
+      set.passwordHash = u.password;
+    }
+    // 3. Assign numeric id if missing
+    if (typeof u.id !== 'number') {
+      maxId += 1;
+      set.id = maxId;
+    } else if (u.id > maxId) {
+      maxId = u.id;
+    }
+    // 4. Backfill default fields
+    if (u.balance              === undefined) set.balance              = 0;
+    if (u.pendingBalance       === undefined) set.pendingBalance       = 0;
+    if (u.totalEarnings        === undefined) set.totalEarnings        = 0;
+    if (u.todayEarnings        === undefined) set.todayEarnings        = 0;
+    if (u.tasksCompletedToday  === undefined) set.tasksCompletedToday  = 0;
+    if (u.subscriptionTier     === undefined) set.subscriptionTier     = 'free';
+    if (u.subscriptionExpiry   === undefined) set.subscriptionExpiry   = null;
+    if (u.activationFeePaid    === undefined) set.activationFeePaid    = false;
+    if (u.photo                === undefined) set.photo                = null;
+    if (u.withdrawalPin        === undefined) set.withdrawalPin        = null;
+    if (u.twoFactorEnabled     === undefined) set.twoFactorEnabled     = false;
+    if (u.lastTaskDate         === undefined) set.lastTaskDate         = null;
+    if (u.createdAt            === undefined) set.createdAt            = new Date();
+    if (u.phone && typeof u.phone === 'string' && !u.phone.startsWith('254')) {
+      set.phone = normalizePhone(u.phone);
+    }
+
+    if (Object.keys(set).length) {
+      await collections.users.updateOne({ _id: u._id }, { $set: set });
+      touched++;
+    }
+  }
+
+  // Sync counter so new registrations continue from maxId
+  const counterDoc = await collections.counters.findOne({ _id: 'users' });
+  const currentSeq = counterDoc?.seq || 0;
+  if (maxId > currentSeq) {
+    await collections.counters.updateOne(
+      { _id: 'users' },
+      { $set: { seq: maxId } },
+      { upsert: true }
+    );
+  }
+
+  console.log(`   ↳ migrated ${touched} user(s), maxId = ${maxId}`);
 }
 
 // =============================================================================
@@ -170,31 +239,79 @@ function generateQuestions(count) {
 // =============================================================================
 //  HELPERS
 // =============================================================================
-const hashPassword   = (pw) => bcrypt.hashSync(pw, 10);
-const verifyPassword = (pw, hash) => bcrypt.compareSync(pw, hash);
-const signToken      = (u) => jwt.sign({ uid: u.id }, JWT_SECRET, { expiresIn: '30d' });
+const hashPassword = (pw) => bcrypt.hashSync(pw, 10);
 
-function auth(req, res, next) {
+/** Tolerant password check — tries passwordHash, then password (legacy). */
+function verifyPassword(plain, user) {
+  if (!user) return false;
+  const hashes = [user.passwordHash, user.password].filter(Boolean);
+  for (const h of hashes) {
+    try { if (bcrypt.compareSync(plain, h)) return true; } catch {}
+  }
+  return false;
+}
+
+/** Case-insensitive email lookup (works with or without the collation index). */
+async function findUserByEmail(email) {
+  if (!email) return null;
+  const normalized = String(email).trim().toLowerCase();
+  // Try exact (fast path — works if migration already lowercased)
+  let user = await collections.users.findOne({ email: normalized });
+  if (user) return user;
+  // Fall back to case-insensitive regex
+  const escaped = normalized.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  user = await collections.users.findOne({ email: { $regex: `^${escaped}$`, $options: 'i' } });
+  return user;
+}
+
+const signToken = (u) => jwt.sign(
+  { uid: u.id, oid: String(u._id) },
+  JWT_SECRET,
+  { expiresIn: '30d' }
+);
+
+async function auth(req, res, next) {
   const h = req.headers.authorization || '';
   const token = h.startsWith('Bearer ') ? h.slice(7) : null;
   if (!token) return res.status(401).json({ error: 'Not authenticated' });
+
+  let payload;
   try {
-    const payload = jwt.verify(token, JWT_SECRET);
-    collections.users.findOne({ id: payload.uid }).then(user => {
-      if (!user) return res.status(401).json({ error: 'User not found' });
-      req.user = user;
-      next();
-    }).catch(() => res.status(401).json({ error: 'Auth failed' }));
+    payload = jwt.verify(token, JWT_SECRET);
   } catch {
-    res.status(401).json({ error: 'Invalid or expired token' });
+    return res.status(401).json({ error: 'Invalid or expired token' });
+  }
+
+  try {
+    let user = null;
+    if (payload.uid !== undefined) user = await collections.users.findOne({ id: payload.uid });
+    if (!user && payload.oid)      user = await collections.users.findOne({ _id: new (require('mongodb').ObjectId)(payload.oid) });
+    if (!user) return res.status(401).json({ error: 'User not found' });
+
+    // Safety: ensure user has numeric id (from migration)
+    if (typeof user.id !== 'number') {
+      const newId = await nextSeq('users');
+      await collections.users.updateOne({ _id: user._id }, { $set: { id: newId } });
+      user.id = newId;
+    }
+
+    req.user = user;
+    next();
+  } catch (err) {
+    console.error('auth error:', err);
+    res.status(500).json({ error: 'Auth failed' });
   }
 }
 
 function publicUser(u) {
   return {
-    id: u.id, username: u.username, email: u.email, phone: u.phone,
+    id: u.id,
+    username: u.username,
+    email: u.email,
+    phone: u.phone,
     photo: u.photo || null,
-    balance: u.balance || 0, pendingBalance: u.pendingBalance || 0,
+    balance: u.balance || 0,
+    pendingBalance: u.pendingBalance || 0,
     totalEarnings: u.totalEarnings || 0,
     todayEarnings: u.todayEarnings || 0,
     tasksCompletedToday: u.tasksCompletedToday || 0,
@@ -230,12 +347,12 @@ function normalizePhone(p) {
   let s = String(p).replace(/\D/g, '');
   if (s.startsWith('0')) s = '254' + s.slice(1);
   if (!s.startsWith('254')) s = '254' + s;
-  return s; // PayHero expects 254XXXXXXXXX
+  return s;
 }
 const randomRef = (prefix) => prefix + crypto.randomBytes(5).toString('hex').toUpperCase();
 
 // =============================================================================
-//  PAYHERO INTEGRATION
+//  PAYHERO
 // =============================================================================
 const payheroClient = axios.create({
   baseURL: PAYHERO_BASE,
@@ -246,15 +363,6 @@ const payheroClient = axios.create({
   },
 });
 
-/**
- * Trigger an STK Push via PayHero.
- * @param {Object} p
- * @param {number} p.amount            - amount in KES (integer)
- * @param {string} p.phone             - 254XXXXXXXXX
- * @param {string} p.externalReference - unique ID for reconciliation
- * @param {string} [p.customerName]
- * @returns {Promise<{reference:string, checkoutRequestId:string, raw:object}>}
- */
 async function payheroStkPush({ amount, phone, externalReference, customerName }) {
   if (!PAYHERO_USERNAME || !PAYHERO_PASSWORD || !PAYHERO_CHANNEL_ID) {
     throw new Error('PayHero is not configured (PAYHERO_USERNAME, PAYHERO_PASSWORD, PAYHERO_CHANNEL_ID required)');
@@ -269,17 +377,11 @@ async function payheroStkPush({ amount, phone, externalReference, customerName }
     customer_name: customerName || 'JobPay Customer',
   };
   const { data } = await payheroClient.post('/payments', body);
-  // PayHero returns { success, reference, CheckoutRequestID, ... }
   return {
     reference: data.reference || data.Reference || externalReference,
     checkoutRequestId: data.CheckoutRequestID || data.checkout_request_id || null,
     raw: data,
   };
-}
-
-async function payheroStatus(reference) {
-  const { data } = await payheroClient.get('/transaction-status', { params: { reference } });
-  return data;
 }
 
 // =============================================================================
@@ -305,7 +407,7 @@ app.post('/api/register', async (req, res) => {
     if (!(password.length >= 8 && /[A-Z]/.test(password) && /[a-z]/.test(password) && /[0-9]/.test(password)))
       return res.status(400).json({ error: 'Password must be 8+ chars with uppercase, lowercase, and a number' });
 
-    const existing = await collections.users.findOne({ email: email.toLowerCase() });
+    const existing = await findUserByEmail(email);
     if (existing) return res.status(400).json({ error: 'Email already registered' });
 
     const id = await nextSeq('users');
@@ -340,11 +442,25 @@ app.post('/api/login', async (req, res) => {
   try {
     const { email, password } = req.body || {};
     if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
-    const user = await collections.users.findOne({ email: email.toLowerCase() });
-    if (!user || !verifyPassword(password, user.passwordHash)) {
-      if (user) await recordLogin(user.id, req, false);
+
+    const user = await findUserByEmail(email);
+    if (!user) {
+      console.warn(`🔐 Login fail — email not found: ${email}`);
       return res.status(400).json({ error: 'Invalid email or password' });
     }
+    if (!verifyPassword(password, user)) {
+      console.warn(`🔐 Login fail — wrong password for: ${user.email}`);
+      await recordLogin(user.id, req, false);
+      return res.status(400).json({ error: 'Invalid email or password' });
+    }
+
+    // Ensure user has numeric id (in case migration hasn't run yet)
+    if (typeof user.id !== 'number') {
+      const newId = await nextSeq('users');
+      await collections.users.updateOne({ _id: user._id }, { $set: { id: newId } });
+      user.id = newId;
+    }
+
     await recordLogin(user.id, req, true);
     res.json({ token: signToken(user), user: publicUser(user) });
   } catch (err) {
@@ -382,7 +498,6 @@ app.get('/api/tasks', auth, async (req, res) => {
     const filter = type ? { type } : {};
     const totalCount = await collections.tasks.countDocuments(filter);
     const list = await collections.tasks.find(filter).sort({ id: 1 }).skip((page - 1) * size).limit(size).toArray();
-
     const enriched = await Promise.all(list.map(async t => ({ ...t, status: await userTaskStatus(req.user, t.id) })));
     res.json({ tasks: enriched, totalCount });
   } catch (err) {
@@ -434,24 +549,16 @@ app.post('/api/tasks/:id/complete', auth, async (req, res) => {
     await pushNotif(user.id, 'task', 'Task submitted ⏳',
       `Your submission "${task.title}" is awaiting confirmation. Reward: KES ${reward}.`);
 
-    // Auto-approve after 20s (replace with admin action in production)
     setTimeout(async () => {
       try {
-        const u = await collections.users.findOne({ id: user.id });
-        if (!u) return;
         await collections.users.updateOne({ id: user.id }, {
           $inc: { pendingBalance: -reward, balance: reward, totalEarnings: reward, todayEarnings: reward },
         });
         await collections.walletTx.updateOne(
-          { userId: user.id, reference: { $exists: false }, taskTitle: task.title, status: 'pending' },
-          { $set: { status: 'completed', confirmedAt: new Date() } }
-        );
-        // The above filter may not match — do a safer update:
-        await collections.walletTx.updateOne(
           { userId: user.id, type: 'task_reward', taskTitle: task.title, status: 'pending' },
           { $set: { status: 'completed', confirmedAt: new Date() } }
         );
-        await pushNotif(u.id, 'task_approved', 'Task approved ✅',
+        await pushNotif(user.id, 'task_approved', 'Task approved ✅',
           `"${task.title}" was approved. KES ${reward} credited.`);
       } catch (e) { console.error('Auto-approve error:', e); }
     }, 20000);
@@ -472,10 +579,7 @@ app.get('/api/history', auth, async (req, res) => {
       .find({ userId: req.user.id, type: 'task_reward' })
       .sort({ createdAt: -1 }).limit(200).toArray();
     res.json(list.map(t => ({
-      id: t.id,
-      taskTitle: t.taskTitle,
-      owner: t.owner,
-      reward: t.amount,
+      id: t.id, taskTitle: t.taskTitle, owner: t.owner, reward: t.amount,
       status: t.status === 'completed' ? 'completed' : t.status === 'failed' ? 'failed' : 'pending',
       reason: t.reason || null,
       completedAt: t.confirmedAt || t.createdAt,
@@ -502,7 +606,7 @@ app.get('/api/wallet/history', auth, async (req, res) => {
 });
 
 // =============================================================================
-//  ROUTES — WALLET  (PayHero integration)
+//  ROUTES — WALLET
 // =============================================================================
 app.post('/api/wallet/deposit', auth, async (req, res) => {
   try {
@@ -517,20 +621,15 @@ app.post('/api/wallet/deposit', auth, async (req, res) => {
     const externalReference = randomRef('DEP');
 
     const txId = await nextSeq('payTx');
-    const doc = {
+    await collections.payTx.insertOne({
       id: txId, userId: req.user.id, kind: 'deposit', amount: amt,
       status: 'pending', phone: normPhone,
-      reference: externalReference, mpesaRef: null,
-      checkoutRequestId: null,
+      reference: externalReference, mpesaRef: null, checkoutRequestId: null,
       createdAt: new Date(), completedAt: null,
-    };
-    await collections.payTx.insertOne(doc);
+    });
 
     try {
-      const ph = await payheroStkPush({
-        amount: amt, phone: normPhone,
-        externalReference, customerName: req.user.username,
-      });
+      const ph = await payheroStkPush({ amount: amt, phone: normPhone, externalReference, customerName: req.user.username });
       await collections.payTx.updateOne(
         { reference: externalReference },
         { $set: { checkoutRequestId: ph.checkoutRequestId, payheroReference: ph.reference } }
@@ -538,10 +637,7 @@ app.post('/api/wallet/deposit', auth, async (req, res) => {
       res.json({ phone: normPhone, amount: amt, reference: externalReference, message: 'STK push sent' });
     } catch (phErr) {
       console.error('PayHero deposit error:', phErr.response?.data || phErr.message);
-      await collections.payTx.updateOne(
-        { reference: externalReference },
-        { $set: { status: 'failed', reason: 'STK push failed' } }
-      );
+      await collections.payTx.updateOne({ reference: externalReference }, { $set: { status: 'failed', reason: 'STK push failed' } });
       res.status(400).json({ error: phErr.response?.data?.message || 'Payment initiation failed. Please try again.' });
     }
   } catch (err) {
@@ -565,10 +661,7 @@ app.post('/api/wallet/pay-activation', auth, async (req, res) => {
     });
 
     try {
-      const ph = await payheroStkPush({
-        amount: amt, phone: normPhone,
-        externalReference, customerName: req.user.username,
-      });
+      const ph = await payheroStkPush({ amount: amt, phone: normPhone, externalReference, customerName: req.user.username });
       await collections.payTx.updateOne(
         { reference: externalReference },
         { $set: { checkoutRequestId: ph.checkoutRequestId, payheroReference: ph.reference } }
@@ -596,9 +689,9 @@ app.post('/api/wallet/withdraw', auth, async (req, res) => {
       return res.status(400).json({ error: `Minimum withdrawal is ${APP_CONFIG.currency} ${APP_CONFIG.minWithdrawal}` });
     if (amt > APP_CONFIG.maxWithdrawal)
       return res.status(400).json({ error: `Maximum withdrawal is ${APP_CONFIG.currency} ${APP_CONFIG.maxWithdrawal}` });
-    if (amt > user.balance) return res.status(400).json({ error: 'Insufficient funds' });
-    if (user.withdrawalPin && !pin)                        return res.status(400).json({ error: 'Withdrawal PIN required' });
-    if (user.withdrawalPin && pin !== user.withdrawalPin)  return res.status(400).json({ error: 'Incorrect withdrawal PIN' });
+    if (amt > (user.balance || 0)) return res.status(400).json({ error: 'Insufficient funds' });
+    if (user.withdrawalPin && !pin)                       return res.status(400).json({ error: 'Withdrawal PIN required' });
+    if (user.withdrawalPin && pin !== user.withdrawalPin) return res.status(400).json({ error: 'Incorrect withdrawal PIN' });
 
     await collections.users.updateOne({ id: user.id }, { $inc: { balance: -amt } });
 
@@ -613,15 +706,13 @@ app.post('/api/wallet/withdraw', auth, async (req, res) => {
     await pushNotif(user.id, 'withdrawal', 'Withdrawal requested ⏳',
       `KES ${amt} is on its way to ${user.phone}.`);
 
-    // In production, hand off to your payout logic (B2C or manual admin approval)
     setTimeout(async () => {
       try {
         await collections.walletTx.updateOne(
           { reference, status: 'pending' },
           { $set: { status: 'completed', confirmedAt: new Date(), mpesaRef: randomRef('MP') } }
         );
-        await pushNotif(user.id, 'withdrawal_paid', 'Withdrawal paid 💸',
-          `KES ${amt} sent to ${user.phone}.`);
+        await pushNotif(user.id, 'withdrawal_paid', 'Withdrawal paid 💸', `KES ${amt} sent to ${user.phone}.`);
       } catch (e) { console.error('Withdraw settle error:', e); }
     }, 15000);
 
@@ -633,7 +724,7 @@ app.post('/api/wallet/withdraw', auth, async (req, res) => {
 });
 
 // =============================================================================
-//  ROUTES — SUBSCRIBE (PayHero)
+//  ROUTES — SUBSCRIBE
 // =============================================================================
 app.post('/api/subscribe', auth, async (req, res) => {
   try {
@@ -651,10 +742,7 @@ app.post('/api/subscribe', auth, async (req, res) => {
     });
 
     try {
-      const ph = await payheroStkPush({
-        amount: price, phone: normPhone,
-        externalReference, customerName: req.user.username,
-      });
+      const ph = await payheroStkPush({ amount: price, phone: normPhone, externalReference, customerName: req.user.username });
       await collections.payTx.updateOne(
         { reference: externalReference },
         { $set: { checkoutRequestId: ph.checkoutRequestId, payheroReference: ph.reference } }
@@ -675,31 +763,25 @@ app.post('/api/subscribe', auth, async (req, res) => {
 //  ROUTES — PAYHERO CALLBACK
 // =============================================================================
 app.post('/api/payhero/callback', async (req, res) => {
-  // Always ACK quickly so PayHero doesn't retry forever
   res.json({ received: true });
-
   try {
     const body = req.body || {};
     console.log('📩 PayHero callback:', JSON.stringify(body));
 
-    // PayHero callback shape varies; handle common fields
-    const reference    = body.external_reference || body.reference || body.ExternalReference || body.externalReference;
-    const mpesaRef     = body.MpesaReceiptNumber || body.mpesa_receipt || body.response?.MpesaReceiptNumber;
-    const statusStr    = (body.status || body.Status || '').toString().toUpperCase();
-    const resultCode   = body.ResultCode ?? body.response?.ResultCode;
-    const success      = statusStr === 'SUCCESS' || statusStr === 'TRUE' || resultCode === 0 || resultCode === '0';
+    const reference  = body.external_reference || body.reference || body.ExternalReference || body.externalReference;
+    const mpesaRef   = body.MpesaReceiptNumber || body.mpesa_receipt || body.response?.MpesaReceiptNumber;
+    const statusStr  = (body.status || body.Status || '').toString().toUpperCase();
+    const resultCode = body.ResultCode ?? body.response?.ResultCode;
+    const success    = statusStr === 'SUCCESS' || statusStr === 'TRUE' || resultCode === 0 || resultCode === '0';
 
     if (!reference) return console.warn('⚠️ Callback missing reference');
 
     const tx = await collections.payTx.findOne({ reference });
     if (!tx) return console.warn('⚠️ Unknown reference:', reference);
-    if (tx.status === 'completed') return; // idempotent
+    if (tx.status === 'completed') return;
 
     if (!success) {
-      await collections.payTx.updateOne(
-        { reference },
-        { $set: { status: 'failed', reason: body.ResultDesc || body.message || 'Payment failed' } }
-      );
+      await collections.payTx.updateOne({ reference }, { $set: { status: 'failed', reason: body.ResultDesc || body.message || 'Payment failed' } });
       return;
     }
 
@@ -730,11 +812,7 @@ app.post('/api/payhero/callback', async (req, res) => {
     } else if (tx.kind === 'subscription') {
       await collections.users.updateOne(
         { id: user.id },
-        { $set: {
-          subscriptionTier: tx.tier,
-          subscriptionExpiry: new Date(Date.now() + 7 * 86400000),
-          tasksCompletedToday: 0,
-        } }
+        { $set: { subscriptionTier: tx.tier, subscriptionExpiry: new Date(Date.now() + 7 * 86400000), tasksCompletedToday: 0 } }
       );
       await collections.walletTx.insertOne({
         id: await nextSeq('walletTx'), userId: user.id, type: 'subscription', amount: -tx.amount,
@@ -746,17 +824,6 @@ app.post('/api/payhero/callback', async (req, res) => {
     }
   } catch (err) {
     console.error('Callback handler error:', err);
-  }
-});
-
-// Poll PayHero status (optional fallback if webhook isn't reachable locally)
-app.get('/api/payhero/status/:reference', auth, async (req, res) => {
-  try {
-    const tx = await collections.payTx.findOne({ reference: req.params.reference, userId: req.user.id });
-    if (!tx) return res.status(404).json({ error: 'Transaction not found' });
-    res.json({ status: tx.status, amount: tx.amount, kind: tx.kind });
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch status' });
   }
 });
 
@@ -779,25 +846,26 @@ app.put('/api/user/profile', auth, async (req, res) => {
     const set = {};
     if (username) set.username = username;
     if (email && email.toLowerCase() !== req.user.email) {
-      const dup = await collections.users.findOne({ email: email.toLowerCase() });
-      if (dup) return res.status(400).json({ error: 'Email in use' });
+      const dup = await findUserByEmail(email);
+      if (dup && dup.id !== req.user.id) return res.status(400).json({ error: 'Email in use' });
       set.email = email.toLowerCase();
     }
     if (phone) set.phone = normalizePhone(phone);
     if (Object.keys(set).length) await collections.users.updateOne({ id: req.user.id }, { $set: set });
     const fresh = await collections.users.findOne({ id: req.user.id });
     res.json({ user: publicUser(fresh) });
-  } catch (err) {
-    res.status(500).json({ error: 'Profile update failed' });
-  }
+  } catch (err) { res.status(500).json({ error: 'Profile update failed' }); }
 });
 app.post('/api/user/change-password', auth, async (req, res) => {
   const { currentPassword, newPassword } = req.body || {};
   if (!currentPassword || !newPassword) return res.status(400).json({ error: 'All fields required' });
-  if (!verifyPassword(currentPassword, req.user.passwordHash)) return res.status(400).json({ error: 'Current password is incorrect' });
+  if (!verifyPassword(currentPassword, req.user)) return res.status(400).json({ error: 'Current password is incorrect' });
   if (!(newPassword.length >= 8 && /[A-Z]/.test(newPassword) && /[a-z]/.test(newPassword) && /[0-9]/.test(newPassword)))
     return res.status(400).json({ error: 'Password must be 8+ chars with uppercase, lowercase, and a number' });
-  await collections.users.updateOne({ id: req.user.id }, { $set: { passwordHash: hashPassword(newPassword) } });
+  await collections.users.updateOne(
+    { id: req.user.id },
+    { $set: { passwordHash: hashPassword(newPassword) }, $unset: { password: '' } }
+  );
   res.json({ ok: true });
 });
 app.post('/api/user/2fa', auth, async (req, res) => {
@@ -807,7 +875,7 @@ app.post('/api/user/2fa', auth, async (req, res) => {
 app.post('/api/user/withdrawal-pin', auth, async (req, res) => {
   const { pin, password } = req.body || {};
   if (!/^\d{4,6}$/.test(pin)) return res.status(400).json({ error: 'PIN must be 4-6 digits' });
-  if (!verifyPassword(password, req.user.passwordHash)) return res.status(400).json({ error: 'Password incorrect' });
+  if (!verifyPassword(password, req.user)) return res.status(400).json({ error: 'Password incorrect' });
   await collections.users.updateOne({ id: req.user.id }, { $set: { withdrawalPin: pin } });
   res.json({ ok: true });
 });
@@ -817,14 +885,14 @@ app.get('/api/user/login-history', auth, async (req, res) => {
 });
 app.post('/api/user/deactivate', auth, async (req, res) => {
   const { password } = req.body || {};
-  if (!verifyPassword(password, req.user.passwordHash)) return res.status(400).json({ error: 'Password incorrect' });
+  if (!verifyPassword(password, req.user)) return res.status(400).json({ error: 'Password incorrect' });
   await collections.users.updateOne({ id: req.user.id }, { $set: { deactivated: true } });
   res.json({ ok: true });
 });
 app.post('/api/user/delete', auth, async (req, res) => {
   const { password, confirm } = req.body || {};
   if (confirm !== 'DELETE') return res.status(400).json({ error: 'Confirmation required' });
-  if (!verifyPassword(password, req.user.passwordHash)) return res.status(400).json({ error: 'Password incorrect' });
+  if (!verifyPassword(password, req.user)) return res.status(400).json({ error: 'Password incorrect' });
   await collections.users.deleteOne({ id: req.user.id });
   res.json({ ok: true });
 });
@@ -846,8 +914,7 @@ app.post('/api/support/ticket', auth, async (req, res) => {
     subject, message, status: 'open', createdAt: new Date(),
   };
   await collections.tickets.insertOne(t);
-  await pushNotif(req.user.id, 'system', 'Ticket submitted',
-    `Ticket ${t.ticketNumber} received. We'll get back to you soon.`);
+  await pushNotif(req.user.id, 'system', 'Ticket submitted', `Ticket ${t.ticketNumber} received. We'll get back to you soon.`);
   res.json(t);
 });
 
@@ -886,6 +953,7 @@ app.get('*', (req, res, next) => {
 (async () => {
   try {
     await connectDB();
+    await migrateLegacyUsers();   // 👈 the magic — fixes old users on every boot
     await seedTasks();
     app.listen(PORT, () => console.log(`✅ JobPay running → http://localhost:${PORT}`));
   } catch (err) {
