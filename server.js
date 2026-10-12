@@ -8,6 +8,17 @@ const cors = require('cors');
 const crypto = require('crypto');
 const path = require('path');
 
+// ═══════════════════════════════════════════════════════════════════════════
+// TASK / SURVEY CONTENT  →  lives in tasks.js
+// ═══════════════════════════════════════════════════════════════════════════
+const {
+  seedTasks: seedTasksRaw,
+  generateQuestions,
+  getDailySeed,
+  getCurrentWindow,
+  advanceWindow
+} = require('./tasks');
+
 const app = express();
 app.set('trust proxy', 1);
 app.use(cors());
@@ -30,43 +41,11 @@ const TIERS = {
   golden:  { name:'Golden',  dailyLimit:50, price:450, label:'50+ tasks / day' }
 };
 const SUBSCRIPTION_DAYS = 7;
-const FREE_TASK_REWARD = 21;
-
-// ═══════════════════════════════════════════════════════════════════════════
-//  SERVER-DRIVEN CONFIG — single source of truth for the whole UI
-//  Change these numbers once and every client updates on next load.
-//  Override with env vars:  MIN_DEPOSIT=1000 MIN_WITHDRAWAL=3499 npm start
-// ═══════════════════════════════════════════════════════════════════════════
-const MIN_DEPOSIT     = Number(process.env.MIN_DEPOSIT)    || 1000;
-const MAX_DEPOSIT     = Number(process.env.MAX_DEPOSIT)    || 150000;
-const MIN_WITHDRAWAL  = Number(process.env.MIN_WITHDRAWAL) || 3499;
-const MAX_WITHDRAWAL  = Number(process.env.MAX_WITHDRAWAL) || 100000;
-const ACTIVATION_FEE  = Number(process.env.ACTIVATION_FEE) || 499;
-
-const APP_CONFIG = {
-  currency: 'KES',
-  minDeposit: MIN_DEPOSIT,
-  maxDeposit: MAX_DEPOSIT,
-  minWithdrawal: MIN_WITHDRAWAL,
-  maxWithdrawal: MAX_WITHDRAWAL,
-  activationFee: ACTIVATION_FEE,
-  freeTaskReward: FREE_TASK_REWARD,
-  subscriptionDays: SUBSCRIPTION_DAYS,
-  // Quick-amount buttons rendered by the client
-  depositQuickAmounts:    [1000, 2000, 5000, 10000, 20000, 50000],
-  withdrawalQuickAmounts: [3499, 5000, 10000, 20000, 50000, 100000],
-  // Tier limits (kept in sync with TIERS)
-  tierLimits: {
-    free:    TIERS.free.dailyLimit,
-    classic: TIERS.classic.dailyLimit,
-    premium: TIERS.premium.dailyLimit,
-    golden:  TIERS.golden.dailyLimit,
-  },
-  supportEmail: 'support@jobpay.co.ke',
-};
-
+const FREE_TASK_REWARD  = 21;
+const MIN_DEPOSIT       = 1000;
+const MIN_WITHDRAWAL    = 3499;
+const ACTIVATION_FEE    = 499;
 const PAYMENT_TIMEOUT_MS = 5 * 60 * 1000;
-const SEED_VERSION = 6; // Bumped for instant swap logic
 
 let tierPrices = { classic: 200, premium: 350, golden: 450 };
 function getTierPrice(tier) {
@@ -76,6 +55,9 @@ function getTierPrice(tier) {
 
 let db, usersCol, txnsCol, tasksCol, walletCol, historyCol, metaCol,
     visitsCol, loginAttemptsCol, settingsCol, ticketsCol, notificationsCol;
+
+// Wrapper so the rest of this file can keep calling seedTasks(true) / seedTasks(false)
+const seedTasks = (force = false) => seedTasksRaw({ tasksCol, metaCol }, force);
 
 async function connectDB() {
   if (!process.env.MONGODB_URI) throw new Error('MONGODB_URI is not set');
@@ -100,13 +82,14 @@ async function connectDB() {
   await walletCol.createIndex({ userId: 1, createdAt: -1 });
   await historyCol.createIndex({ userId: 1, completedAt: -1 });
   await tasksCol.createIndex({ id: 1 }, { unique: true });
-  await tasksCol.createIndex({ batchId: 1 });
+  await tasksCol.createIndex({ slot: 1 });
   await visitsCol.createIndex({ createdAt: -1 });
   await loginAttemptsCol.createIndex({ createdAt: -1 });
   await ticketsCol.createIndex({ userId: 1, createdAt: -1 });
   await notificationsCol.createIndex({ userId: 1, createdAt: -1 });
   await notificationsCol.createIndex({ userId: 1, read: 1 });
 
+  // Initialize maintenance mode setting if not exists
   const maint = await settingsCol.findOne({ key: 'maintenance_mode' });
   if (!maint) {
     await settingsCol.insertOne({ key: 'maintenance_mode', enabled: false, updatedAt: new Date() });
@@ -128,16 +111,6 @@ async function loadTierPrices() {
   } else {
     await settingsCol.insertOne({ key: 'tier_prices', classic: 200, premium: 350, golden: 450, updatedAt: new Date() });
   }
-  // Keep APP_CONFIG in sync
-  APP_CONFIG.tierPrices = { ...tierPrices };
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// DAILY SEED LOGIC
-// ═══════════════════════════════════════════════════════════════════════════
-function getDailySeed() {
-  const d = new Date();
-  return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -158,152 +131,8 @@ async function createNotification(userId, type, title, message, meta = {}) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// SEED
+// HELPERS
 // ═══════════════════════════════════════════════════════════════════════════
-const OWNER_NAMES = ['Sarah M.','James K.','Grace W.','David O.','Amina H.','Peter N.','Lucy A.','Brian C.','Faith M.','Kevin R.','Njeri K.','Otieno J.','Wanjiku S.','Hassan A.','Esther M.','Mercy W.','Kimani T.','Achieng O.','Mwangi D.','Zawadi L.'];
-const OWNER_AVATARS = ['👩‍💼','👨‍💼','🧑‍💻','👨‍🔬','👩‍🔬','🧑‍🎓','👨‍🏫','👩‍🏫','🧑‍🎨','👩‍💻','👨‍💻','🧑‍🔧','👨‍⚕️','👩‍⚕️','🧑‍🍳','🧑‍🌾','👩‍🎤','👨‍🎤','🧑‍🚀','👩‍✈️'];
-const OWNER_COUNTRIES = ['Kenya','Kenya','Kenya','Uganda','Tanzania','Rwanda','Kenya'];
-const AVATAR_COLORS = ['#43B02A','#2196F3','#F5A623','#E91E63','#9C27B0','#00BCD4','#FF5722','#795548','#3F51B5','#009688'];
-
-const SURVEY_TOPICS = [
-  'Google Review Verification', 'Instagram Engagement Survey', 'Facebook Ad Feedback',
-  'YouTube Video Tagging', 'TikTok Trend Analysis', 'Twitter/X Sentiment Study',
-  'LinkedIn Professional Survey', 'WhatsApp Business Feedback', 'Google Maps Location Check',
-  'Amazon Product Review Validation', 'Netflix Content Preference', 'Spotify Playlist Curation',
-  'Uber Ride Experience', 'Airbnb Host Feedback', 'eBay Seller Rating',
-  'Shopify Store UX Test', 'Reddit Community Poll', 'Pinterest Board Categorization',
-  'Snapchat Filter Feedback', 'Discord Server Moderation', 'Twitch Streamer Interaction'
-];
-
-function ownerFor(i) {
-  return {
-    name: OWNER_NAMES[i % OWNER_NAMES.length],
-    avatar: OWNER_AVATARS[i % OWNER_AVATARS.length],
-    color: AVATAR_COLORS[i % AVATAR_COLORS.length],
-    country: OWNER_COUNTRIES[i % OWNER_COUNTRIES.length],
-    rating: (4.5 + ((i * 3) % 5) / 10).toFixed(1)
-  };
-}
-
-function descFor(title, category, country) {
-  const t = {
-    'Google Review Verification':'Help verify the authenticity of Google Business reviews.',
-    'Instagram Engagement Survey':'Share your thoughts on Instagram engagement.',
-    'Facebook Ad Feedback':'Give feedback on Facebook ad campaigns.',
-    'YouTube Video Tagging':'Tag videos correctly for AI training.',
-    'TikTok Trend Analysis':'Analyze current TikTok trends.',
-    'Twitter/X Sentiment Study':'Rate the sentiment of recent X/Twitter posts.',
-    'LinkedIn Professional Survey':'Answer questions about professional networking.',
-    'WhatsApp Business Feedback':'Share your experience with WhatsApp Business.',
-    'Google Maps Location Check':'Verify if a location is accurate on Google Maps.',
-    'Amazon Product Review Validation':'Help validate Amazon product reviews.',
-    'Netflix Content Preference':'Tell us what you like to watch on Netflix.',
-    'Spotify Playlist Curation':'Help categorize songs for Spotify playlists.',
-    'Uber Ride Experience':'Rate your recent Uber ride experience.',
-    'Airbnb Host Feedback':'Give feedback on your Airbnb stay.',
-    'eBay Seller Rating':'Rate an eBay seller based on their profile.',
-    'Shopify Store UX Test':'Test a Shopify store and give UX feedback.',
-    'Reddit Community Poll':'Participate in a Reddit community poll.',
-    'Pinterest Board Categorization':'Categorize images for Pinterest boards.',
-    'Snapchat Filter Feedback':'Give feedback on a new Snapchat filter.',
-    'Discord Server Moderation':'Help moderate a Discord server.',
-    'Twitch Streamer Interaction':'Engage with a Twitch streamer\'s content.'
-  };
-  return t[category] || `Help understand ${category.toLowerCase()} in ${country}.`;
-}
-
-async function seedTasks(force = false) {
-  const meta = await metaCol.findOne({ key: 'task_seed_version' });
-  const todayStr = new Date().toISOString().slice(0, 10);
-
-  if (!force && meta && meta.version === SEED_VERSION && meta.lastSeedDate === todayStr) {
-    return;
-  }
-
-  console.log('🌱 Generating new tasks (instant swap)...');
-
-  const newBatchId = Date.now();
-  const newTasks = [];
-  let idCounter = 1;
-
-  for (let i = 0; i < 2000; i++) {
-    const topic = SURVEY_TOPICS[i % SURVEY_TOPICS.length];
-    const country = OWNER_COUNTRIES[i % OWNER_COUNTRIES.length];
-    const owner = ownerFor(i);
-    const title = `${topic} – ${country} #${idCounter}`;
-    const reward = 50 + ((i * 7) % 100);
-    const tier = ['free', 'classic', 'premium'][i % 3];
-
-    newTasks.push({
-      id: (newBatchId % 1000000) * 10000 + idCounter,
-      type: i % 2 === 0 ? 'survey' : 'task',
-      title,
-      category: topic,
-      country,
-      description: descFor(title, topic, country),
-      reward: reward,
-      time: `${3 + (i % 7)} min`,
-      questions: 10 + (i % 11),
-      difficulty: ['easy','medium','hard'][i % 3],
-      owner,
-      tier,
-      batchId: newBatchId,
-      createdAt: new Date()
-    });
-    idCounter++;
-  }
-
-  await tasksCol.insertMany(newTasks);
-  console.log(`✅ Inserted ${newTasks.length} new tasks (batch: ${newBatchId})`);
-
-  await tasksCol.deleteMany({ batchId: { $ne: newBatchId } });
-  console.log(`✅ Deleted old tasks.`);
-
-  await metaCol.updateOne(
-    { key:'task_seed_version' },
-    { $set: { version: SEED_VERSION, lastSeedDate: todayStr, updatedAt: new Date() } },
-    { upsert: true }
-  );
-
-  console.log(`✅ Task refresh complete for ${todayStr}`);
-}
-
-const QT = [
-  { q:'How often do you use {topic} products or services?', o:['Daily','Weekly','Monthly','Rarely or never'] },
-  { q:'How would you rate your overall experience with {topic}?', o:['Very satisfied','Satisfied','Neutral','Dissatisfied'] },
-  { q:'Which age group do you belong to?', o:['18-24','25-34','35-44','45+'] },
-  { q:'Which factor matters most when choosing {topic}?', o:['Price','Quality','Convenience','Brand reputation'] },
-  { q:'How likely are you to recommend {topic} to a friend?', o:['Very likely','Somewhat likely','Neutral','Unlikely'] },
-  { q:'How did you first hear about {topic}?', o:['Social media','Friends/family','Ads','Search engine'] },
-  { q:'What is your preferred payment method?', o:['M‑Pesa','Card','Bank transfer','Cash'] },
-  { q:'Which best describes your employment status?', o:['Employed full‑time','Self‑employed','Student','Unemployed'] },
-  { q:'How much do you typically spend monthly on {topic}?', o:['Under KES 1,000','KES 1,000–5,000','KES 5,000–20,000','Over KES 20,000'] },
-  { q:'How important is {topic} to your daily life?', o:['Very important','Somewhat important','Not very important','Not at all'] },
-  { q:'Which feature of {topic} do you use most?', o:['Mobile app','Website','In‑person','None of these'] },
-  { q:'Would you pay more for a premium version of {topic}?', o:['Definitely','Probably','Probably not','Definitely not'] },
-  { q:'How would you improve {topic}?', o:['Lower prices','Better quality','Faster service','More features'] },
-  { q:'Which region are you located in?', o:['Nairobi','Coast','Rift Valley','Western/Eastern'] },
-  { q:'How many people in your household use {topic}?', o:['Just me','2–3','4–5','6+'] },
-  { q:'How satisfied are you with the price of {topic}?', o:['Very satisfied','Satisfied','Neutral','Not satisfied'] },
-  { q:'What is your gender?', o:['Male','Female','Prefer not to say','Other'] },
-  { q:'How long have you used {topic}?', o:['Less than 6 months','6–12 months','1–3 years','Over 3 years'] },
-  { q:'Which device do you primarily use for {topic}?', o:['Smartphone','Laptop/PC','Tablet','Other'] },
-  { q:'How would you describe your income level?', o:['Low','Lower middle','Upper middle','High'] }
-];
-
-function generateQuestions(task) {
-  const dailySeed = getDailySeed();
-  const seed = (Number(task.id) || 1) + dailySeed;
-  const count = Math.min(20, Math.max(10, Number(task.questions) || 12));
-  const out = [];
-  for (let i = 0; i < count; i++) {
-    const idx = (seed * 7 + i * 13) % QT.length;
-    const tpl = QT[idx];
-    out.push({ n:i+1, question: tpl.q.replace(/{topic}/g, (task.category||'this').toLowerCase()), options: tpl.o });
-  }
-  return out;
-}
-
 function normalizePhone(phone) {
   let p = String(phone || '').replace(/\D/g, '');
   if (p.startsWith('254')) return p;
@@ -435,7 +264,7 @@ app.use(async (req, res, next) => {
       method: req.method, createdAt: new Date() }).catch(() => {});
   }
 
-  if (req.path.startsWith('/api/') && !req.path.startsWith('/api/admin') && !req.path.startsWith('/api/login') && !req.path.startsWith('/api/register') && !req.path.startsWith('/api/me') && !req.path.startsWith('/api/prices') && !req.path.startsWith('/api/config')) {
+  if (req.path.startsWith('/api/') && !req.path.startsWith('/api/admin') && !req.path.startsWith('/api/login') && !req.path.startsWith('/api/register') && !req.path.startsWith('/api/me') && !req.path.startsWith('/api/prices')) {
     try {
       const setting = await settingsCol.findOne({ key: 'maintenance_mode' });
       if (setting && setting.enabled === true) {
@@ -449,22 +278,6 @@ app.use(async (req, res, next) => {
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/healthz', (req, res) => res.json({ ok: true, uptime: process.uptime() }));
-
-// ═══════════════════════════════════════════════════════════════════════════
-// CONFIG ENDPOINT — the client reads ALL limits, fees, quick-amounts here
-// ═══════════════════════════════════════════════════════════════════════════
-app.get('/api/config', (req, res) => {
-  res.set('Cache-Control', 'no-store, max-age=0');
-  res.json({
-    ...APP_CONFIG,
-    tierPrices: { ...tierPrices },
-    prices: { ...tierPrices },
-    tiers: Object.fromEntries(
-      Object.entries(TIERS).map(([k, v]) => [k, { name: v.name, price: getTierPrice(k), dailyLimit: v.dailyLimit, label: v.label, days: SUBSCRIPTION_DAYS }])
-    ),
-  });
-});
-
 app.get('/api/prices', (req, res) => res.json(tierPrices));
 
 app.post('/api/register', async (req, res) => {
@@ -500,9 +313,6 @@ app.post('/api/register', async (req, res) => {
   } catch (err) { console.error('Register error:', err); res.status(500).json({ error: 'Server error' }); }
 });
 
-// ═══════════════════════════════════════════════════════════════════════════
-// LOGIN — unchanged (email + password only)
-// ═══════════════════════════════════════════════════════════════════════════
 app.post('/api/login', async (req, res) => {
   const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.ip;
   const ua = req.headers['user-agent'] || '';
@@ -545,14 +355,23 @@ app.get('/api/notifications', auth, async (req, res) => {
   try {
     const userId = new ObjectId(req.userId);
     const limit = Math.min(100, parseInt(req.query.limit) || 50);
-    const items = await notificationsCol.find({ userId }).sort({ createdAt: -1 }).limit(limit).toArray();
+    const items = await notificationsCol
+      .find({ userId })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .toArray();
     const unread = await notificationsCol.countDocuments({ userId, read: false });
     res.json({
       unread,
       total: items.length,
       notifications: items.map(n => ({
-        id: n._id, type: n.type, title: n.title, message: n.message,
-        meta: n.meta || {}, read: n.read === true, createdAt: n.createdAt
+        id: n._id,
+        type: n.type,
+        title: n.title,
+        message: n.message,
+        meta: n.meta || {},
+        read: n.read === true,
+        createdAt: n.createdAt
       }))
     });
   } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
@@ -763,7 +582,7 @@ app.get('/api/support/tickets', auth, async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// TASKS ROUTE
+// TASKS ROUTE - Serves only the current 50-task window (auto-advances daily)
 // ═══════════════════════════════════════════════════════════════════════════
 app.get('/api/tasks', auth, async (req, res) => {
   try {
@@ -777,23 +596,13 @@ app.get('/api/tasks', auth, async (req, res) => {
     const filter = {};
     if (type === 'survey' || type === 'task') filter.type = type;
 
-    const latestBatch = await tasksCol.find({}).sort({ batchId: -1 }).limit(1).toArray();
-    if (latestBatch.length > 0) {
-      filter.batchId = latestBatch[0].batchId;
-    } else {
-      return res.json({ tier: user.subscriptionTier, dailyLimit: dailyLimit(user), tasksCompletedToday: user.tasksCompletedToday || 0, tasksRemaining: 0, page, size, totalCount: 0, tasks: [] });
-    }
+    // Get the currently active 50-task window (auto-advances every 24h)
+    const win = await getCurrentWindow(metaCol);
+    filter.id = { $gte: win.startSlot, $lte: win.endSlot };
 
     const totalCount = await tasksCol.countDocuments(filter);
-    const dailySeed = getDailySeed();
 
-    const tasks = await tasksCol.aggregate([
-      { $match: filter },
-      { $addFields: { dailyOrder: { $mod: [ { $add: ["$id", dailySeed] }, 10000 ] } } },
-      { $sort: { dailyOrder: 1 } },
-      { $skip: (page - 1) * size },
-      { $limit: size }
-    ]).toArray();
+    const tasks = await tasksCol.find(filter).sort({ id: 1 }).toArray();
 
     const todayHistory = await historyCol.find({ userId: user._id, completedAt: { $gte: startOfToday() } }).project({ taskId: 1 }).toArray();
     const completedIds = new Set(todayHistory.map(h => h.taskId));
@@ -814,7 +623,22 @@ app.get('/api/tasks', auth, async (req, res) => {
         owner: t.owner, status, tier: t.tier
       };
     });
-    res.json({ tier: user.subscriptionTier, dailyLimit: limit, tasksCompletedToday: done, tasksRemaining: remaining, page, size, totalCount, tasks: shaped });
+    res.json({
+      tier: user.subscriptionTier,
+      dailyLimit: limit,
+      tasksCompletedToday: done,
+      tasksRemaining: remaining,
+      page, size, totalCount,
+      window: {
+        number: win.windowNum,
+        startSlot: win.startSlot,
+        endSlot: win.endSlot,
+        totalWindows: win.totalWindows,
+        totalTasks: win.totalTasks,
+        lastAdvancedAt: win.lastAdvancedAt
+      },
+      tasks: shaped
+    });
   } catch (err) { console.error('Fetch tasks error:', err); res.status(500).json({ error: 'Server error' }); }
 });
 
@@ -849,6 +673,7 @@ app.post('/api/tasks/:id/complete', auth, async (req, res) => {
     const task = await tasksCol.findOne({ id: Number(req.params.id) });
     if (!task) return res.status(404).json({ error: 'Task not found' });
 
+    // Strict check: Prevent double submission of the same task
     const completedToday = await historyCol.findOne({ userId: user._id, taskId: task.id, completedAt: { $gte: startOfToday() } });
     if (completedToday) return res.status(409).json({ error: 'This task has already been completed today.' });
 
@@ -910,15 +735,11 @@ app.post('/api/subscribe', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Payment initiation failed' }); }
 });
 
-// ═══════════════════════════════════════════════════════════════════════════
-// WALLET — uses MIN_DEPOSIT / MIN_WITHDRAWAL from APP_CONFIG
-// ═══════════════════════════════════════════════════════════════════════════
 app.post('/api/wallet/deposit', auth, async (req, res) => {
   try {
     const amount = Number(req.body?.amount) || 0;
     const phoneInput = req.body?.phone;
     if (amount < MIN_DEPOSIT) return res.status(400).json({ error: `Minimum deposit is KES ${MIN_DEPOSIT}` });
-    if (amount > MAX_DEPOSIT) return res.status(400).json({ error: `Maximum deposit is KES ${MAX_DEPOSIT}` });
     const user = await usersCol.findOne({ _id: new ObjectId(req.userId) });
     if (!user) return res.status(404).json({ error: 'User not found' });
     const phone = normalizePhone(phoneInput || user.phone);
@@ -961,7 +782,6 @@ app.post('/api/wallet/withdraw', auth, async (req, res) => {
     const amount = Number(req.body?.amount) || 0;
     const pin = req.body?.pin;
     if (amount < MIN_WITHDRAWAL) return res.status(400).json({ error: `Minimum withdrawal is KES ${MIN_WITHDRAWAL}` });
-    if (amount > MAX_WITHDRAWAL) return res.status(400).json({ error: `Maximum withdrawal is KES ${MAX_WITHDRAWAL}` });
     const user = await usersCol.findOne({ _id: new ObjectId(req.userId) });
     if (!user) return res.status(404).json({ error: 'User not found' });
     if (user.activationFeePaid !== true) {
@@ -1143,12 +963,24 @@ app.put('/api/admin/settings/maintenance', adminAuth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Server error' }); }
 });
 
+// ─── Current task window info (admin) ─────────────────────────────────────
+app.get('/api/admin/tasks/window', adminAuth, async (req, res) => {
+  try {
+    const win = await getCurrentWindow(metaCol);
+    res.json(win);
+  } catch (err) { res.status(500).json({ error: 'Server error' }); }
+});
+
 app.post('/api/admin/tasks/refresh', adminAuth, async (req, res) => {
   try {
-    console.log('🔍 Admin triggered task refresh. Simulating platform scan...');
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    await seedTasks(true);
-    res.json({ ok: true, message: 'Tasks refreshed successfully. New batch deployed instantly.' });
+    console.log('🔍 Admin triggered task window advance...');
+    await new Promise(resolve => setTimeout(resolve, 1500)); // simulate scan
+    const win = await advanceWindow(metaCol);
+    res.json({
+      ok: true,
+      message: `Advanced to window ${win.windowNum} of ${win.totalWindows} (tasks ${win.startSlot}–${win.endSlot}).`,
+      window: win
+    });
   } catch (err) { console.error('Admin task refresh error:', err); res.status(500).json({ error: 'Server error' }); }
 });
 
@@ -1345,21 +1177,9 @@ app.put('/api/admin/settings/prices', adminAuth, async (req, res) => {
     const c = Number(classic), p = Number(premium), g = Number(golden);
     if ([c, p, g].some(v => !Number.isFinite(v) || v < 1 || v > 1000000)) return res.status(400).json({ error: 'Prices must be between 1 and 1,000,000' });
     tierPrices = { classic: c, premium: p, golden: g };
-    APP_CONFIG.tierPrices = { ...tierPrices };
     await settingsCol.updateOne({ key: 'tier_prices' }, { $set: { ...tierPrices, updatedAt: new Date() } }, { upsert: true });
     res.json({ ok: true, prices: tierPrices });
   } catch (err) { res.status(500).json({ error: 'Server error' }); }
-});
-
-// ═══════════════════════════════════════════════════════════════════════════
-// ADMIN — edit business limits (deposit / withdrawal / activation)
-// ═══════════════════════════════════════════════════════════════════════════
-app.get('/api/admin/settings/limits', adminAuth, (req, res) => {
-  res.json({
-    minDeposit: MIN_DEPOSIT, maxDeposit: MAX_DEPOSIT,
-    minWithdrawal: MIN_WITHDRAWAL, maxWithdrawal: MAX_WITHDRAWAL,
-    activationFee: ACTIVATION_FEE,
-  });
 });
 
 app.get('/api/admin/tickets', adminAuth, async (req, res) => {
@@ -1386,18 +1206,17 @@ app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.ht
 (async () => {
   try {
     await connectDB();
-
+    // Auto-advance the task window every 24 hours
     setInterval(async () => {
-      console.log('🕒 Auto-refreshing tasks (24h interval)...');
-      await seedTasks(true);
+      console.log('🕒 Auto-advancing task window (24h interval)...');
+      try {
+        await advanceWindow(metaCol);
+      } catch (e) { console.error('Window advance error:', e.message); }
     }, 24 * 60 * 60 * 1000);
 
     app.listen(PORT, () => {
       console.log(`🚀 Server running on http://localhost:${PORT}`);
       console.log(`   Admin: /admin`);
-      console.log(`   Min deposit:    KES ${MIN_DEPOSIT}`);
-      console.log(`   Min withdrawal: KES ${MIN_WITHDRAWAL}`);
-      console.log(`   Activation fee: KES ${ACTIVATION_FEE}`);
     });
   } catch (err) { console.error('❌ Failed to start:', err); process.exit(1); }
 })();
