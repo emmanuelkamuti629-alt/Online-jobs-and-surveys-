@@ -14,7 +14,9 @@ const path = require('path');
 const {
   seedTasks: seedTasksRaw,
   generateQuestions,
-  getDailySeed
+  getDailySeed,
+  getCurrentWindow,
+  advanceWindow
 } = require('./tasks');
 
 const app = express();
@@ -80,7 +82,7 @@ async function connectDB() {
   await walletCol.createIndex({ userId: 1, createdAt: -1 });
   await historyCol.createIndex({ userId: 1, completedAt: -1 });
   await tasksCol.createIndex({ id: 1 }, { unique: true });
-  await tasksCol.createIndex({ batchId: 1 });
+  await tasksCol.createIndex({ slot: 1 });
   await visitsCol.createIndex({ createdAt: -1 });
   await loginAttemptsCol.createIndex({ createdAt: -1 });
   await ticketsCol.createIndex({ userId: 1, createdAt: -1 });
@@ -580,7 +582,7 @@ app.get('/api/support/tickets', auth, async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// TASKS ROUTE - Always serves the latest active batch
+// TASKS ROUTE - Serves only the current 50-task window (auto-advances daily)
 // ═══════════════════════════════════════════════════════════════════════════
 app.get('/api/tasks', auth, async (req, res) => {
   try {
@@ -594,24 +596,13 @@ app.get('/api/tasks', auth, async (req, res) => {
     const filter = {};
     if (type === 'survey' || type === 'task') filter.type = type;
 
-    // Fetch the latest batch ID
-    const latestBatch = await tasksCol.find({}).sort({ batchId: -1 }).limit(1).toArray();
-    if (latestBatch.length > 0) {
-      filter.batchId = latestBatch[0].batchId;
-    } else {
-      return res.json({ tier: user.subscriptionTier, dailyLimit: dailyLimit(user), tasksCompletedToday: user.tasksCompletedToday || 0, tasksRemaining: 0, page, size, totalCount: 0, tasks: [] });
-    }
+    // Get the currently active 50-task window (auto-advances every 24h)
+    const win = await getCurrentWindow(metaCol);
+    filter.id = { $gte: win.startSlot, $lte: win.endSlot };
 
     const totalCount = await tasksCol.countDocuments(filter);
-    const dailySeed = getDailySeed();
 
-    const tasks = await tasksCol.aggregate([
-      { $match: filter },
-      { $addFields: { dailyOrder: { $mod: [ { $add: ["$id", dailySeed] }, 10000 ] } } },
-      { $sort: { dailyOrder: 1 } },
-      { $skip: (page - 1) * size },
-      { $limit: size }
-    ]).toArray();
+    const tasks = await tasksCol.find(filter).sort({ id: 1 }).toArray();
 
     const todayHistory = await historyCol.find({ userId: user._id, completedAt: { $gte: startOfToday() } }).project({ taskId: 1 }).toArray();
     const completedIds = new Set(todayHistory.map(h => h.taskId));
@@ -632,7 +623,22 @@ app.get('/api/tasks', auth, async (req, res) => {
         owner: t.owner, status, tier: t.tier
       };
     });
-    res.json({ tier: user.subscriptionTier, dailyLimit: limit, tasksCompletedToday: done, tasksRemaining: remaining, page, size, totalCount, tasks: shaped });
+    res.json({
+      tier: user.subscriptionTier,
+      dailyLimit: limit,
+      tasksCompletedToday: done,
+      tasksRemaining: remaining,
+      page, size, totalCount,
+      window: {
+        number: win.windowNum,
+        startSlot: win.startSlot,
+        endSlot: win.endSlot,
+        totalWindows: win.totalWindows,
+        totalTasks: win.totalTasks,
+        lastAdvancedAt: win.lastAdvancedAt
+      },
+      tasks: shaped
+    });
   } catch (err) { console.error('Fetch tasks error:', err); res.status(500).json({ error: 'Server error' }); }
 });
 
@@ -957,12 +963,24 @@ app.put('/api/admin/settings/maintenance', adminAuth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Server error' }); }
 });
 
+// ─── Current task window info (admin) ─────────────────────────────────────
+app.get('/api/admin/tasks/window', adminAuth, async (req, res) => {
+  try {
+    const win = await getCurrentWindow(metaCol);
+    res.json(win);
+  } catch (err) { res.status(500).json({ error: 'Server error' }); }
+});
+
 app.post('/api/admin/tasks/refresh', adminAuth, async (req, res) => {
   try {
-    console.log('🔍 Admin triggered task refresh. Simulating platform scan...');
-    await new Promise(resolve => setTimeout(resolve, 1500)); // 1.5s delay to simulate "searching"
-    await seedTasks(true);
-    res.json({ ok: true, message: 'Tasks refreshed successfully. New batch deployed instantly.' });
+    console.log('🔍 Admin triggered task window advance...');
+    await new Promise(resolve => setTimeout(resolve, 1500)); // simulate scan
+    const win = await advanceWindow(metaCol);
+    res.json({
+      ok: true,
+      message: `Advanced to window ${win.windowNum} of ${win.totalWindows} (tasks ${win.startSlot}–${win.endSlot}).`,
+      window: win
+    });
   } catch (err) { console.error('Admin task refresh error:', err); res.status(500).json({ error: 'Server error' }); }
 });
 
@@ -1188,10 +1206,12 @@ app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.ht
 (async () => {
   try {
     await connectDB();
-    // Auto-refresh tasks every 24 hours
+    // Auto-advance the task window every 24 hours
     setInterval(async () => {
-      console.log('🕒 Auto-refreshing tasks (24h interval)...');
-      await seedTasks(true);
+      console.log('🕒 Auto-advancing task window (24h interval)...');
+      try {
+        await advanceWindow(metaCol);
+      } catch (e) { console.error('Window advance error:', e.message); }
     }, 24 * 60 * 60 * 1000);
 
     app.listen(PORT, () => {
