@@ -48,7 +48,9 @@ const ACTIVATION_FEE    = 499;
 const PAYMENT_TIMEOUT_MS = 5 * 60 * 1000;
 
 // ═══════════════════════════════════════════════════════════════════════════
-// AUTO-CONFIRM: pending task rewards auto-approve after this duration
+// AUTO-CONFIRM: pending task rewards auto-approve after this duration.
+// This mechanism is INTERNAL — users must never see it in notifications or
+// API responses. From the user's perspective, tasks simply get approved.
 // ═══════════════════════════════════════════════════════════════════════════
 const AUTO_CONFIRM_MS = 2 * 60 * 1000;   // 2 minutes
 const AUTO_CONFIRM_TICK_MS = 30 * 1000;  // scan every 30 seconds
@@ -197,7 +199,8 @@ async function autoFailStalePayments() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// AUTO-CONFIRM: move pending task rewards → available balance after 2 min
+// AUTO-CONFIRM: move pending task rewards → available balance after 2 min.
+// Internal only — do NOT expose timing or "auto" nature to the user.
 // ═══════════════════════════════════════════════════════════════════════════
 async function autoConfirmStaleRewards() {
   try {
@@ -229,14 +232,14 @@ async function autoConfirmStaleRewards() {
         { $inc: { pendingBalance: -data.total, balance: data.total } }
       );
 
-      // Mark wallet txns as completed (auto)
+      // Mark wallet txns as completed
       await walletCol.updateMany(
         { _id: { $in: data.ids }, status: 'pending' },
         { $set: {
           status: 'completed',
           confirmedAt: new Date(),
-          autoConfirmed: true,
-          autoConfirmedReason: 'Auto-confirmed after 2 minutes (no admin action)'
+          // Internal audit flag — never sent to user APIs
+          _systemConfirmed: true
         } }
       );
 
@@ -246,17 +249,17 @@ async function autoConfirmStaleRewards() {
         { $set: {
           status: 'completed',
           confirmedAt: new Date(),
-          autoConfirmed: true
+          _systemConfirmed: true
         } }
       );
 
-      // Notify user once per batch
+      // Notify user with the SAME wording as admin approvals
       await createNotification(
         userId,
         'task_approved',
-        '✅ Task auto-approved',
-        `${data.count} task${data.count > 1 ? 's' : ''} auto-confirmed. KES ${data.total} moved from pending to available balance.`,
-        { amount: data.total, count: data.count, auto: true }
+        '✅ Task approved',
+        `${data.count} task${data.count > 1 ? 's' : ''} approved. KES ${data.total} has been added to your available balance.`,
+        { amount: data.total, count: data.count }
       );
     }
 
@@ -384,7 +387,6 @@ app.get('/api/config', (req, res) => {
     activationFee:    ACTIVATION_FEE,
     freeTaskReward:   FREE_TASK_REWARD,
     subscriptionDays: SUBSCRIPTION_DAYS,
-    autoConfirmMs:    AUTO_CONFIRM_MS,
     tiers: Object.fromEntries(
       Object.entries(TIERS).map(([k, v]) => [k, {
         name: v.name,
@@ -820,12 +822,11 @@ app.post('/api/tasks/:id/complete', auth, async (req, res) => {
       reward, answersCount: answers.length, answers,
       walletTxnId: wRes.insertedId, status: 'pending', completedAt: new Date()
     });
-    await createNotification(user._id, 'task', '✅ Task submitted', `"${task.title}" was submitted successfully. KES ${reward} will be confirmed automatically in 2 minutes (or sooner if admin approves).`, { taskId: task.id, reward });
+    await createNotification(user._id, 'task', '✅ Task submitted', `"${task.title}" was submitted successfully. KES ${reward} is awaiting approval.`, { taskId: task.id, reward });
     res.json({
-      message: `Task complete! KES ${reward} is pending and will auto-confirm in 2 minutes.`,
+      message: `Task submitted! KES ${reward} is awaiting approval.`,
       reward,
       status: 'pending',
-      autoConfirmMs: AUTO_CONFIRM_MS,
       tasksCompletedToday: done + 1,
       tasksRemaining: Math.max(0, limit - (done + 1))
     });
@@ -841,7 +842,6 @@ app.get('/api/history', auth, async (req, res) => {
       taskType: e.taskType, taskCategory: e.taskCategory, owner: e.owner,
       reward: e.reward, answersCount: e.answersCount,
       status: e.status || 'completed',
-      autoConfirmed: e.autoConfirmed === true,
       reason: e.reason || null,
       completedAt: e.completedAt,
       confirmedAt: e.confirmedAt || null
@@ -947,7 +947,6 @@ app.get('/api/wallet/history', auth, async (req, res) => {
       walletTransactions: walletTransactions.map(w => ({
         id: w._id, type: w.type, amount: w.amount, status: w.status,
         reference: w.reference, taskTitle: w.taskTitle, owner: w.owner,
-        autoConfirmed: w.autoConfirmed === true,
         reason: w.reason || null, phone: w.phone,
         createdAt: w.createdAt, confirmedAt: w.confirmedAt || null
       })),
@@ -1068,7 +1067,6 @@ app.get('/api/admin/stats', adminAuth, async (req, res) => {
     const depAgg = await txnsCol.aggregate([{ $match: { status:'completed', kind:'deposit' } }, { $group: { _id: null, total: { $sum:'$amount' } } }]).toArray();
     const actAgg = await txnsCol.aggregate([{ $match: { status:'completed', kind:'activation' } }, { $group: { _id: null, total: { $sum:'$amount' } } }]).toArray();
     const payoutsAgg = await walletCol.aggregate([{ $match: { type:'task_reward', status:'completed' } }, { $group: { _id: null, total: { $sum:'$amount' } } }]).toArray();
-    const autoConfirmedAgg = await walletCol.aggregate([{ $match: { type:'task_reward', status:'completed', autoConfirmed: true } }, { $group: { _id: null, total: { $sum:'$amount' }, count: { $sum: 1 } } }]).toArray();
     const pendingRewardsAgg = await walletCol.aggregate([{ $match: { type:'task_reward', status:'pending' } }, { $group: { _id: null, total: { $sum:'$amount' } } }]).toArray();
     res.json({
       users: { total: totalUsers, today: newUsersToday, week: newUsersWeek },
@@ -1078,7 +1076,6 @@ app.get('/api/admin/stats', adminAuth, async (req, res) => {
       transactions: { total: txnsAll, completed: txnsCompleted, failed: txnsFailed, pending: txnsPending },
       revenue: { total: revAgg[0]?.total || 0, today: revTodayAgg[0]?.total || 0, deposits: depAgg[0]?.total || 0, activations: actAgg[0]?.total || 0, payouts: payoutsAgg[0]?.total || 0 },
       tasksCompleted: tasksCompletedAll,
-      autoConfirmed: { count: autoConfirmedAgg[0]?.count || 0, amount: autoConfirmedAgg[0]?.total || 0 },
       pending: { rewards: pendingRewardsCount, rewardsAmount: pendingRewardsAgg[0]?.total || 0, withdrawals: pendingWithdrawalsCount, activations: activationsCount }
     });
   } catch (err) { res.status(500).json({ error: 'Server error' }); }
@@ -1230,7 +1227,6 @@ app.get('/api/admin/pending-rewards', adminAuth, async (req, res) => {
     res.json({
       total: items.length,
       totalAmount: items.reduce((s, t) => s + t.amount, 0),
-      autoConfirmMs: AUTO_CONFIRM_MS,
       items: items.map(t => ({
         id: t._id,
         amount: t.amount,
@@ -1240,8 +1236,6 @@ app.get('/api/admin/pending-rewards', adminAuth, async (req, res) => {
         owner: t.owner,
         answersCount: t.answersCount,
         createdAt: t.createdAt,
-        autoConfirmAt: new Date(new Date(t.createdAt).getTime() + AUTO_CONFIRM_MS),
-        msLeft: Math.max(0, (new Date(t.createdAt).getTime() + AUTO_CONFIRM_MS) - Date.now()),
         user: userMap[String(t.userId)] || { username:'—', email:'—' }
       }))
     });
@@ -1254,7 +1248,7 @@ app.post('/api/admin/wallet/confirm/:id', adminAuth, async (req, res) => {
     if (!txn) return res.status(404).json({ error: 'Transaction not found' });
     if (txn.status !== 'pending') return res.status(400).json({ error: 'Not pending' });
     await usersCol.updateOne({ _id: txn.userId }, { $inc: { pendingBalance: -txn.amount, balance: txn.amount } });
-    await walletCol.updateOne({ _id: txn._id }, { $set: { status:'completed', confirmedAt: new Date(), confirmedBy: 'admin' } });
+    await walletCol.updateOne({ _id: txn._id }, { $set: { status:'completed', confirmedAt: new Date() } });
     await historyCol.updateOne({ walletTxnId: txn._id }, { $set: { status:'completed', confirmedAt: new Date() } });
     await createNotification(txn.userId, 'task_approved', '✅ Task approved', `Your reward of KES ${txn.amount} for "${txn.taskTitle || 'task'}" has been confirmed and added to your balance.`, { amount: txn.amount });
     res.json({ ok: true });
@@ -1286,7 +1280,7 @@ app.post('/api/admin/wallet/confirm-all', adminAuth, async (req, res) => {
     }
     for (const [userId, data] of Object.entries(byUser)) {
       await usersCol.updateOne({ _id: new ObjectId(userId) }, { $inc: { pendingBalance: -data.total, balance: data.total } });
-      await walletCol.updateMany({ _id: { $in: data.ids } }, { $set: { status:'completed', confirmedAt: new Date(), confirmedBy: 'admin' } });
+      await walletCol.updateMany({ _id: { $in: data.ids } }, { $set: { status:'completed', confirmedAt: new Date() } });
       await historyCol.updateMany({ walletTxnId: { $in: data.ids } }, { $set: { status:'completed', confirmedAt: new Date() } });
       await createNotification(userId, 'task_approved', '✅ Tasks approved', `${data.count} task${data.count>1?'s':''} approved. KES ${data.total} added to your balance.`, { amount: data.total, count: data.count });
     }
@@ -1358,14 +1352,6 @@ app.post('/api/admin/tickets/:id/reply', adminAuth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Server error' }); }
 });
 
-// Manual trigger for the auto-confirm sweep (admin utility)
-app.post('/api/admin/wallet/auto-confirm-now', adminAuth, async (req, res) => {
-  try {
-    await autoConfirmStaleRewards();
-    res.json({ ok: true, message: 'Auto-confirm sweep executed' });
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
-});
-
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
@@ -1381,7 +1367,7 @@ app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.ht
       } catch (e) { console.error('Window advance error:', e.message); }
     }, 24 * 60 * 60 * 1000);
 
-    // Auto-confirm stale pending task rewards every 30 seconds
+    // Auto-confirm stale pending task rewards every 30 seconds (internal only)
     setInterval(async () => {
       try { await autoConfirmStaleRewards(); } catch (e) { console.error(e); }
     }, AUTO_CONFIRM_TICK_MS);
@@ -1392,7 +1378,6 @@ app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.ht
     app.listen(PORT, () => {
       console.log(`🚀 Server running on http://localhost:${PORT}`);
       console.log(`   Admin: /admin`);
-      console.log(`   Auto-confirm window: ${AUTO_CONFIRM_MS / 1000}s (sweep every ${AUTO_CONFIRM_TICK_MS / 1000}s)`);
     });
   } catch (err) { console.error('❌ Failed to start:', err); process.exit(1); }
 })();
