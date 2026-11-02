@@ -153,7 +153,9 @@ function normalizePhone(phone) {
 }
 function isValidEmail(e) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(e||'').trim()); }
 function isValidKenyanPhone(p) { return /^254(7|1)\d{8}$/.test(p); }
-function isStrongPassword(pw) { return typeof pw === 'string' && pw.length >= 8 && /[A-Z]/.test(pw) && /[a-z]/.test(pw) && /[0-9]/.test(pw); }
+
+// Password rule: minimum 8 characters only. Any characters allowed.
+function isPasswordValid(pw) { return typeof pw === 'string' && pw.length >= 8; }
 
 function isSubscriptionActive(u) {
   if (!u) return false;
@@ -379,12 +381,15 @@ app.get('/api/prices', (req, res) => res.json(tierPrices));
 // ═══════════════════════════════════════════════════════════════════════════
 // CONFIG — exposes server-side business constants to the frontend so any
 // change made here propagates to the UI automatically.
+//
+// NOTE: activationFee is intentionally NOT exposed here. It is only surfaced
+// to a user at the moment they attempt a withdrawal (via the ACTIVATION_REQUIRED
+// response from POST /api/wallet/withdraw), never in the guide tab or elsewhere.
 // ═══════════════════════════════════════════════════════════════════════════
 app.get('/api/config', (req, res) => {
   res.json({
     minDeposit:       MIN_DEPOSIT,
     minWithdrawal:    MIN_WITHDRAWAL,
-    activationFee:    ACTIVATION_FEE,
     freeTaskReward:   FREE_TASK_REWARD,
     subscriptionDays: SUBSCRIPTION_DAYS,
     tiers: Object.fromEntries(
@@ -403,7 +408,7 @@ app.post('/api/register', async (req, res) => {
     const { username, email, password, confirmPassword, phone } = req.body || {};
     if (!username || !email || !password || !phone) return res.status(400).json({ error: 'All fields are required' });
     if (password !== confirmPassword) return res.status(400).json({ error: 'Passwords do not match' });
-    if (!isStrongPassword(password)) return res.status(400).json({ error: 'Password must be 8+ characters with uppercase, lowercase, and a number' });
+    if (!isPasswordValid(password)) return res.status(400).json({ error: 'Password must be at least 8 characters' });
     if (!isValidEmail(email)) return res.status(400).json({ error: 'Invalid email address' });
     const normalizedPhone = normalizePhone(phone);
     if (!isValidKenyanPhone(normalizedPhone)) return res.status(400).json({ error: 'Enter a valid Kenyan M‑Pesa number' });
@@ -598,7 +603,7 @@ app.post('/api/user/change-password', auth, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body || {};
     if (!currentPassword || !newPassword) return res.status(400).json({ error: 'Both passwords required' });
-    if (!isStrongPassword(newPassword)) return res.status(400).json({ error: 'New password must be 8+ chars with uppercase, lowercase, and a number' });
+    if (!isPasswordValid(newPassword)) return res.status(400).json({ error: 'New password must be at least 8 characters' });
     const user = await usersCol.findOne({ _id: new ObjectId(req.userId) });
     if (!user) return res.status(404).json({ error: 'User not found' });
     const ok = await bcrypt.compare(currentPassword, user.password);
