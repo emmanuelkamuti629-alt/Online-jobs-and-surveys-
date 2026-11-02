@@ -1357,7 +1357,17 @@ app.post('/api/admin/tickets/:id/reply', adminAuth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Server error' }); }
 });
 
-app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
+// ═══════════════════════════════════════════════════════════════════════════
+// ADMIN PAGE ROUTING
+//   /mjanjez  → serves public/admin.html (the admin panel)
+//   /admin    → silently blocked with 404 so the old path looks dead
+// ═══════════════════════════════════════════════════════════════════════════
+app.get('/mjanjez', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
+
+// Block the old /admin route — returns 404 so it appears the page doesn't exist
+app.get('/admin', (req, res) => res.status(404).send('Not found'));
+
+// Catch-all → serves the SPA
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
 (async () => {
@@ -1382,7 +1392,7 @@ app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.ht
 
     app.listen(PORT, () => {
       console.log(`🚀 Server running on http://localhost:${PORT}`);
-      console.log(`   Admin: /admin`);
+      console.log(`   Admin: /mjanjez`);
     });
   } catch (err) { console.error('❌ Failed to start:', err); process.exit(1); }
 })();
