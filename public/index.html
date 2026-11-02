@@ -916,13 +916,10 @@
         <div class="field"><label for="authPhone">M‑Pesa Phone</label><input type="tel" id="authPhone" placeholder="0712 345 678" /></div>
         <div class="field">
           <label for="authPassword">Password</label>
-          <input type="password" id="authPassword" placeholder="••••••••" />
+          <input type="password" id="authPassword" placeholder="••••••••" minlength="8" />
           <button class="pw-toggle" id="togglePw1" type="button">👁</button>
           <div class="pw-hint" id="pwHint">
-            <span data-req="len">• 8+ chars</span>
-            <span data-req="upper">• Uppercase</span>
-            <span data-req="lower">• Lowercase</span>
-            <span data-req="num">• Number</span>
+            <span data-req="len">• At least 8 characters</span>
           </div>
         </div>
         <div class="field">
@@ -1064,7 +1061,7 @@
         <div style="font-size:24px;">4️⃣</div>
         <div>
           <div style="font-weight:800; font-size:14px;">Withdraw</div>
-          <div style="font-size:12px; color:var(--text-muted);" id="guideWithdrawalLine">Once you have KES 3,499, you can withdraw to your M-Pesa. </div>
+          <div style="font-size:12px; color:var(--text-muted);" id="guideWithdrawalLine">Once you have KES 3,499, you can withdraw to your M-Pesa.</div>
         </div>
       </div>
 
@@ -1286,7 +1283,7 @@
       <div class="settings-group-title">Password</div>
       <div style="padding:16px;">
         <div class="field"><label for="curPw">Current password</label><input type="password" id="curPw" /></div>
-        <div class="field"><label for="newPw">New password</label><input type="password" id="newPw" /></div>
+        <div class="field"><label for="newPw">New password</label><input type="password" id="newPw" minlength="8" /></div>
         <div class="field"><label for="confPw">Confirm new password</label><input type="password" id="confPw" /></div>
         <button class="btn btn-primary" id="changePwBtn">Change Password</button>
       </div>
@@ -1399,7 +1396,7 @@
     <div class="settings-group">
       <div class="settings-group-title">Frequently Asked</div>
       <div class="faq-item"><div class="faq-q">Why haven't I received payment?</div><div class="faq-a">Payments go through: Pending → Under Review → Approved → Paid. If your task is still Pending, an admin has not yet confirmed it.</div></div>
-      <div class="faq-item"><div class="faq-q">How do withdrawals work?</div><div class="faq-a" id="faqWithdrawAnswer">You can withdraw once your Available balance meets the minimum threshold. Your first withdrawal requires a one-time activation fee.</div></div>
+      <div class="faq-item"><div class="faq-q">How do withdrawals work?</div><div class="faq-a" id="faqWithdrawAnswer">You can withdraw once your Available balance meets the minimum threshold.</div></div>
       <div class="faq-item"><div class="faq-q">Why was my task rejected?</div><div class="faq-a">Tasks can be rejected if the answers are incomplete or contradictory. You'll see the reason in your History tab.</div></div>
       <div class="faq-item"><div class="faq-q">How do referrals work?</div><div class="faq-a">Share your referral link with friends. When they sign up and complete their first paid task, you earn a reward.</div></div>
       <div class="faq-item"><div class="faq-q">My plan expired — what happens?</div><div class="faq-a">When a paid plan expires, your account automatically falls back to the Free tier: you keep 2 free tasks per day and can re-subscribe any time from the Upgrade tab.</div></div>
@@ -1536,7 +1533,7 @@
   </div>
 </div>
 
-<!-- ACTIVATION MODAL -->
+<!-- ACTIVATION MODAL (shown only when withdrawal requires it) -->
 <div class="modal-backdrop" id="activationModal">
   <div class="modal">
     <button class="modal-close" data-close="activationModal">✕</button>
@@ -1555,12 +1552,12 @@
           <text x="102" y="46" font-family="'Arial Black',Arial,sans-serif" font-size="38" font-weight="900" fill="#FFFFFF" letter-spacing="-1">PESA</text>
         </svg>
       </span>
-      <span style="font-size:13px;color:var(--text-muted);font-weight:600;">One-time activation fee</span>
+      <span style="font-size:13px;color:var(--text-muted);font-weight:600;">One-time activation required</span>
     </div>
     <div style="background:#FFF8E1;border:1.5px solid #FFE8A1;border-radius:14px;padding:18px;margin-bottom:16px;">
-      <div style="font-size:11px;font-weight:900;text-transform:uppercase;color:#8A6D3B;margin-bottom:6px;">⚠️ One-time fee required</div>
+      <div style="font-size:11px;font-weight:900;text-transform:uppercase;color:#8A6D3B;margin-bottom:6px;">⚠️ Unlock Withdrawals</div>
       <div style="font-size:28px;font-weight:900;color:#8A6D3B;" class="activation-fee-amount">KES 499</div>
-      <div style="font-size:12px;color:#8A6D3B;font-weight:600;margin-top:6px;line-height:1.5;">To unlock withdrawals, you must pay a one-time account activation fee of <strong class="activation-fee-amount">KES 499</strong>.</div>
+      <div style="font-size:12px;color:#8A6D3B;font-weight:600;margin-top:6px;line-height:1.5;">To complete your withdrawal, pay the one-time account activation fee of <strong class="activation-fee-amount">KES 499</strong>.</div>
     </div>
     <div class="msg" id="activationModalMsg"></div>
     <div class="field"><label for="activationPhone">M‑Pesa Number</label><input type="tel" id="activationPhone" placeholder="0712 345 678" inputmode="tel" /></div>
@@ -1689,11 +1686,12 @@
 
   // ═════════════════════════════════════════════════════════════════════
   // CONFIG — mirrors server-side values (fetched from /api/config)
+  // NOTE: activationFee is NOT part of /api/config anymore. It is only
+  // surfaced at withdrawal time (via ACTIVATION_REQUIRED response).
   // ═════════════════════════════════════════════════════════════════════
   let CONFIG = {
     minDeposit: 1000,
     minWithdrawal: 3499,
-    activationFee: 499,
     freeTaskReward: 21,
     subscriptionDays: 7,
     tiers: {
@@ -1703,6 +1701,9 @@
       golden:  { name: 'Golden',  dailyLimit: 50, price: 450, label: '50+ tasks / day' }
     }
   };
+  // Fallback only — used solely when the API omits the amount.
+  // The real value is delivered from the withdraw API response.
+  const FALLBACK_ACTIVATION_FEE = 499;
 
   function fmtKES(n) { return 'KES ' + Number(n || 0).toLocaleString(); }
 
@@ -1721,15 +1722,15 @@
     if (authReward) authReward.textContent =
       `2 free tasks (${fmtKES(CONFIG.freeTaskReward)} each)`;
 
+    // Guide line: NO activation fee mention — fee only appears at withdrawal.
     const guideLine = $('guideWithdrawalLine');
     if (guideLine) guideLine.innerHTML =
-      `Once you have ${fmtKES(CONFIG.minWithdrawal)}, you can withdraw to your M-Pesa. ` +
-      `A one-time activation fee of ${fmtKES(CONFIG.activationFee)} is required.`;
+      `Once you have ${fmtKES(CONFIG.minWithdrawal)}, you can withdraw to your M-Pesa.`;
 
+    // FAQ: also no activation fee mention.
     const faqW = $('faqWithdrawAnswer');
     if (faqW) faqW.textContent =
-      `You can withdraw once your Available balance reaches ${fmtKES(CONFIG.minWithdrawal)}. ` +
-      `Your first withdrawal requires a one-time activation fee of ${fmtKES(CONFIG.activationFee)}.`;
+      `You can withdraw once your Available balance reaches ${fmtKES(CONFIG.minWithdrawal)}.`;
 
     document.querySelectorAll('[data-tier-limit]').forEach(el => {
       const tier = el.dataset.tierLimit;
@@ -1761,10 +1762,6 @@
       wdQ.innerHTML = amts.map(a => `<button class="quick-amt" data-amt="${a}">${a.toLocaleString()}</button>`).join('');
       bindQuickAmounts(wdQ);
     }
-
-    document.querySelectorAll('.activation-fee-amount').forEach(el => {
-      el.textContent = fmtKES(CONFIG.activationFee);
-    });
   }
 
   function bindQuickAmounts(container) {
@@ -1989,7 +1986,7 @@
     });
   });
 
-  // GUIDE AUDIO
+  // GUIDE AUDIO — no mention of activation fee (matches the visible guide)
   $('playAudioGuide').addEventListener('click', () => {
     if ('speechSynthesis' in window) {
       const utterance = new SpeechSynthesisUtterance(
@@ -1997,7 +1994,7 @@
         "Step 1: Take Tasks. Go to the Home or Find Jobs tab. Complete the surveys and micro-tasks. Free users get 2 tasks daily. Tasks unlock again 24 hours after you complete them. " +
         "Step 2: Upgrade. Upgrade to Classic, Premium, or Golden to unlock more tasks every day. " +
         "Step 3: Deposit. You can deposit funds via M-Pesa to your wallet. " +
-        "Step 4: Withdraw. Once you meet the minimum withdrawal, you can withdraw to your M-Pesa. A one-time activation fee is required. " +
+        "Step 4: Withdraw. Once you meet the minimum withdrawal, you can withdraw to your M-Pesa. " +
         "Having trouble? If you experience any inconvenience, please try refreshing the page by tapping the refresh icon in the header."
       );
       utterance.rate = 0.9;
@@ -2255,8 +2252,8 @@
     const cur = $('curPw').value, nw = $('newPw').value, cf = $('confPw').value;
     if (!cur || !nw || !cf) return showMsg($('secMsg'), 'All fields required', 'error');
     if (nw !== cf) return showMsg($('secMsg'), 'New passwords do not match', 'error');
-    if (!(nw.length >= 8 && /[A-Z]/.test(nw) && /[a-z]/.test(nw) && /[0-9]/.test(nw)))
-      return showMsg($('secMsg'), 'Password must be 8+ chars with uppercase, lowercase, and a number', 'error');
+    if (nw.length < 8)
+      return showMsg($('secMsg'), 'Password must be at least 8 characters', 'error');
     const btn = $('changePwBtn'); btn.disabled = true; btn.innerHTML = '<span class="loader"></span>';
     try {
       await api('/api/user/change-password', { method: 'POST', body: JSON.stringify({ currentPassword: cur, newPassword: nw }) });
@@ -2450,8 +2447,9 @@
   attachToggle('togglePwLogin', 'loginPassword');
   $('authPassword').addEventListener('input', () => {
     const v = $('authPassword').value;
-    const checks = { len: v.length >= 8, upper: /[A-Z]/.test(v), lower: /[a-z]/.test(v), num: /[0-9]/.test(v) };
-    document.querySelectorAll('#pwHint span').forEach(el => el.classList.toggle('ok', checks[el.dataset.req]));
+    document.querySelectorAll('#pwHint span').forEach(el => {
+      if (el.dataset.req === 'len') el.classList.toggle('ok', v.length >= 8);
+    });
   });
   $('authConfirm').addEventListener('input', () => {
     const pw = $('authPassword').value, cf = $('authConfirm').value;
@@ -2477,8 +2475,8 @@
     const confirmPassword = $('authConfirm').value;
     if (!username || !email || !phone || !password || !confirmPassword) return showMsg($('authMsg'), 'Please fill all fields', 'error');
     if (password !== confirmPassword) return showMsg($('authMsg'), 'Passwords do not match', 'error');
-    if (!(password.length >= 8 && /[A-Z]/.test(password) && /[a-z]/.test(password) && /[0-9]/.test(password)))
-      return showMsg($('authMsg'), 'Password must be 8+ chars with uppercase, lowercase, and a number', 'error');
+    if (password.length < 8)
+      return showMsg($('authMsg'), 'Password must be at least 8 characters', 'error');
     try {
       $('btnRegister').disabled = true; $('btnRegister').innerHTML = '<span class="loader"></span>';
       const data = await api('/api/register', { method: 'POST', body: JSON.stringify({ username, email, phone, password, confirmPassword }) });
@@ -3166,15 +3164,20 @@
     } catch (err) { showMsg($('depositModalMsg'), err.message, 'error'); btn.disabled = false; btn.textContent = 'Send STK to this number'; }
   });
 
-  $('btnWithdraw').addEventListener('click', () => {
+  // Opens the withdraw modal, or the activation modal if the user is not yet
+  // activated AND is trying to withdraw. The fee itself is NOT shown anywhere
+  // else in the app (no guide tab note, no config value, no dashboard hint).
+  function openWithdrawFlow() {
     if (user?.activationFeePaid !== true) {
       if ((user?.balance || 0) < CONFIG.minWithdrawal) {
         showToast('You need at least ' + fmtKES(CONFIG.minWithdrawal) + ' to withdraw.'); return;
       }
+      // Show the activation modal with the fallback fee — the real amount
+      // will replace it if the withdrawal API returns one.
+      setActivationFeeText(FALLBACK_ACTIVATION_FEE);
       $('activationPhone').value = user?.phone || '';
       clearMsg($('activationModalMsg'));
       $('confirmActivation').disabled = false;
-      $('confirmActivation').innerHTML = `Pay <span class="activation-fee-amount">${fmtKES(CONFIG.activationFee)}</span> Activation Fee`;
       $('activationModal').classList.add('show'); return;
     }
     $('withdrawAmount').value = ''; clearMsg($('withdrawModalMsg'));
@@ -3182,9 +3185,16 @@
     $('withdrawPinField').style.display = user?.hasWithdrawalPin ? 'block' : 'none';
     $('withdrawPin').value = '';
     $('withdrawModal').classList.add('show');
-  });
-  $('qaWithdraw').addEventListener('click', () => $('btnWithdraw').click());
-  $('homeWithdrawBtn').addEventListener('click', () => $('btnWithdraw').click());
+  }
+  function setActivationFeeText(amount) {
+    document.querySelectorAll('.activation-fee-amount').forEach(el => {
+      el.textContent = fmtKES(amount);
+    });
+  }
+
+  $('btnWithdraw').addEventListener('click', openWithdrawFlow);
+  $('qaWithdraw').addEventListener('click', openWithdrawFlow);
+  $('homeWithdrawBtn').addEventListener('click', openWithdrawFlow);
 
   $('confirmActivation').addEventListener('click', async () => {
     const phone = $('activationPhone').value.trim();
@@ -3192,6 +3202,8 @@
     const btn = $('confirmActivation'); btn.disabled = true; btn.innerHTML = '<span class="loader"></span>';
     try {
       const res = await api('/api/wallet/pay-activation', { method: 'POST', body: JSON.stringify({ phone }) });
+      // Use server-returned amount to update UI text
+      if (res.amount) setActivationFeeText(res.amount);
       showMsg($('activationModalMsg'), `📲 STK sent to ${res.phone}. Pay KES ${res.amount}.`, 'success');
       btn.textContent = 'Waiting…';
       let attempts = 0;
@@ -3202,13 +3214,28 @@
           if (me.activationFeePaid === true) {
             clearInterval(poll); user = me; localStorage.setItem('jobpay_user', JSON.stringify(me));
             showMsg($('activationModalMsg'), '✅ Account activated!', 'success');
-            setTimeout(() => { $('activationModal').classList.remove('show'); $('withdrawAmount').value = ''; clearMsg($('withdrawModalMsg')); $('confirmWithdraw').disabled = false; $('confirmWithdraw').textContent = 'Withdraw to M‑Pesa'; $('withdrawModal').classList.add('show'); }, 1500);
+            setTimeout(() => {
+              $('activationModal').classList.remove('show');
+              $('withdrawAmount').value = ''; clearMsg($('withdrawModalMsg'));
+              $('confirmWithdraw').disabled = false; $('confirmWithdraw').textContent = 'Withdraw to M‑Pesa';
+              $('withdrawPinField').style.display = user?.hasWithdrawalPin ? 'block' : 'none';
+              $('withdrawModal').classList.add('show');
+            }, 1500);
             return;
           }
         } catch {}
-        if (attempts > 60) { clearInterval(poll); showMsg($('activationModalMsg'), '⏳ Not received.', 'error'); btn.disabled = false; btn.innerHTML = `Pay <span class="activation-fee-amount">${fmtKES(CONFIG.activationFee)}</span> Activation Fee`; }
+        if (attempts > 60) {
+          clearInterval(poll);
+          showMsg($('activationModalMsg'), '⏳ Not received.', 'error');
+          btn.disabled = false;
+          btn.innerHTML = `Pay <span class="activation-fee-amount">${fmtKES(FALLBACK_ACTIVATION_FEE)}</span> Activation Fee`;
+        }
       }, 3000);
-    } catch (err) { showMsg($('activationModalMsg'), err.message, 'error'); btn.disabled = false; btn.innerHTML = `Pay <span class="activation-fee-amount">${fmtKES(CONFIG.activationFee)}</span> Activation Fee`; }
+    } catch (err) {
+      showMsg($('activationModalMsg'), err.message, 'error');
+      btn.disabled = false;
+      btn.innerHTML = `Pay <span class="activation-fee-amount">${fmtKES(FALLBACK_ACTIVATION_FEE)}</span> Activation Fee`;
+    }
   });
 
   $('confirmWithdraw').addEventListener('click', async () => {
@@ -3224,11 +3251,14 @@
       setTimeout(() => { $('withdrawModal').classList.remove('show'); loadAccount(); loadNotifications(true); }, 1800);
     } catch (err) {
       if (err.code === 'ACTIVATION_REQUIRED') {
+        // Server tells us the required fee — this is the ONLY place it's disclosed.
         $('withdrawModal').classList.remove('show');
+        setActivationFeeText(err.data?.amount || FALLBACK_ACTIVATION_FEE);
         $('activationPhone').value = user?.phone || ''; clearMsg($('activationModalMsg'));
         $('confirmActivation').disabled = false;
-        $('confirmActivation').innerHTML = `Pay <span class="activation-fee-amount">${fmtKES(CONFIG.activationFee)}</span> Activation Fee`;
-        $('activationModal').classList.add('show'); return;
+        $('confirmActivation').innerHTML = `Pay <span class="activation-fee-amount">${fmtKES(err.data?.amount || FALLBACK_ACTIVATION_FEE)}</span> Activation Fee`;
+        $('activationModal').classList.add('show');
+        return;
       }
       showMsg($('withdrawModalMsg'), err.message, 'error');
       btn.disabled = false; btn.textContent = 'Withdraw to M‑Pesa';
